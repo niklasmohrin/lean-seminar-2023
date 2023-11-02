@@ -12,7 +12,7 @@ package LeanSeminar where
   moreServerArgs := moreServerArgs
 
 @[default_target]
-lean_lib LeanSeminar where
+lean_lib FlowEquivalentForest where
   moreLeanArgs := moreLeanArgs
 
 -- Last commit with Lean 4.1.0 in their `lean-toolchain` file

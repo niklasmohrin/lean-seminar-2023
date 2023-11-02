@@ -152,4 +152,4 @@ def mkFlowEquivalentForest
 theorem isAcyclic
     (M : V → V → ℕ)
     (hM : ZeroDiagonal M ∧ ∀ {u v w}, min (M u v) (M v w) ≤ M u w) :
-  IsAcyclic (mkFlowEquivalentTree M hM).asSimpleGraph := sorry
+  IsAcyclic (mkFlowEquivalentForest M hM).asSimpleGraph := sorry
