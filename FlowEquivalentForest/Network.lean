@@ -10,7 +10,7 @@ variable ( V : Type* ) [Fintype V] [DecidableEq V] [Nonempty V]
 
 structure Network where
   cap : V → V → ℕ
-  loopLess: ∀ v, cap v v = 0
+  loopless: ∀ v, cap v v = 0
 
 structure UndirectedNetwork extends Network V where
   symm: ∀ {u v}, cap u v = cap v u
@@ -47,7 +47,7 @@ def UndirectedNetwork.asSimpleGraph (G : UndirectedNetwork V) : SimpleGraph V wh
     exact huv
   loopless := by
     intro v hv
-    rw[G.loopLess] at hv
+    rw[G.loopless] at hv
     exact LT.lt.false hv
 
 end
