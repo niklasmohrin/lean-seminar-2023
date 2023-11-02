@@ -38,7 +38,17 @@ lemma Network.capRange_NonEmpty { G: Network V } : Finset.Nonempty (Network.capR
 
 def Network.capMax (G : Network V) : ℕ := Finset.max' (Network.capRange G) Network.capRange_NonEmpty
 
-lemma Network.capMax_max { G : Network V } : ∀ {u v}, G.cap u v ≤ G.capMax := sorry
+lemma Network.capMax_max { G : Network V } : ∀ {u v}, G.cap u v ≤ G.capMax := (by
+  have h0: ∀ t : V × V, G.cap t.1 t.2 ∈ G.capRange := by
+    simp [Network.capRange]
+
+  have h1: ∀ c ∈ G.capRange, c ≤ G.capMax := by
+    simp [Network.capMax]
+    apply Finset.le_max'
+
+  intro u v
+  simp_all only [Prod.forall]
+)
 
 structure FlowProblem { V : Type* } (G : Network V) where
   s : V
