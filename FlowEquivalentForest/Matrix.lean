@@ -1,5 +1,6 @@
 import Mathlib.Combinatorics.SimpleGraph.Acyclic
 import Mathlib.Combinatorics.SimpleGraph.Basic
+import Mathlib.Tactic.Linarith
 
 import FlowEquivalentForest.Flow
 
@@ -14,6 +15,11 @@ def ZeroDiagonal (M : α → α → β) [Zero β] := ∀ a, M a a = 0
 open SimpleGraph
 open BigOperators
 
+lemma flowMatrix_symm
+    {M : V → V → ℕ}
+    (hM : ZeroDiagonal M ∧ ∀ {u v w}, min (M u v) (M v w) ≤ M u w) :
+  ∀ u v, M u v = M v u := sorry
+
 def mkFlowEquivalentForest
     (M : V → V → ℕ)
     (hM : ZeroDiagonal M ∧ ∀ {u v w}, min (M u v) (M v w) ≤ M u w) :
@@ -27,14 +33,22 @@ def mkFlowEquivalentForest
     let pred e := F.val.Adj e.fst e.snd
     have : DecidablePred pred := Classical.decPred pred
     Finset.filter pred Finset.univ
+
+  let edges_symm (F : Forest) : ∀ u v, (u, v) ∈ edges F → (v, u) ∈ edges F := sorry
+  let edges_symm (F : Forest) : ∀ u v, (u, v) ∈ edges F ↔ (v, u) ∈ edges F := fun u v ↦
+    { mp := edges_symm F u v, mpr := edges_symm F v u }
+
   let weight (F : Forest) := ∑ e in edges F, M e.fst e.snd
   let MaximalForest := { g : Forest // ∀ g', weight g' ≤ weight g }
   let MaximalForest_Nonempty : Nonempty MaximalForest := sorry
   let g : MaximalForest := Classical.choice MaximalForest_Nonempty
 
   let cap u v := if (u, v) ∈ edges g then M u v else 0
-  let loopless : ∀ v, cap v v = 0 := sorry
-  let symm : ∀ {u v}, cap u v = cap v u := sorry
+  let loopless : ∀ v, cap v v = 0 := by
+    simp only [ite_eq_right_iff]
+    intro v _
+    exact hM.left v
+  let symm : ∀ {u v}, cap u v = cap v u := by simp only [edges_symm, flowMatrix_symm hM, forall_const]
 
   { cap, loopless, symm }
 
