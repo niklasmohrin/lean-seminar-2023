@@ -122,3 +122,34 @@ open SimpleGraph
 theorem flowEquivalentTree (M : V → V → ℕ) (hM : ZeroDiagonal M ∧ ∀ {u v w}, min (M u v) (M v w) ≤ M u w) :
   ∃ T : UndirectedNetwork V, M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
   sorry
+
+-- TODO:
+
+lemma disconnected_zero
+    (G : UndirectedNetwork V)
+    (s t : V)
+    (h : ¬G.asSimpleGraph.Reachable s t) :
+  G.maxFlowValue s t = 0 := sorry
+
+def UndirectedNetwork.bottleNeck
+    {G : UndirectedNetwork V}
+    { s t : V }
+    (P : G.asSimpleGraph.Path s t) : ℕ
+  := sorry
+
+lemma pathLowerBound
+    (G : UndirectedNetwork V)
+    (s t : V)
+    (P : G.asSimpleGraph.Path s t) :
+  G.bottleNeck P ≤ G.maxFlowValue s t := sorry
+
+
+def mkFlowEquivalentForest
+    (M : V → V → ℕ)
+    (hM : ZeroDiagonal M ∧ ∀ {u v w}, min (M u v) (M v w) ≤ M u w) :
+  UndirectedNetwork V := sorry
+
+theorem isAcyclic
+    (M : V → V → ℕ)
+    (hM : ZeroDiagonal M ∧ ∀ {u v w}, min (M u v) (M v w) ≤ M u w) :
+  IsAcyclic (mkFlowEquivalentTree M hM).asSimpleGraph := sorry
