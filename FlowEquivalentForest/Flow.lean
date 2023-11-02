@@ -1,3 +1,4 @@
+import Mathlib.Tactic.Linarith
 import Mathlib.Algebra.BigOperators.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
@@ -92,11 +93,7 @@ instance { P : FlowProblem G } : Fintype (Flow P) := by
     rw [h_two_times]
     simp only [add_le_add_iff_right, Flow.le_capMax]
     simp only [Nat.cast_nonneg]
-    have : (0 : ℤ) = 0 + 0 := rfl
-    rw [this]
-    apply Int.add_le_add
-    simp only [Nat.cast_ofNat, gt_iff_lt, zero_le_mul_left, Nat.cast_nonneg]
-    simp only
+    nlinarith
   rw [h_F F₁, h_F F₂, h]
 
 def FlowProblem.maxFlow (P : FlowProblem G) : ℕ :=
