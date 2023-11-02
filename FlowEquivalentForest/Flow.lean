@@ -38,6 +38,13 @@ def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.val
 
 lemma FlowProblem.maxFlowBound (P: FlowProblem G): ∀f: Flow P, f.value ≤ G.capMax := sorry
 
+@[simp]
+lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ ↑G.capMax := by 
+  apply le_trans
+  exact F.capacity
+  rw [Nat.cast_le]
+  exact G.capMax_max
+
 noncomputable section
 
 instance { P : FlowProblem G } : Fintype (Flow P) := by
@@ -46,16 +53,51 @@ instance { P : FlowProblem G } : Fintype (Flow P) := by
   let inj : Flow P → β := fun F u v => (F.f u v + c).toNat
   apply Fintype.ofInjective inj
 
-
   intro F₁ F₂ h
   ext u v
   suffices F₁.f u v + c = F₂.f u v + c by simp_all only [add_left_inj]
 
-  have : ∀ F : Flow P, ∀ u v, 0 ≤ F.f u v + c := sorry
+  have : ∀ F : Flow P, ∀ u v, 0 ≤ F.f u v + c := by
+    intro F u v
+    apply le_trans 
+    simp only [Int.le_def, sub_zero]
+    have : Int.NonNeg (Flow.f F u v + G.cap v u) := by
+      rw [F.skewSymmetry]
+      rw [add_comm, ←Int.sub_neg, ←Int.le_def, neg_neg]
+      exact F.capacity
+    exact this
+    simp only [add_le_add_iff_left, Nat.cast_le]
+    apply G.capMax_max
+
   have toNat_eq : ∀ F : Flow P, ∀ u v, F.f u v + c = (F.f u v + c).toNat := fun F u v ↦ Eq.symm (Int.toNat_of_nonneg (this F u v))
 
-  rw[toNat_eq F₁ u v, toNat_eq F₂ u v]
-  sorry
+  rw [toNat_eq F₁ u v, toNat_eq F₂ u v]
+  have h_F : ∀ F : Flow P, ↑(Int.toNat (Flow.f F u v + ↑c)) = Int.ofNat ((inj F) u v).val := by
+    intro F
+    simp only [Fin.coe_ofNat_eq_mod, Int.ofNat_eq_coe, Int.ofNat_emod, Nat.cast_add, Nat.cast_mul,
+      Nat.cast_one]
+    rw [eq_comm, ←Int.mod_eq_emod]
+    apply Int.mod_eq_of_lt
+    simp
+    apply @lt_of_le_of_lt _ _ _ (Flow.f F u v + ↑(Network.capMax G)) _
+    
+    have : ↑(Int.toNat (Flow.f F u v + ↑(Network.capMax G))) = Flow.f F u v + ↑(Network.capMax G) := by
+      exact Int.toNat_of_nonneg (this F u v)
+    rw [this]
+
+    apply Int.lt_add_one_of_le
+    have h_two_times : @Nat.cast ℤ NonAssocSemiring.toNatCast 2 * ↑(Network.capMax G) = ↑(Network.capMax G) + ↑(Network.capMax G) := by 
+      simp
+      exact two_mul (↑(Network.capMax G) : ℤ)
+    rw [h_two_times]
+    simp only [add_le_add_iff_right, Flow.le_capMax]
+    simp only [Nat.cast_nonneg]
+    have : (0 : ℤ) = 0 + 0 := rfl
+    rw [this]
+    apply Int.add_le_add
+    simp only [Nat.cast_ofNat, gt_iff_lt, zero_le_mul_left, Nat.cast_nonneg]
+    simp only
+  rw [h_F F₁, h_F F₂, h]
 
 def FlowProblem.maxFlow (P : FlowProblem G) : ℕ :=
   let values := Finset.image Flow.value $ @Finset.univ (Flow P) inferInstance
