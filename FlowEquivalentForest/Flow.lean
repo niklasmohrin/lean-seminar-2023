@@ -117,6 +117,15 @@ def UndirectedNetwork.bottleNeck
     (P : G.asSimpleGraph.Path s t) : ℕ
   := sorry
 
+lemma Walk_length_nonzero_from_ne
+    {G : SimpleGraph V}
+    (h : u ≠ v)
+    (P : G.Walk u v) :
+    0 < P.length :=
+  match P with
+  | SimpleGraph.Walk.nil => by simp_all only [ne_eq, not_true]
+  | SimpleGraph.Walk.cons _ _ => by simp only [SimpleGraph.Walk.length_cons, add_pos_iff, or_true]
+
 lemma pathLowerBound
     (G : UndirectedNetwork V)
     (s t : V)
