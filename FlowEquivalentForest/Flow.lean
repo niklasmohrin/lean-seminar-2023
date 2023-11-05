@@ -126,6 +126,15 @@ lemma Walk_length_nonzero_from_ne
   | SimpleGraph.Walk.nil => by simp_all only [ne_eq, not_true]
   | SimpleGraph.Walk.cons _ _ => by simp only [SimpleGraph.Walk.length_cons, add_pos_iff, or_true]
 
+lemma Walk_darts_Nonempty_from_ne
+    {G : SimpleGraph V}
+    (h : u ≠ v)
+    (P : G.Walk u v) :
+    P.darts.toFinset.Nonempty := by
+  simp only [List.toFinset_nonempty_iff, ne_eq]
+  apply List.ne_nil_of_length_pos
+  simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
+
 lemma pathLowerBound
     (G : UndirectedNetwork V)
     (s t : V)
