@@ -40,7 +40,7 @@ def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.val
 lemma FlowProblem.maxFlowBound (P: FlowProblem G): ∀f: Flow P, f.value ≤ G.capMax := sorry
 
 @[simp]
-lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ ↑G.capMax := by 
+lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ ↑G.capMax := by
   apply le_trans
   exact F.capacity
   rw [Nat.cast_le]
@@ -60,7 +60,7 @@ instance { P : FlowProblem G } : Fintype (Flow P) := by
 
   have : ∀ F : Flow P, ∀ u v, 0 ≤ F.f u v + c := by
     intro F u v
-    apply le_trans 
+    apply le_trans
     simp only [Int.le_def, sub_zero]
     have : Int.NonNeg (Flow.f F u v + G.cap v u) := by
       rw [F.skewSymmetry]
@@ -81,13 +81,13 @@ instance { P : FlowProblem G } : Fintype (Flow P) := by
     apply Int.mod_eq_of_lt
     simp
     apply @lt_of_le_of_lt _ _ _ (Flow.f F u v + ↑(Network.capMax G)) _
-    
+
     have : ↑(Int.toNat (Flow.f F u v + ↑(Network.capMax G))) = Flow.f F u v + ↑(Network.capMax G) := by
       exact Int.toNat_of_nonneg (this F u v)
     rw [this]
 
     apply Int.lt_add_one_of_le
-    have h_two_times : @Nat.cast ℤ NonAssocSemiring.toNatCast 2 * ↑(Network.capMax G) = ↑(Network.capMax G) + ↑(Network.capMax G) := by 
+    have h_two_times : @Nat.cast ℤ NonAssocSemiring.toNatCast 2 * ↑(Network.capMax G) = ↑(Network.capMax G) + ↑(Network.capMax G) := by
       simp
       exact two_mul (↑(Network.capMax G) : ℤ)
     rw [h_two_times]
@@ -109,13 +109,7 @@ lemma disconnected_zero
     (G : UndirectedNetwork V)
     (s t : V)
     (h : ¬G.asSimpleGraph.Reachable s t) :
-  G.maxFlowValue s t = 0 := sorry
-
-def UndirectedNetwork.bottleNeck
-    {G : UndirectedNetwork V}
-    { s t : V }
-    (P : G.asSimpleGraph.Path s t) : ℕ
-  := sorry
+    G.maxFlowValue s t = 0 := sorry
 
 lemma Walk_length_nonzero_from_ne
     {G : SimpleGraph V}
@@ -135,8 +129,18 @@ lemma Walk_darts_Nonempty_from_ne
   apply List.ne_nil_of_length_pos
   simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
 
-lemma pathLowerBound
-    (G : UndirectedNetwork V)
-    (s t : V)
+def UndirectedNetwork.bottleneck
+    {G : UndirectedNetwork V}
+    (h : s ≠ t)
+    (P : G.asSimpleGraph.Path s t) : ℕ
+  := (P.val.darts.toFinset.image (λ e => G.cap e.fst e.snd)).min' (by
+    apply (Finset.Nonempty.image_iff _).mpr
+    exact Walk_darts_Nonempty_from_ne h P.val
+  )
+
+lemma flowFromPath_exists
+    {G : UndirectedNetwork V}
+    {P₁ : FlowProblem G.toNetwork }
+    (h : s ≠ t)
     (P : G.asSimpleGraph.Path s t) :
-  G.bottleNeck P ≤ G.maxFlowValue s t := sorry
+  ∃F: Flow P₁, G.bottleneck h P = F.value := by sorry
