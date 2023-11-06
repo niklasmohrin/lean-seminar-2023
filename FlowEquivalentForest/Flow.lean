@@ -138,9 +138,18 @@ def UndirectedNetwork.bottleneck
     exact Walk_darts_Nonempty_from_ne h P.val
   )
 
+  -- New Idea:
+  -- Flow.fromPath
+  -- Flow.fromPath.not_edge_flow_eq_zero
+  -- Flow.fromPath.flow_eq_bottleneck
+
 lemma flowFromPath_exists
     {G : UndirectedNetwork V}
     {P₁ : FlowProblem G.toNetwork }
     (h : s ≠ t)
     (P : G.asSimpleGraph.Path s t) :
-  ∃F: Flow P₁, G.bottleneck h P = F.value := by sorry
+    ∃F: Flow P₁, G.bottleneck h P = F.value := by
+  let b := G.bottleneck h P
+  have : ∀P: G.asSimpleGraph.Path s t, s ≠ t := by --tbd
+    sorry
+  sorry
