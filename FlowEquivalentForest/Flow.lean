@@ -146,11 +146,76 @@ def Flow.fromPath
     Flow Pr :=
   let b := G.bottleneck h P
 
-  let contains_edge u v := (P.val.darts.find? (fun d => d.fst = u ∧ d.snd = v)).isSome
-  let f u v : ℤ := if contains_edge u v then b else 0
-  let skewSymmetry : ∀ {u v}, f u v = -f v u := sorry
-  let conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
-  let capacity : ∀ {u v}, f u v ≤ G.cap u v := sorry
+  let sup := P.val.support
+  let contains_edge u v := ∃ i : Fin (sup.length - 1),
+    sup.get (i.castLE (Nat.sub_le _ _)) = u
+    ∧ sup.get (i.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left,
+      nonpos_iff_eq_zero, add_tsub_cancel_right])) = v
+
+  have no_loop_edge : ∀ v, ¬contains_edge v v := by
+    intro v hv
+    obtain ⟨i, hi⟩ := hv
+    have dup : List.Duplicate v sup := by
+      apply List.duplicate_iff_exists_distinct_get.mpr
+      let n : Fin (sup.length) := i.castLE (Nat.sub_le _ _)
+      let m : Fin (sup.length) := i.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left, nonpos_iff_eq_zero, add_tsub_cancel_right])
+      use n
+      use m
+      have : n < m := by
+        apply Fin.mk_lt_mk.mpr
+        simp only [Fin.val_succ, lt_add_iff_pos_right]
+      use this
+      simp only [and_self, hi]
+
+    exact List.Duplicate.not_nodup dup $ SimpleGraph.Path.nodup_support P
+
+  have edge_only_one_way : ∀ u v, contains_edge u v → ¬contains_edge v u := by
+    intro u v h
+
+    if huv : u = v then
+      rw[huv]
+      exact no_loop_edge v
+    else
+      intro h'
+      obtain ⟨i, hi⟩ := h
+      obtain ⟨i', hi'⟩ := h'
+      have hne : i ≠ i' := by
+        by_contra heq
+        rw[heq] at hi
+        simp_all only [not_exists, not_and, and_false]
+      wlog hlt : i < i' generalizing i i' u v with hgt
+      · have : i' ≤ i := Fin.not_lt.mp (hgt u v huv i hi i' hi' hne)
+        have : i' < i := Ne.lt_of_le (Ne.symm hne) this
+        exact hgt v u (Iff.mp ne_comm huv) i' hi' i hi (Ne.symm hne) this
+
+      have dup : List.Duplicate u sup := by
+        apply List.duplicate_iff_exists_distinct_get.mpr
+        let n : Fin (sup.length) := i.castLE (Nat.sub_le _ _)
+        let m : Fin (sup.length) := i'.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left, nonpos_iff_eq_zero, add_tsub_cancel_right])
+        use n
+        use m
+        have : n < m := by
+          apply Fin.mk_lt_mk.mpr
+          exact Nat.lt.step hlt
+        use this
+        simp only [and_self, hi, hi']
+      exact List.Duplicate.not_nodup dup $ SimpleGraph.Path.nodup_support P
+
+  let f u v : ℤ := if contains_edge u v then b else if contains_edge v u then -b else 0
+  have skewSymmetry : ∀ {u v}, f u v = -f v u := by
+    intro u v
+    if huv : contains_edge u v then
+      have : ¬contains_edge v u := edge_only_one_way u v huv
+      have : f v u = -b := by simp_all only [not_exists, not_and, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, ite_true, ite_eq_right_iff, IsEmpty.forall_iff, implies_true]
+      simp only [*, ite_false, ite_true, neg_neg, edge_only_one_way]
+    else if hvu : contains_edge v u then
+      simp_all only [not_exists, not_and, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, ite_true, ite_eq_right_iff, IsEmpty.forall_iff, implies_true]
+    else
+      have h1 : f u v = 0 := by simp only [ite_false, huv, hvu]
+      have h2 : f v u = 0 := by simp only [ite_false, hvu, huv]
+      simp only [*]
+  have conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
+  have capacity : ∀ {u v}, f u v ≤ G.cap u v := sorry
 
   { f, skewSymmetry, conservation, capacity }
 
