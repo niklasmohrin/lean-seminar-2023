@@ -21,7 +21,7 @@ def flowOut (f : V → V → ℤ) (v : V) := ∑ u, (f v u).toNat
 structure Flow (P : FlowProblem G) where
   f : V → V → ℤ
   skewSymmetry : ∀ {u v}, f u v = -f v u
-  conservation : ∀ v, v ≠ s ∧ v ≠ t → flowOut f v = flowIn f u
+  conservation : ∀ v, v ≠ P.s ∧ v ≠ P.t → flowOut f v = flowIn f v
   capacity : ∀ {u v}, f u v ≤ G.cap u v
 
 def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
@@ -138,9 +138,25 @@ def UndirectedNetwork.bottleneck
     exact Walk_darts_Nonempty_from_ne h P.val
   )
 
-lemma flowFromPath_exists
+def Flow.fromPath
     {G : UndirectedNetwork V}
-    {P₁ : FlowProblem G.toNetwork }
-    (h : s ≠ t)
-    (P : G.asSimpleGraph.Path s t) :
-  ∃F: Flow P₁, G.bottleneck h P = F.value := by sorry
+    {Pr : FlowProblem G.toNetwork}
+    (h : Pr.s ≠ Pr.t)
+    (P : G.asSimpleGraph.Path Pr.s Pr.t) :
+    Flow Pr :=
+  let b := G.bottleneck h P
+
+  let contains_edge u v := (P.val.darts.find? (fun d => d.fst = u ∧ d.snd = v)).isSome
+  let f u v : ℤ := if contains_edge u v then b else 0
+  let skewSymmetry : ∀ {u v}, f u v = -f v u := sorry
+  let conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
+  let capacity : ∀ {u v}, f u v ≤ G.cap u v := sorry
+
+  { f, skewSymmetry, conservation, capacity }
+
+lemma Flow.fromPath.value_eq_bottleneck
+    {G : UndirectedNetwork V}
+    {Pr : FlowProblem G.toNetwork}
+    (h : Pr.s ≠ Pr.t)
+    (P : G.asSimpleGraph.Path Pr.s Pr.t) :
+    (Flow.fromPath h P).value = G.bottleneck h P := sorry
