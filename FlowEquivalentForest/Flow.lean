@@ -176,8 +176,18 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : F
   conservation := by
     intro v h_v_ne_st
     simp [flowOut, flowIn]
-    
-    sorry
+    have : ∑ x : V, Int.toNat (f F₂ v x - f F₁ v x) = ∑ x : V, Int.toNat (f F₂ v x) - ∑ x : V, Int.toNat (f F₁ v x) := by
+      -- use flow_le_nonneg_iff
+      sorry
+    rw [this]
+    have : ∑ x : V, Int.toNat (f F₂ x v - f F₁ x v) = ∑ x : V, Int.toNat (f F₂ x v) - ∑ x : V, Int.toNat (f F₁ x v) := by
+      -- use flow_le_nonneg_iff
+      sorry
+    rw [this]
+    have h₁ := F₁.conservation v h_v_ne_st
+    have h₂ := F₂.conservation v h_v_ne_st
+    simp [flowOut, flowIn] at h₁ h₂
+    rw [h₁, h₂]
   capacity := by
     intro u v
     by_cases F₁.f u v ≥ 0
