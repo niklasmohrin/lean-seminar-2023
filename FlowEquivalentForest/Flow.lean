@@ -105,6 +105,97 @@ lemma FlowProblem.maxFlow_exists { P : FlowProblem G } : ∃ F : Flow P, F.value
 
 def Network.maxFlowValue (G : Network V) (u v : V) := { s := u, t := v : FlowProblem G}.maxFlow
 
+instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) :=
+  ⟨fun f => ⟨-f.f, by
+    intro u v
+    simp only [Pi.neg_apply, neg_neg]
+    rw [f.skewSymmetry]
+    simp only [neg_neg]
+  , by
+    intro v h_v_ne_st
+    simp [flowOut, flowIn]
+    have : ∀ x, Int.toNat (-Flow.f f v x) = Int.toNat (Flow.f f x v) := by
+      intro x
+      rw [f.skewSymmetry]
+      simp only [neg_neg]
+    simp only [this]
+    have : ∀ x, Int.toNat (-Flow.f f x v) = Int.toNat (Flow.f f v x) := by
+      intro x
+      rw [f.skewSymmetry]
+      simp only [neg_neg]
+    simp only [this]
+    have := f.conservation v h_v_ne_st
+    simp [flowOut, flowIn] at this
+    simp_all only [ne_eq]
+  , by
+    intro u v
+    simp
+    rw [f.skewSymmetry]
+    simp
+    rw [G.symm]
+    exact f.capacity
+  ⟩⟩
+
+instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => ∀ {u v : V}, 0 ≤ f.f u v → f.f u v ≤ g.f u v⟩
+
+@[simp]
+lemma flow_le_neg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, F₁.f u v < 0 → F₁.f u v ≥ F₂.f u v := by
+  intro u v h_uv
+  have h_vu : F₁.f v u ≥ 0 := by
+    rw [F₁.skewSymmetry] at h_uv
+    simp at h_uv
+    exact Int.le_of_lt h_uv
+  have := h_le h_vu
+  rw [F₁.skewSymmetry, F₂.skewSymmetry] at this
+  exact Int.le_of_neg_le_neg this
+
+@[simp]
+lemma flow_le_nonneg_iff {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, 0 ≤ F₁.f u v ↔ 0 ≤ F₂.f u v := by
+  intro u v
+  constructor
+  intro h
+  have := h_le h
+  exact le_trans h this
+  intro h
+  by_contra h'
+  simp at h'
+  have := flow_le_neg h_le h'
+  simp at this
+  have := le_trans h this
+  have := lt_of_le_of_lt this h'
+  simp only at this
+
+def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : Flow P where
+  f := F₂.f - F₁.f
+  skewSymmetry := by
+    intro u v
+    simp
+    rw [F₁.skewSymmetry, F₂.skewSymmetry]
+    rw [sub_neg_eq_add, add_comm]
+    exact rfl
+  conservation := by
+    intro v h_v_ne_st
+    simp [flowOut, flowIn]
+    
+    sorry
+  capacity := by
+    intro u v
+    by_cases F₁.f u v ≥ 0
+    simp
+    have : F₂.f u v = F₂.f u v + 0 := by simp only [add_zero]
+    rw [this]
+    apply add_le_add
+    simp only [F₂.capacity]
+    assumption
+    simp at h
+    have h_le := flow_le_neg h_le h
+    simp only [Pi.sub_apply, ge_iff_le]
+    simp at h_le
+    calc
+      f F₂ u v - f F₁ u v ≤ f F₁ u v - f F₁ u v := by simp_all only [ge_iff_le, gt_iff_lt, flow_le_neg, sub_self, tsub_le_iff_right, zero_add]
+      _ = 0 := by simp only [sub_self, le_refl]
+      _ ≤ ↑(Network.cap G u v) := by simp only [Nat.cast_nonneg]
+
 lemma disconnected_zero
     (G : UndirectedNetwork V)
     (s t : V)
