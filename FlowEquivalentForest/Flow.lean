@@ -338,3 +338,12 @@ lemma Flow.fromPath.value_eq_bottleneck
     (h : Pr.s ≠ Pr.t)
     (P : G.asSimpleGraph.Path Pr.s Pr.t) :
     (Flow.fromPath h P).value = G.bottleneck h P := sorry
+
+lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V):
+    F.f v v = 0 := by
+    have h : F.f v v = -F.f v v := F.skewSymmetry
+    linarith
+
+lemma null_flow_smallest {P : FlowProblem G} (F : Flow P ): P.nullFlow ≤ F := by
+    intro u v h
+    simp [FlowProblem.nullFlow]
