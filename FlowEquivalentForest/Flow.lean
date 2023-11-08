@@ -136,27 +136,28 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
     exact f.capacity
   ⟩⟩
 
-instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => ∀ {u v : V}, 0 ≤ f.f u v → f.f u v ≤ g.f u v⟩
+instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => ∀ {u v : V}, 0 < f.f u v → f.f u v ≤ g.f u v⟩
 
 @[simp]
 lemma flow_le_neg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, F₁.f u v < 0 → F₁.f u v ≥ F₂.f u v := by
   intro u v h_uv
-  have h_vu : F₁.f v u ≥ 0 := by
+  have h_vu : F₁.f v u > 0 := by
     rw [F₁.skewSymmetry] at h_uv
     simp at h_uv
-    exact Int.le_of_lt h_uv
+    simp_all only [gt_iff_lt]
   have := h_le h_vu
   rw [F₁.skewSymmetry, F₂.skewSymmetry] at this
   exact Int.le_of_neg_le_neg this
 
 @[simp]
-lemma flow_le_nonneg_iff {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, 0 ≤ F₁.f u v ↔ 0 ≤ F₂.f u v := by
-  intro u v
-  constructor
-  intro h
+lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, 0 < F₁.f u v →  0 < F₂.f u v := by
+  intro u v h
   have := h_le h
-  exact le_trans h this
-  intro h
+  exact lt_of_lt_of_le h this
+
+@[simp]
+lemma flow_nonneg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V},   0 ≤ F₂.f u v  → 0 ≤ F₁.f u v  := by
+  intro u v h
   by_contra h'
   simp at h'
   have := flow_le_neg h_le h'
@@ -164,6 +165,7 @@ lemma flow_le_nonneg_iff {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ �
   have := le_trans h this
   have := lt_of_le_of_lt this h'
   simp only at this
+
 
 def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : Flow P where
   f := F₂.f - F₁.f
@@ -178,12 +180,6 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : F
     simp [flowOut, flowIn]
     have : ∑ x : V, Int.toNat (f F₂ v x - f F₁ v x) = ∑ x : V, Int.toNat (f F₂ v x) - ∑ x : V, Int.toNat (f F₁ v x) := by
       have : ∀ x : V, Int.toNat (F₂.f v x - F₁.f v x) = Int.toNat (F₂.f v x) - Int.toNat (F₁.f v x) := by
-        intro x
-        by_cases 0 ≤ F₁.f v x
-        have := le_trans h (h_le h)
-        simp [Int.toNat]
-
-        sorry
         sorry
       -- use flow_le_nonneg_iff
       simp only [this]
@@ -346,4 +342,4 @@ lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V):
 
 lemma null_flow_smallest {P : FlowProblem G} (F : Flow P ): P.nullFlow ≤ F := by
     intro u v h
-    simp [FlowProblem.nullFlow]
+    simp [FlowProblem.nullFlow] at h 
