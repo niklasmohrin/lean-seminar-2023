@@ -136,10 +136,12 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
     exact f.capacity
   ⟩⟩
 
-instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => ∀ {u v : V}, 0 < f.f u v → f.f u v ≤ g.f u v⟩
+instance {P : FlowProblem G} : HasSubset (Flow P) := ⟨fun f g => ∀ {u v : V}, 0 < f.f u v → f.f u v ≤ g.f u v⟩
+
+instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => f.value ≤ g.value⟩
 
 @[simp]
-lemma flow_le_neg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, F₁.f u v < 0 → F₁.f u v ≥ F₂.f u v := by
+lemma flow_le_neg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, F₁.f u v < 0 → F₁.f u v ≥ F₂.f u v := by
   intro u v h_uv
   have h_vu : F₁.f v u > 0 := by
     rw [F₁.skewSymmetry] at h_uv
@@ -150,13 +152,13 @@ lemma flow_le_neg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂
   exact Int.le_of_neg_le_neg this
 
 @[simp]
-lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V}, 0 < F₁.f u v →  0 < F₂.f u v := by
+lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v →  0 < F₂.f u v := by
   intro u v h
   have := h_le h
   exact lt_of_lt_of_le h this
 
 @[simp]
-lemma flow_nonneg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : ∀ {u v : V},   0 ≤ F₂.f u v  → 0 ≤ F₁.f u v  := by
+lemma flow_nonneg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 ≤ F₂.f u v  → 0 ≤ F₁.f u v  := by
   intro u v h
   by_contra h'
   simp at h'
@@ -166,8 +168,7 @@ lemma flow_nonneg {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂
   have := lt_of_le_of_lt this h'
   simp only at this
 
-
-def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : Flow P where
+def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : Flow P where
   f := F₂.f - F₁.f
   skewSymmetry := by
     intro u v
@@ -335,11 +336,10 @@ lemma Flow.fromPath.value_eq_bottleneck
     (P : G.asSimpleGraph.Path Pr.s Pr.t) :
     (Flow.fromPath h P).value = G.bottleneck h P := sorry
 
-lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V):
-    F.f v v = 0 := by
+lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
     have h : F.f v v = -F.f v v := F.skewSymmetry
     linarith
 
-lemma null_flow_smallest {P : FlowProblem G} (F : Flow P ): P.nullFlow ≤ F := by
+lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
     intro u v h
-    simp [FlowProblem.nullFlow] at h 
+    simp [FlowProblem.nullFlow] at h
