@@ -177,7 +177,19 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ≤ F₂) : F
     intro v h_v_ne_st
     simp [flowOut, flowIn]
     have : ∑ x : V, Int.toNat (f F₂ v x - f F₁ v x) = ∑ x : V, Int.toNat (f F₂ v x) - ∑ x : V, Int.toNat (f F₁ v x) := by
+      have : ∀ x : V, Int.toNat (F₂.f v x - F₁.f v x) = Int.toNat (F₂.f v x) - Int.toNat (F₁.f v x) := by
+        intro x
+        by_cases 0 ≤ F₁.f v x
+        have := le_trans h (h_le h)
+        simp [Int.toNat]
+
+        sorry
+        sorry
       -- use flow_le_nonneg_iff
+      simp only [this]
+      simp [Finset.sum]
+
+      -- rw [Multiset.sum_map_add]
       sorry
     rw [this]
     have : ∑ x : V, Int.toNat (f F₂ x v - f F₁ x v) = ∑ x : V, Int.toNat (f F₂ x v) - ∑ x : V, Int.toNat (f F₁ x v) := by
