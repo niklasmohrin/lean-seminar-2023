@@ -37,8 +37,6 @@ def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s
 
 def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.value ≤ F.value
 
-lemma FlowProblem.maxFlowBound (P: FlowProblem G): ∀f: Flow P, f.value ≤ G.capMax := sorry
-
 @[simp]
 lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ ↑G.capMax := by
   apply le_trans
@@ -227,7 +225,7 @@ lemma Walk_length_nonzero_from_ne
     (P : G.Walk u v) :
     0 < P.length :=
   match P with
-  | SimpleGraph.Walk.nil => by simp_all only [ne_eq, not_true]
+  | SimpleGraph.Walk.nil => by contradiction
   | SimpleGraph.Walk.cons _ _ => by simp only [SimpleGraph.Walk.length_cons, add_pos_iff, or_true]
 
 lemma Walk_darts_Nonempty_from_ne
