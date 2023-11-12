@@ -99,7 +99,14 @@ def FlowProblem.maxFlow (P : FlowProblem G) : ℕ :=
   let values_Nonempty : Finset.Nonempty values := Finset.Nonempty.image Finset.univ_nonempty Flow.value
   values.max' values_Nonempty
 
-lemma FlowProblem.maxFlow_exists { P : FlowProblem G } : ∃ F : Flow P, F.value = P.maxFlow := sorry
+lemma FlowProblem.maxFlow_exists { P : FlowProblem G } : ∃ F : Flow P, F.value = P.maxFlow := by
+  let values := Finset.image Flow.value $ @Finset.univ (Flow P) inferInstance
+
+  have : P.maxFlow ∈ values := by
+    apply Finset.max'_mem
+
+  rename_i inst inst_1 inst_2
+  simp_all only [Finset.mem_image, Finset.mem_univ, true_and]
 
 def Network.maxFlowValue (G : Network V) (u v : V) := { s := u, t := v : FlowProblem G}.maxFlow
 
