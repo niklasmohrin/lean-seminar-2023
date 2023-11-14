@@ -51,25 +51,25 @@ def mkFlowEquivalentForest
 
   have edges_Adj {F : Forest} {e : V × V} : e ∈ edges F → F.val.Adj e.fst e.snd := fun he =>
     (Finset.mem_filter.mp he).right
-  have edges_ne (F : Forest) (e : V × V) : e ∈ edges F → e.fst ≠ e.snd := by
+  have edges_ne {F : Forest} {e : V × V} : e ∈ edges F → e.fst ≠ e.snd := by
     intro he
     by_contra heq
     apply SimpleGraph.irrefl F.val
     have := edges_Adj he
     rwa[heq] at this
 
-  have edges_symm (F : Forest) : ∀ u v, (u, v) ∈ edges F → (v, u) ∈ edges F := by
+  have edges_symm {F : Forest} : ∀ {u v}, (u, v) ∈ edges F → (v, u) ∈ edges F := by
     intro u v huv
     simp only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and]
     apply F.val.symm
     simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
 
-  let weight (F : Forest) := ∑ e : edges F, M (edges_ne F e e.prop)
+  let weight (F : Forest) := ∑ e : edges F, M (edges_ne e.prop)
 
   let M_max := Classical.choose M.bounded
   have weight_bounded F : weight F ≤ Fintype.card V * Fintype.card V * M_max := by
     calc
-      weight F = ∑ e : edges F, M (edges_ne F e e.prop)  := by rfl
+      weight F = ∑ e : edges F, M (edges_ne e.prop)      := by rfl
       _        ≤ ∑ _e : edges F, M_max                   := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
       _        = (edges F).card * M_max                  := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
       _        ≤ Fintype.card V * Fintype.card V * M_max := by
@@ -81,19 +81,19 @@ def mkFlowEquivalentForest
 
   let g := Classical.choose $ max_from_Nonempty_bounded_wrt Set.univ (by simp only [ne_eq, Set.univ_nonempty]) weight weight_bounded'
 
-  let cap u v := if huv : (u, v) ∈ edges g then M (edges_ne g (u, v) huv) else 0
+  let cap u v := if huv : (u, v) ∈ edges g then M (edges_ne huv) else 0
   have loopless : ∀ v, cap v v = 0 := by
     intro v
     have : (v, v) ∉ edges g := by
       by_contra h
-      have : v ≠ v := edges_ne g _ h
+      have : v ≠ v := edges_ne h
       contradiction
     simp only [*, ne_eq, dite_false]
   have symm : ∀ {u v}, cap u v = cap v u := by
     intro u v
     if huv : (u, v) ∈ edges g then
-      have huv_ne := edges_ne g (u, v) huv
-      have hvu := edges_symm g u v huv
+      have huv_ne := edges_ne huv
+      have hvu := edges_symm huv
       calc
         cap u v = M huv_ne      := dif_pos huv
         _       = M huv_ne.symm := by rw[hsymm]
@@ -101,7 +101,7 @@ def mkFlowEquivalentForest
     else
       have hvu : (v, u) ∉ edges g := by
         by_contra h
-        exact huv $ edges_symm g v u h
+        exact huv $ edges_symm h
       calc
         cap u v = 0       := dif_neg huv
         _       = cap v u := Eq.symm $ dif_neg hvu
