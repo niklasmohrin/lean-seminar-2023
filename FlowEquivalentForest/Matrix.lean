@@ -96,7 +96,22 @@ def mkFlowEquivalentForest
       have : v ≠ v := edges_ne g _ h
       contradiction
     simp only [*, ne_eq, dite_false]
-  have symm : ∀ {u v}, cap u v = cap v u := sorry
+  have symm : ∀ {u v}, cap u v = cap v u := by
+    intro u v
+    if huv : (u, v) ∈ edges g then
+      have huv_ne := edges_ne g (u, v) huv
+      have hvu := edges_symm g u v huv
+      calc
+        cap u v = M huv_ne      := dif_pos huv
+        _       = M huv_ne.symm := by rw[hsymm]
+        _       = cap v u       := Eq.symm $ dif_pos hvu
+    else
+      have hvu : (v, u) ∉ edges g := by
+        by_contra h
+        exact huv $ edges_symm g v u h
+      calc
+        cap u v = 0       := dif_neg huv
+        _       = cap v u := Eq.symm $ dif_neg hvu
 
   { cap, loopless, symm }
 
