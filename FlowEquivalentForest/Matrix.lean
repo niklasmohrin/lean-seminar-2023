@@ -64,19 +64,19 @@ def mkFlowEquivalentForest
     apply F.val.symm
     simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
 
-  let weight (F : Forest) := ∑ e in Finset.attach (edges F), M (edges_ne F e (Finset.coe_mem e))
+  let weight (F : Forest) := ∑ e : edges F, M (edges_ne F e e.prop)
 
   let M_max := Classical.choose M.bounded
   have weight_bounded F : weight F ≤ Fintype.card V * Fintype.card V * M_max := by
     calc
-      weight F = ∑ e in Finset.attach (edges F), M (edges_ne F e (Finset.coe_mem e)) := by rfl
-      _        ≤ ∑ _e in Finset.attach (edges F), M_max                              := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
-      _        = (edges F).card * M_max                                              := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.sum_const, Finset.card_attach, smul_eq_mul]
-      _        ≤ Fintype.card V * Fintype.card V * M_max                             := by
-                                                                                          have : (edges F).card ≤ (@Finset.univ (V × V)).card := Finset.card_filter_le _ _
-                                                                                          have : (edges F).card ≤ Fintype.card (V × V) := by apply this
-                                                                                          have : (edges F).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
-                                                                                          exact Nat.mul_le_mul_right M_max this
+      weight F = ∑ e : edges F, M (edges_ne F e e.prop)  := by rfl
+      _        ≤ ∑ _e : edges F, M_max                   := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
+      _        = (edges F).card * M_max                  := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
+      _        ≤ Fintype.card V * Fintype.card V * M_max := by
+                                                              have : (edges F).card ≤ (@Finset.univ (V × V)).card := Finset.card_filter_le _ _
+                                                              have : (edges F).card ≤ Fintype.card (V × V) := by apply this
+                                                              have : (edges F).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
+                                                              exact Nat.mul_le_mul_right M_max this
   have weight_bounded' F : F ∈ Set.univ → weight F ≤ Fintype.card V * Fintype.card V * M_max := fun _ => weight_bounded F
 
   let g := Classical.choose $ max_from_Nonempty_bounded_wrt Set.univ (by simp only [ne_eq, Set.univ_nonempty]) weight weight_bounded'
