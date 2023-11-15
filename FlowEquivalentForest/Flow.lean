@@ -246,12 +246,78 @@ def Flow.fromPath
 
   { f, skewSymmetry, conservation, capacity }
 
+def Flow.fromPath'
+    {G : UndirectedNetwork V}
+    {Pr : FlowProblem G.toNetwork}
+    (h : Pr.s ≠ Pr.t)
+    (P : G.asSimpleGraph.Path Pr.s Pr.t) :
+    Flow Pr :=
+  let contains_edge u v := ∃ (h_uv : G.asSimpleGraph.Adj u v), (P.val).darts.contains ⟨⟨u, v⟩, h_uv⟩
+
+  have no_loop_edge : ∀ v, ¬contains_edge v v := by
+    intro v hv
+    obtain ⟨h_adj, h_contains⟩ := hv
+    exact absurd h_adj ((UndirectedNetwork.asSimpleGraph G).loopless v)
+
+  have edge_only_one_way : ∀ u v, contains_edge u v → ¬contains_edge v u := by
+    intro u v h
+
+    if huv : u = v then
+      rw [huv]
+      exact no_loop_edge v
+    else
+      intro h'
+      obtain ⟨h_adj_uv, h_contains_uv⟩ := h
+      obtain ⟨_, h_contains_vu⟩ := h'
+      sorry
+      -- have hne : i ≠ i' := by
+      --   by_contra heq
+      --   rw[heq] at hi
+      --   simp_all only [not_exists, not_and, and_false]
+      -- wlog hlt : i < i' generalizing i i' u v with hgt
+      -- · have : i' ≤ i := Fin.not_lt.mp (hgt u v huv i hi i' hi' hne)
+      --   have : i' < i := Ne.lt_of_le (Ne.symm hne) this
+      --   exact hgt v u (Iff.mp ne_comm huv) i' hi' i hi (Ne.symm hne) this
+
+      -- have dup : List.Duplicate u sup := by
+      --   apply List.duplicate_iff_exists_distinct_get.mpr
+      --   let n : Fin (sup.length) := i.castLE (Nat.sub_le _ _)
+      --   let m : Fin (sup.length) := i'.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left, nonpos_iff_eq_zero, add_tsub_cancel_right])
+      --   use n
+      --   use m
+      --   have : n < m := by
+      --     apply Fin.mk_lt_mk.mpr
+      --     exact Nat.lt.step hlt
+      --   use this
+      --   simp only [and_self, hi, hi']
+      -- exact List.Duplicate.not_nodup dup $ SimpleGraph.Path.nodup_support P
+
+  -- let f u v : ℕ := if contains_edge u v then 1 else 0
+  -- have skewSymmetry : ∀ {u v}, f u v = 0 ∨ f v u = 0 := by
+  --   intro u v
+  --   if huv : contains_edge u v then
+  --     have : ¬contains_edge v u := edge_only_one_way u v huv
+  --     have : f v u = 0 := by simp_all?
+  --     exact Or.inr this
+  --   else
+  --     have : f u v = 0 := by simp only [ite_false, huv]
+  --     exact Or.inl this
+
+  -- have conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
+  -- have capacity : ∀ {u v}, f u v ≤ G.cap u v := sorry
+
+  -- { f, skewSymmetry, conservation, capacity }
+  sorry
+
 lemma Flow.fromPath.value_eq_bottleneck
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
     (h : Pr.s ≠ Pr.t)
     (P : G.asSimpleGraph.Path Pr.s Pr.t) :
-    (Flow.fromPath h P).value = G.bottleneck h P := sorry
+    (Flow.fromPath h P).value = G.bottleneck h P := by
+  simp [value, fromPath]
+
+  sorry
 
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
     apply Or.elim (@Flow.skewSymmetry _ _ _ _ F v v)
