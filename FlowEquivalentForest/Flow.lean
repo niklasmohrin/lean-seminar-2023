@@ -154,6 +154,15 @@ def UndirectedNetwork.bottleneck
     exact Walk_darts_Nonempty_from_ne h P.val
   )
 
+lemma UndirectedNetwork.bottleneck.le_dart
+    {G : UndirectedNetwork V}
+    (h : s ≠ t)
+    (P : G.asSimpleGraph.Path s t)
+    (d : SimpleGraph.Dart _)
+    (hd : P.val.darts.contains d) :
+    G.bottleneck h P ≤ G.cap s t := by sorry
+
+
 def Flow.fromPath
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
@@ -220,7 +229,17 @@ def Flow.fromPath
   let f u v : ℕ := if contains_edge u v then b else 0
 
   have conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
-  have capacity : ∀ u v, f u v ≤ G.cap u v := sorry
+  have capacity : ∀ u v, f u v ≤ G.cap u v := by
+    intro u v
+    if he : contains_edge u v then
+      have hfb : f u v = b := by simp only [he, ite_true]
+      rw [hfb]
+      simp
+      sorry
+      -- apply UndirectedNetwork.bottleneck.le_dart
+    else
+      have : f u v = 0 := by simp only [he, ite_false]
+      linarith
 
   { f, conservation, capacity }
 
