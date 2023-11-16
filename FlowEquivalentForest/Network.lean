@@ -13,7 +13,7 @@ structure Network where
   loopless: ∀ v, cap v v = 0
 
 structure UndirectedNetwork extends Network V where
-  symm: ∀ {u v}, cap u v = cap v u
+  symm: ∀ u v, cap u v = cap v u
 
 end
 
