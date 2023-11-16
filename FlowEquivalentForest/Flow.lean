@@ -20,13 +20,11 @@ def flowOut (f : V → V → ℕ) (v : V) := ∑ u, f v u
 @[ext]
 structure Flow (P : FlowProblem G) where
   f : V → V → ℕ
-  skewSymmetry : ∀ {u v}, f u v = 0 ∨ f v u = 0
   conservation : ∀ v, v ≠ P.s ∧ v ≠ P.t → flowOut f v = flowIn f v
-  capacity : ∀ {u v}, f u v ≤ G.cap u v
+  capacity : ∀ u v, f u v ≤ G.cap u v
 
 def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
   f _ _ := 0
-  skewSymmetry := by simp
   conservation := by aesop
   capacity := by simp
 
@@ -40,7 +38,7 @@ def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.val
 @[simp]
 lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ G.capMax := by
   apply le_trans
-  exact F.capacity
+  exact F.capacity u v
   exact G.capMax_max
 
 noncomputable section
@@ -79,10 +77,6 @@ def Network.maxFlowValue (G : Network V) (u v : V) := { s := u, t := v : FlowPro
 
 instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) :=
   ⟨fun F => ⟨fun u v => F.f v u, by
-    intro u v
-    simp
-    exact F.skewSymmetry
-  , by
     intro v h_v_ne_st
     simp [flowOut, flowIn]
     exact (F.conservation v h_v_ne_st).symm
@@ -90,7 +84,7 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
     intro u v
     simp
     rw [G.symm]
-    exact F.capacity
+    exact F.capacity v u
   ⟩⟩
 
 instance {P : FlowProblem G} : HasSubset (Flow P) := ⟨fun F₁ F₂ => ∀ {u v : V}, F₁.f u v ≤ F₂.f u v⟩
@@ -104,12 +98,6 @@ lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ �
 
 def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : Flow P where
   f := F₂.f - F₁.f
-  skewSymmetry := by
-    intro u v
-    simp
-    apply Or.elim (@skewSymmetry _ _ _ _ F₂ u v)
-    simp_all only [zero_le, true_or, implies_true]
-    simp_all only [zero_le, or_true, implies_true]
   conservation := by
     intro v h_v_ne_st
     simp [flowOut, flowIn]
@@ -230,21 +218,11 @@ def Flow.fromPath
       exact List.Duplicate.not_nodup dup $ SimpleGraph.Path.nodup_support P
 
   let f u v : ℕ := if contains_edge u v then b else 0
-  have skewSymmetry : ∀ {u v}, f u v = 0 ∨ f v u = 0 := by
-    intro u v
-    if huv : contains_edge u v then
-      have : ¬contains_edge v u := edge_only_one_way u v huv
-      have : f v u = 0 := by simp_all only [not_exists, not_and, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂,
-        ite_eq_right_iff, IsEmpty.forall_iff, implies_true]
-      exact Or.inr this
-    else
-      have : f u v = 0 := by simp only [ite_false, huv]
-      exact Or.inl this
 
   have conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
-  have capacity : ∀ {u v}, f u v ≤ G.cap u v := sorry
+  have capacity : ∀ u v, f u v ≤ G.cap u v := sorry
 
-  { f, skewSymmetry, conservation, capacity }
+  { f, conservation, capacity }
 
 lemma Flow.fromPath.value_eq_bottleneck
     {G : UndirectedNetwork V}
@@ -254,10 +232,8 @@ lemma Flow.fromPath.value_eq_bottleneck
     (Flow.fromPath h P).value = G.bottleneck h P := sorry
 
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
-    apply Or.elim (@Flow.skewSymmetry _ _ _ _ F v v)
-    simp only [imp_self]
-    simp only [imp_self]
+  linarith [F.capacity v v, G.loopless v]
 
 lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
-    intro u v
-    simp only [FlowProblem.nullFlow, zero_le]
+  intro u v
+  simp only [FlowProblem.nullFlow, zero_le]
