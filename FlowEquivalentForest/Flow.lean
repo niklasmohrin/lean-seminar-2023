@@ -154,14 +154,14 @@ def UndirectedNetwork.bottleneck
     exact Walk_darts_Nonempty_from_ne h P.val
   )
 
+@[simp]
 lemma UndirectedNetwork.bottleneck.le_dart
     {G : UndirectedNetwork V}
     (h : s ≠ t)
     (P : G.asSimpleGraph.Path s t)
-    (d : SimpleGraph.Dart _)
+    {d : G.asSimpleGraph.Dart}
     (hd : P.val.darts.contains d) :
-    G.bottleneck h P ≤ G.cap s t := by sorry
-
+    G.bottleneck h P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
 
 def Flow.fromPath
     {G : UndirectedNetwork V}
@@ -169,74 +169,76 @@ def Flow.fromPath
     (h : Pr.s ≠ Pr.t)
     (P : G.asSimpleGraph.Path Pr.s Pr.t) :
     Flow Pr :=
+  let contains_edge u v := ∃ h : G.asSimpleGraph.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
+  have {u v} : Decidable (contains_edge u v) := Classical.dec _
+
+  -- (Maybe not needed): Except for the ends of the path, every vertex has a predecessor iff it has a successor
+  -- have pred_iff_succ {v : V} (hinner : v ≠ Pr.s ∧ v ≠ Pr.t) : (∃ u, contains_edge u v) ↔ (∃ w, contains_edge v w) := by sorry
+
+  have pred_exists {v : V} (hp : P.val.support.contains v) (hs : v ≠ Pr.s) : ∃! u, contains_edge u v := sorry
+  have succ_exists {v : V} (hp : P.val.support.contains v) (ht : v ≠ Pr.t) : ∃! w, contains_edge v w := sorry
+
   let b := G.bottleneck h P
-
-  let sup := P.val.support
-  let contains_edge u v := ∃ i : Fin (sup.length - 1),
-    sup.get (i.castLE (Nat.sub_le _ _)) = u
-    ∧ sup.get (i.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left,
-      nonpos_iff_eq_zero, add_tsub_cancel_right])) = v
-
-  have no_loop_edge : ∀ v, ¬contains_edge v v := by
-    intro v hv
-    obtain ⟨i, hi⟩ := hv
-    have dup : List.Duplicate v sup := by
-      apply List.duplicate_iff_exists_distinct_get.mpr
-      let n : Fin (sup.length) := i.castLE (Nat.sub_le _ _)
-      let m : Fin (sup.length) := i.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left, nonpos_iff_eq_zero, add_tsub_cancel_right])
-      use n
-      use m
-      have : n < m := by
-        apply Fin.mk_lt_mk.mpr
-        simp only [Fin.val_succ, lt_add_iff_pos_right]
-      use this
-      simp only [and_self, hi]
-
-    exact List.Duplicate.not_nodup dup $ SimpleGraph.Path.nodup_support P
-
-  have edge_only_one_way : ∀ u v, contains_edge u v → ¬contains_edge v u := by
-    intro u v h
-
-    if huv : u = v then
-      rw[huv]
-      exact no_loop_edge v
-    else
-      intro h'
-      obtain ⟨i, hi⟩ := h
-      obtain ⟨i', hi'⟩ := h'
-      have hne : i ≠ i' := by
-        by_contra heq
-        rw[heq] at hi
-        simp_all only [not_exists, not_and, and_false]
-      wlog hlt : i < i' generalizing i i' u v with hgt
-      · have : i' ≤ i := Fin.not_lt.mp (hgt u v huv i hi i' hi' hne)
-        have : i' < i := Ne.lt_of_le (Ne.symm hne) this
-        exact hgt v u (Iff.mp ne_comm huv) i' hi' i hi (Ne.symm hne) this
-
-      have dup : List.Duplicate u sup := by
-        apply List.duplicate_iff_exists_distinct_get.mpr
-        let n : Fin (sup.length) := i.castLE (Nat.sub_le _ _)
-        let m : Fin (sup.length) := i'.succ.cast (by simp only [SimpleGraph.Walk.length_support, ge_iff_le, add_le_iff_nonpos_left, nonpos_iff_eq_zero, add_tsub_cancel_right])
-        use n
-        use m
-        have : n < m := by
-          apply Fin.mk_lt_mk.mpr
-          exact Nat.lt.step hlt
-        use this
-        simp only [and_self, hi, hi']
-      exact List.Duplicate.not_nodup dup $ SimpleGraph.Path.nodup_support P
-
   let f u v : ℕ := if contains_edge u v then b else 0
 
-  have conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := sorry
-  have capacity : ∀ u v, f u v ≤ G.cap u v := by
-    intro u v
+  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := sorry
+
+  have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
+    intro hv
+    if hp : P.val.support.contains v then
+      obtain ⟨u, hu_pred, hu_uniq⟩ := pred_exists hp hv.left
+      obtain ⟨w, hw_succ, hw_uniq⟩ := succ_exists hp hv.right
+
+      have other_in {u'} (h : u' ≠ u) : f u' v = 0 := by
+        by_contra hne
+        exact h (hu_uniq u' (contains_edge_from_nonzero hne))
+      let us := Finset.filter (contains_edge · v) Finset.univ
+      have us_singleton : us = {u} := Finset.eq_singleton_iff_unique_mem.mpr ⟨Finset.mem_filter.mpr ⟨Finset.mem_univ u, hu_pred⟩, fun x hx => hu_uniq x (Finset.mem_filter.mp hx).right⟩
+      have sum_usc_zero : (∑ u' in usᶜ, f u' v) = 0 := by
+        apply Finset.sum_eq_zero
+        intro u' hu'
+        by_contra hnonzero
+        have : u' ∈ us := Finset.mem_filter.mpr ⟨Finset.mem_univ u', contains_edge_from_nonzero hnonzero⟩
+        exact Finset.mem_compl.mp hu' this
+
+      -- The same again, but the other way around
+      have other_out {w'} (h : w' ≠ w) : f v w' = 0 := by
+        by_contra hne
+        exact h (hw_uniq w' (contains_edge_from_nonzero hne))
+      let ws := Finset.filter (contains_edge v ·) Finset.univ
+      have ws_singleton : ws = {w} := Finset.eq_singleton_iff_unique_mem.mpr ⟨Finset.mem_filter.mpr ⟨Finset.mem_univ w, hw_succ⟩, fun x hx => hw_uniq x (Finset.mem_filter.mp hx).right⟩
+      have sum_wsc_zero : (∑ w' in wsᶜ, f v w') = 0 := by
+        apply Finset.sum_eq_zero
+        intro w' hw'
+        by_contra hnonzero
+        have : w' ∈ ws := Finset.mem_filter.mpr ⟨Finset.mem_univ w', contains_edge_from_nonzero hnonzero⟩
+        exact Finset.mem_compl.mp hw' this
+
+      calc
+        flowOut f v = ∑ w', f v w'                                 := rfl
+        _           = (∑ w' in ws, f v w') + (∑ w' in wsᶜ, f v w') := (Finset.sum_add_sum_compl ws _).symm
+        _           = ∑ w' in ws, f v w'                           := add_right_eq_self.mpr sum_wsc_zero
+        _           = f v w                                        := by rw[ws_singleton, Finset.sum_singleton]
+        _           = b                                            := if_pos hw_succ
+        _           = f u v                                        := (if_pos hu_pred).symm
+        _           = ∑ u' in us, f u' v                           := by rw[us_singleton, Finset.sum_singleton]
+        _           = (∑ u' in us, f u' v) + (∑ u' in usᶜ, f u' v) := (add_right_eq_self.mpr sum_usc_zero).symm
+        _           = ∑ u', f u' v                                 := Finset.sum_add_sum_compl us _
+        _           = flowIn f v                                   := rfl
+    else
+      have h_out u : f v u = 0 := sorry
+      have h_in u : f u v = 0 := sorry
+      calc
+        flowOut f v = ∑ u : V, f v u := rfl
+        _           = 0              := Finset.sum_eq_zero $ fun u _ => h_out u
+        _           = ∑ u, f u v     := (Finset.sum_eq_zero $ fun u _ => h_in u).symm
+        _           = flowIn f v     := rfl
+  have capacity u v : f u v ≤ G.cap u v := by
     if he : contains_edge u v then
-      have hfb : f u v = b := by simp only [he, ite_true]
-      rw [hfb]
-      simp
-      sorry
-      -- apply UndirectedNetwork.bottleneck.le_dart
+      calc
+        f u v = b                := by simp only [he, ite_true]
+        _     = G.bottleneck h P := rfl
+        _     ≤ G.cap u v        := UndirectedNetwork.bottleneck.le_dart h P he.snd
     else
       have : f u v = 0 := by simp only [he, ite_false]
       linarith
