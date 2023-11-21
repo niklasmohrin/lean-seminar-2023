@@ -1,6 +1,8 @@
 import Mathlib.Algebra.Order.Monoid.Canonical.Defs
 import Mathlib.Data.Set.Image
 import Mathlib.Init.Set
+import Mathlib.Algebra.BigOperators.Basic
+open BigOperators
 
 -- Every nonempty (infinite) set of natural numbers that is bounded from above has a maximum.
 --
@@ -51,3 +53,11 @@ theorem max_from_Nonempty_bounded_wrt
   · exact hm.left
   · intro x a
     simp_all only [Set.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+
+theorem finset_sum_sub_distrib_of_sub_nonneg
+    [Fintype α]
+    {f g : α → ℕ}
+    (h_le : ∀ x : α, g x ≤ f x)
+  :
+    ∑ x, (f x - g x) = ∑ x, f x - ∑ x, g x := by
+  sorry
