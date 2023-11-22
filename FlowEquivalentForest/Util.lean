@@ -2,6 +2,9 @@ import Mathlib.Algebra.Order.Monoid.Canonical.Defs
 import Mathlib.Data.Set.Image
 import Mathlib.Init.Set
 import Mathlib.Algebra.BigOperators.Basic
+import Mathlib.Algebra.BigOperators.Order
+import Mathlib.Tactic.Ring
+import Mathlib.Tactic.Linarith
 open BigOperators
 
 -- Every nonempty (infinite) set of natural numbers that is bounded from above has a maximum.
@@ -54,10 +57,33 @@ theorem max_from_Nonempty_bounded_wrt
   · intro x a
     simp_all only [Set.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
 
+/--
+If we sum over a difference of natural numbers such that none of the terms ever
+get clamp at zero, we can split the sum of differences into a difference of
+sums.
+
+The proof works by induction uses the assumption to move the newly added terms
+of the sums into the right positions.
+--/
 theorem finset_sum_sub_distrib_of_sub_nonneg
-    [Fintype α]
+    [DecidableEq α]
+    (s : Finset α)
     {f g : α → ℕ}
-    (h_le : ∀ x : α, g x ≤ f x)
-  :
-    ∑ x, (f x - g x) = ∑ x, f x - ∑ x, g x := by
-  sorry
+    (h_le : ∀ x ∈ s, g x ≤ f x) :
+    ∑ x in s, (f x - g x) = ∑ x in s, f x - ∑ x in s, g x := by
+  induction' s using Finset.induction_on' with a s' _ _ has' hi
+  · repeat rw[Finset.sum_empty]
+    ring
+  · have h_le' := fun x hx => h_le x (Finset.mem_insert_of_mem hx)
+    repeat rw[Finset.sum_insert has']
+    have : ∑ x in s', g x ≤ ∑ x in s', f x := Finset.sum_le_sum h_le'
+    rw[hi h_le', Nat.sub_add_eq, ←Nat.add_sub_assoc this, Nat.sub_add_comm (h_le a (Finset.mem_insert_self a s'))]
+
+-- Same as finset_sum_sub_distrib_of_sub_nonneg, but for summing over all elements of a finite type.
+theorem fintype_sum_sub_distrib_of_sub_nonneg
+    [Fintype α]
+    [DecidableEq α]
+    {f g : α → ℕ}
+    (h_le : ∀ x : α, g x ≤ f x) :
+    ∑ x, (f x - g x) = ∑ x, f x - ∑ x, g x :=
+  finset_sum_sub_distrib_of_sub_nonneg Finset.univ fun x _ => h_le x

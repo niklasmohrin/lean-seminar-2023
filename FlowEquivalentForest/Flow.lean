@@ -103,12 +103,12 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
     intro v h_v_ne_st
     simp [flowOut, flowIn]
     have : ∑ x : V, (f F₂ v x - f F₁ v x) = ∑ x : V, f F₂ v x - ∑ x : V, f F₁ v x := by
-      apply finset_sum_sub_distrib_of_sub_nonneg
+      apply fintype_sum_sub_distrib_of_sub_nonneg
       intro x
       exact h_le
     rw [this]
     have : ∑ x : V, (f F₂ x v - f F₁ x v) = ∑ x : V, f F₂ x v - ∑ x : V, f F₁ x v := by
-      apply finset_sum_sub_distrib_of_sub_nonneg
+      apply fintype_sum_sub_distrib_of_sub_nonneg
       intro x
       exact h_le
     rw [this]
@@ -127,7 +127,7 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
 
 theorem Flow.sub_value_eq_sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_sub : F₁ ⊆ F₂) : value (Flow.sub h_sub) = F₂.value - F₁.value := by
   simp [value, flowOut, sub]
-  apply finset_sum_sub_distrib_of_sub_nonneg
+  apply fintype_sum_sub_distrib_of_sub_nonneg
   intro x
   exact h_sub
 
