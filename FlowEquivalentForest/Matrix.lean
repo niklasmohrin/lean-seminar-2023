@@ -22,7 +22,9 @@ open BigOperators
 def PairMatrix.TriangleInequality (M : PairMatrix V ℕ) :=
   ∀ u v w, (huv : u ≠ v) → (hvw : v ≠ w) → (huw : u ≠ w) → min (M huv) (M hvw) ≤ M huw
 
-def mkFlowEquivalentForest
+namespace mkFlowEquivalentForest
+
+def mkFrom
     (M : PairMatrix V ℕ)
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality) :
@@ -100,25 +102,29 @@ def mkFlowEquivalentForest
 
   { cap, loopless, symm }
 
-theorem mkFlowEquivalentForest_IsAcyclic
+theorem mkFrom_IsAcyclic
     (M : PairMatrix V ℕ)
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality) :
-    IsAcyclic (mkFlowEquivalentForest M hsymm htri).asSimpleGraph := sorry
+    IsAcyclic (mkFrom M hsymm htri).asSimpleGraph := sorry
 
-theorem mkFlowEquivalentForest_hasMatrixM
+theorem mkFrom_hasMatrixM
     (M : PairMatrix V ℕ)
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality) :
-    @M = (mkFlowEquivalentForest M hsymm htri).matrix := sorry
+    @M = (mkFrom M hsymm htri).matrix := sorry
+
+end mkFlowEquivalentForest
 
 theorem flowEquivalentForest
     (M : PairMatrix V ℕ)
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality) :
-    ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph := by
-  use mkFlowEquivalentForest M hsymm htri
-  exact ⟨mkFlowEquivalentForest_hasMatrixM M hsymm htri, mkFlowEquivalentForest_IsAcyclic M hsymm htri⟩
+    ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph := ⟨
+    mkFlowEquivalentForest.mkFrom M hsymm htri,
+    mkFlowEquivalentForest.mkFrom_hasMatrixM M hsymm htri,
+    mkFlowEquivalentForest.mkFrom_IsAcyclic M hsymm htri
+  ⟩
 
 theorem flowMatrixCharacterization (M : PairMatrix V ℕ) :
-    (∃ G : Network V, @M = G.matrix) ↔ (M.Symmetrical ∧ M.TriangleInequality) := sorry
+    (∃ G : UndirectedNetwork V, @M = G.matrix) ↔ (M.Symmetrical ∧ M.TriangleInequality) := sorry
