@@ -4,6 +4,7 @@ import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
 import FlowEquivalentForest.Network
 import FlowEquivalentForest.Util
+import FlowEquivalentForest.Path
 
 open BigOperators
 
@@ -234,14 +235,11 @@ def Flow.fromPath
     (h : Pr.s ≠ Pr.t)
     (P : G.asSimpleGraph.Path Pr.s Pr.t) :
     Flow Pr :=
-  let contains_edge u v := ∃ h : G.asSimpleGraph.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
+  let contains_edge := contains_edge P
   have {u v} : Decidable (contains_edge u v) := Classical.dec _
 
   -- (Maybe not needed): Except for the ends of the path, every vertex has a predecessor iff it has a successor
   -- have pred_iff_succ {v : V} (hinner : v ≠ Pr.s ∧ v ≠ Pr.t) : (∃ u, contains_edge u v) ↔ (∃ w, contains_edge v w) := by sorry
-
-  have pred_exists {v : V} (hp : P.val.support.contains v) (hs : v ≠ Pr.s) : ∃! u, contains_edge u v := sorry
-  have succ_exists {v : V} (hp : P.val.support.contains v) (ht : v ≠ Pr.t) : ∃! w, contains_edge v w := sorry
 
   let b := G.bottleneck h P
   let f u v : ℕ := if contains_edge u v then b else 0
