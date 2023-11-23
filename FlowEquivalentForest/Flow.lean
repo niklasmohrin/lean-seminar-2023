@@ -5,19 +5,24 @@ import Mathlib.Combinatorics.SimpleGraph.Connectivity
 import FlowEquivalentForest.Network
 import FlowEquivalentForest.Util
 
+import Paperproof
+
 open BigOperators
 
 variable { V : Type* } [Fintype V] [DecidableEq V] [Nonempty V]
 
+-- A flow problem is defined on a network and has a source and sink vertex
 structure FlowProblem { V : Type* } (G : Network V) where
   s : V
   t : V
 
 variable { G : Network V }
 
+-- The flowIn and flowOut of a vertex is the sum of all flow entering or leaving the vertex, respectively
 def flowIn (f : V → V → ℕ) (v : V) := ∑ u, f u v
 def flowOut (f : V → V → ℕ) (v : V) := ∑ u, f v u
 
+-- A Flow is a function of edges to natural numbers on a flow problem satisfying flow conservation of each vertex and the capacity contraint of all edges
 @[ext]
 structure Flow (P : FlowProblem G) where
   f : V → V → ℕ
@@ -29,13 +34,17 @@ def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
   conservation := by aesop
   capacity := by simp
 
+-- Every FlowProblem has at least one valid flow: the null Flow
 instance { P : FlowProblem G } : Inhabited (Flow P) where
   default := P.nullFlow
 
+-- The flow value is the sum of all flow leaving s
 def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s
 
+-- A maximal Flow is a Flow with maximal value
 def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.value ≤ F.value
 
+-- The flow value on each edge is bound by the maximal capacity
 @[simp]
 lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ G.capMax := by
   apply le_trans
@@ -44,6 +53,7 @@ lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ G.
 
 noncomputable section
 
+-- On a given flow prblem there exists a finite set of possible flows, but we are not sure what the proof does
 instance { P : FlowProblem G } : Fintype (Flow P) := by
   let c := G.capMax + 1
   let β := V → V → Fin c
@@ -59,12 +69,13 @@ instance { P : FlowProblem G } : Fintype (Flow P) := by
     simp only
   rw [h_F F₁, h_F F₂, h]
 
-
+-- A MaxFlow is the maximal flow value possible
 def FlowProblem.maxFlow (P : FlowProblem G) : ℕ :=
   let values := Finset.image Flow.value $ @Finset.univ (Flow P) inferInstance
   let values_Nonempty : Finset.Nonempty values := Finset.Nonempty.image Finset.univ_nonempty Flow.value
   values.max' values_Nonempty
 
+-- There exists a Flow with the maximal flow value
 lemma FlowProblem.maxFlow_exists { P : FlowProblem G } : ∃ F : Flow P, F.value = P.maxFlow := by
   let values := Finset.image Flow.value $ @Finset.univ (Flow P) inferInstance
 
@@ -74,8 +85,10 @@ lemma FlowProblem.maxFlow_exists { P : FlowProblem G } : ∃ F : Flow P, F.value
   rename_i inst inst_1 inst_2
   simp_all only [Finset.mem_image, Finset.mem_univ, true_and]
 
+-- Return the maximal flow value of a network with source u and sink v
 def Network.maxFlowValue (G : Network V) (u v : V) := { s := u, t := v : FlowProblem G}.maxFlow
 
+-- To negate a flow we just let everything flow in the opposite direction
 instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) :=
   ⟨fun F => ⟨fun u v => F.f v u, by
     intro v h_v_ne_st
@@ -88,15 +101,19 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
     exact F.capacity v u
   ⟩⟩
 
+-- A subset of a Flow sends less or the same amount of flow over all edges
 instance {P : FlowProblem G} : HasSubset (Flow P) := ⟨fun F₁ F₂ => ∀ {u v : V}, F₁.f u v ≤ F₂.f u v⟩
 
+-- The ≤-relation between flows is induced by the ≤-realtion over their values
 instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => f.value ≤ g.value⟩
 
+-- if F₁ ⊆ F₂ then every edge of F₁ with a positive flow value also has a positive flow value in F₂
 @[simp]
 lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
   intro u v h
   exact lt_of_lt_of_le h h_le
 
+-- We can substract two flow and obtain a valid flow
 def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : Flow P where
   f := F₂.f - F₁.f
   conservation := by
@@ -131,6 +148,7 @@ theorem Flow.sub_value_eq_sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_sub : 
   intro x
   exact h_sub
 
+-- We define a Flow of one flowing between two vertices
 def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap v u)) : Flow P where
   f a b := if a = u ∧ b = v ∨ a = v ∧ b = u then 1 else 0
   conservation := by
@@ -139,35 +157,7 @@ def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap 
     have : Finset.filter (fun x ↦ w = u ∧ x = v ∨ w = v ∧ x = u) Finset.univ = Finset.filter (fun x ↦ x = u ∧ w = v ∨ x = v ∧ w = u) Finset.univ := by
       simp [Finset.filter_or, Finset.filter_and]
       ext
-      apply Iff.intro
-      split
-      split
-      intro h
-      simp at h ⊢
-      exact h.symm
-      intro h
-      simp at h ⊢
-      exact h
-      split
-      intro h
-      simp at h ⊢
-      exact h
-      intro h
-      simp at h ⊢
-      split
-      split
-      intro h
-      simp at h ⊢
-      exact h.symm
-      intro h
-      simp at h ⊢
-      exact h
-      split
-      intro h
-      simp at h ⊢
-      exact h
-      intro h
-      simp at h ⊢
+      aesop
     rw [this]
   capacity := by
     intro a b
@@ -183,15 +173,18 @@ def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap 
     exact h_cap.2
     simp_all only [ge_iff_le, lt_min_iff, zero_le]
 
+-- The edge flow has a flow value of 0
 lemma edge_flow_value_zero (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap v u)) : (Flow.edge P h_cap).value = 0 := by
   sorry
 
+-- A flow network where s and t are disconnected has a MaxFlow of 0
 lemma disconnected_zero
     (G : UndirectedNetwork V)
     (s t : V)
     (h : ¬G.asSimpleGraph.Reachable s t) :
     G.maxFlowValue s t = 0 := sorry
 
+-- A walk between two different vertices has a length larger than zero
 lemma Walk_length_nonzero_from_ne
     {G : SimpleGraph V}
     (h : u ≠ v)
@@ -201,6 +194,7 @@ lemma Walk_length_nonzero_from_ne
   | SimpleGraph.Walk.nil => by contradiction
   | SimpleGraph.Walk.cons _ _ => by simp only [SimpleGraph.Walk.length_cons, add_pos_iff, or_true]
 
+-- A walk between two different vertices uses at least one edge
 lemma Walk_darts_Nonempty_from_ne
     {G : SimpleGraph V}
     (h : u ≠ v)
@@ -219,6 +213,7 @@ def UndirectedNetwork.bottleneck
     exact Walk_darts_Nonempty_from_ne h P.val
   )
 
+-- The bottleneck of a Network is less than or equal to all edge weights
 @[simp]
 lemma UndirectedNetwork.bottleneck.le_dart
     {G : UndirectedNetwork V}
@@ -320,6 +315,7 @@ lemma Flow.fromPath.value_eq_bottleneck
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
 
+-- The null flow is a subset of every other flow on a FlowProblem
 lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
   intro u v
   simp only [FlowProblem.nullFlow, zero_le]
