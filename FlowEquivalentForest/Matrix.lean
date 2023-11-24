@@ -85,11 +85,7 @@ instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
 
 variable (M : PairMatrix V ℕ)
 
-def mkFrom
-    (hsymm : M.Symmetrical) :
-    UndirectedNetwork V :=
-  let g : MaximalForest M := Classical.choice inferInstance
-  let g := g.val
+def mkFrom (hsymm : M.Symmetrical) (g : Forest M) : UndirectedNetwork V :=
   let cap u v := if huv : (u, v) ∈ g.edges then M (g.edges_ne huv) else 0
   have loopless : ∀ v, cap v v = 0 := by
     intro v
@@ -118,13 +114,15 @@ def mkFrom
   { cap, loopless, symm }
 
 theorem mkFrom_IsAcyclic
-    (hsymm : M.Symmetrical) :
-    IsAcyclic (mkFrom M hsymm).asSimpleGraph := sorry
+    (hsymm : M.Symmetrical)
+    (g : Forest M) :
+    IsAcyclic (mkFrom M hsymm g).asSimpleGraph := sorry
 
 theorem mkFrom_hasMatrixM
     (hsymm : M.Symmetrical)
-    (htri : M.TriangleInequality) :
-    @M = (mkFrom M hsymm).matrix := sorry
+    (htri : M.TriangleInequality)
+    (g : MaximalForest M) :
+    @M = (mkFrom M hsymm g).matrix := sorry
 
 end mkFlowEquivalentForest
 end
@@ -133,10 +131,12 @@ theorem flowEquivalentForest
     (M : PairMatrix V ℕ)
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality) :
-    ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph := ⟨
-    mkFlowEquivalentForest.mkFrom M hsymm,
-    mkFlowEquivalentForest.mkFrom_hasMatrixM M hsymm htri,
-    mkFlowEquivalentForest.mkFrom_IsAcyclic M hsymm
+    ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
+  let g : mkFlowEquivalentForest.MaximalForest M := Classical.choice inferInstance
+  ⟨
+    mkFlowEquivalentForest.mkFrom M hsymm g,
+    mkFlowEquivalentForest.mkFrom_hasMatrixM M hsymm htri g,
+    mkFlowEquivalentForest.mkFrom_IsAcyclic M hsymm g
   ⟩
 
 theorem flowMatrixCharacterization (M : PairMatrix V ℕ) :
