@@ -35,7 +35,7 @@ instance {M : PairMatrix V ℕ} : Nonempty (Forest M) := by
   simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, not_false_eq_true, implies_true, forall_const, and_self]
 
 namespace Forest
-  variable {M : PairMatrix V ℕ} 
+  variable {V : Type*} [Fintype V] {M : PairMatrix V ℕ} 
 
   instance Forest_Adj_DecidablePred {F : Forest M} : DecidablePred (fun e : V × V => F.val.Adj e.fst e.snd) := Classical.decPred _
 
@@ -55,21 +55,15 @@ namespace Forest
   lemma edges_symm {F : Forest M} (huv : (u, v) ∈ F.edges) : (v, u) ∈ F.edges := by
     have := F.val.symm $ edges_Adj huv
     simp_all only [Finset.mem_filter, Finset.mem_univ, ne_eq, true_and, and_self]
-end Forest
 
-variable (M : PairMatrix V ℕ)
+  def weight (F : Forest M) := ∑ e : F.edges, M (F.edges_ne e.prop)
 
-def mkFrom
-    (hsymm : M.Symmetrical) :
-    UndirectedNetwork V :=
-  let Forest := Forest M
-
-  let weight (F : Forest) := ∑ e : F.edges, M (F.edges_ne e.prop)
-
-  let M_max := Classical.choose M.bounded
-  have weight_bounded F : weight F ≤ Fintype.card V * Fintype.card V * M_max := by
+  lemma weight_bounded (M : PairMatrix V ℕ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
+    let M_max := Classical.choose M.bounded
+    use Fintype.card V * Fintype.card V * M_max
+    intro F
     calc
-      weight F = ∑ e : F.edges, M (F.edges_ne e.prop)    := by rfl
+      F.weight = ∑ e : F.edges, M (F.edges_ne e.prop)    := by rfl
       _        ≤ ∑ _e : F.edges, M_max                   := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
       _        = (F.edges).card * M_max                  := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
       _        ≤ Fintype.card V * Fintype.card V * M_max := by
@@ -77,10 +71,25 @@ def mkFrom
                                                               have : (F.edges).card ≤ Fintype.card (V × V) := by apply this
                                                               have : (F.edges).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
                                                               exact Nat.mul_le_mul_right M_max this
-  have weight_bounded' F : F ∈ Set.univ → weight F ≤ Fintype.card V * Fintype.card V * M_max := fun _ => weight_bounded F
+end Forest
 
-  let g := Classical.choose $ max_from_Nonempty_bounded_wrt Set.univ (by simp only [ne_eq, Set.univ_nonempty]) weight weight_bounded'
+abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
 
+instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
+  obtain ⟨b, hb⟩ := Forest.weight_bounded M
+  obtain ⟨F : Forest M, hF⟩ := max_from_Nonempty_bounded_wrt (@Set.univ (Forest M)) (Set.univ_nonempty) Forest.weight (fun F _ => hb F)
+  use F
+  intro F'
+  simp_all only [Set.mem_univ, forall_true_left, Subtype.forall, ne_eq, true_and]
+  apply hF
+
+variable (M : PairMatrix V ℕ)
+
+def mkFrom
+    (hsymm : M.Symmetrical) :
+    UndirectedNetwork V :=
+  let g : MaximalForest M := Classical.choice inferInstance
+  let g := g.val
   let cap u v := if huv : (u, v) ∈ g.edges then M (g.edges_ne huv) else 0
   have loopless : ∀ v, cap v v = 0 := by
     intro v
