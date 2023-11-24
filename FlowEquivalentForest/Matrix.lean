@@ -27,12 +27,12 @@ namespace mkFlowEquivalentForest
 
 -- All the "spanning trees" over the complete graph over V.
 -- We also cancel forest edges that would have 0 capacity in the end, because we can.
-abbrev Forest (M : PairMatrix V ℕ) := { g : SimpleGraph V // IsAcyclic g ∧ ∀ u v, (huv : u ≠ v) → M huv = 0 → ¬g.Adj u v }
+abbrev Forest (M : PairMatrix V ℕ) := { g : SimpleGraph V // IsAcyclic g ∧ ∀ u v, (huv : u ≠ v) → g.Adj u v → 0 < M huv }
 
 instance {M : PairMatrix V ℕ} : Nonempty (Forest M) := by
   simp only [nonempty_subtype]
   use emptyGraph V
-  simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, not_false_eq_true, implies_true, forall_const, and_self]
+  simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, IsEmpty.forall_iff, implies_true, forall_const, and_self]
 
 namespace Forest
   variable {V : Type*} [Fintype V] {M : PairMatrix V ℕ} 
@@ -113,10 +113,40 @@ def mkFrom (hsymm : M.Symmetrical) (g : Forest M) : UndirectedNetwork V :=
 
   { cap, loopless, symm }
 
+@[simp]
+lemma mkFrom_cap_def
+    (hsymm : M.Symmetrical)
+    (g : Forest M)
+    (huv : (u, v) ∈ g.edges) :
+    (mkFrom M hsymm g).cap u v = M (g.edges_ne huv) := by 
+  unfold mkFrom
+  aesop
+
+lemma mkFrom_asSimpleGraph_eq
+    (hsymm : M.Symmetrical)
+    (g : Forest M) :
+    (mkFrom M hsymm g).asSimpleGraph = g.val := by
+  let N := mkFrom M hsymm g
+  ext u v
+  constructor
+  · intro h
+    unfold mkFrom at h
+    unfold UndirectedNetwork.asSimpleGraph at h
+    simp at h
+    have : (u, v) ∈ g.edges := by by_contra; aesop
+    simp_all only [Finset.mem_filter, Finset.mem_univ, ne_eq, true_and]
+  · intro h
+    suffices 0 < N.cap u v from this
+    have he : (u, v) ∈ g.edges := by simp_all only [ne_eq, Finset.mem_filter, Finset.mem_univ, and_self]
+    suffices 0 < M (g.edges_ne he) from by simp_all only [ne_eq, Finset.mem_filter, Finset.mem_univ, and_self, mkFrom_cap_def]
+    exact g.prop.right u v (g.edges_ne he) h
+
 theorem mkFrom_IsAcyclic
     (hsymm : M.Symmetrical)
     (g : Forest M) :
-    IsAcyclic (mkFrom M hsymm g).asSimpleGraph := sorry
+    IsAcyclic (mkFrom M hsymm g).asSimpleGraph := by
+  rw[mkFrom_asSimpleGraph_eq]
+  aesop
 
 theorem mkFrom_hasMatrixM
     (hsymm : M.Symmetrical)
