@@ -190,24 +190,42 @@ lemma mkFrom_maxFlowValue_le_M
   let N := (mkFrom M hsymm g)
   if h_Reachable : N.asSimpleGraph.Reachable u v then
     let Pr : FlowProblem N.toNetwork := {s := u, t := v}
-    suffices h : ∃ F : Flow Pr, M huv = F.value by
+    suffices h : ∃ F : Flow Pr, M huv ≤ F.value by
       obtain ⟨F, hF⟩ := h
-      simp only [hF, Network.maxFlowValue, FlowProblem.maxFlow, ge_iff_le]
+      simp only [Network.maxFlowValue, FlowProblem.maxFlow, ge_iff_le]
+      apply le_trans hF
       apply Finset.le_max'
-      simp only [Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
+      simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
+
     obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
-    sorry
+    have P := P.toPath
+    have le_M_huv e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
+      -- If this would be false, then we could use e instead of (u, v) in g and
+      -- get a forest with bigger weight.
+      sorry
+    -- Now that we know that the capacity along the path is big enough, we can
+    -- construct a flow from it.
+    use Flow.fromPath huv P
+    simp[Flow.fromPath.value_eq_bottleneck, UndirectedNetwork.bottleneck]
+    intro d hd
+    apply le_trans (le_M_huv d hd)
+    simp only [mkFrom, ne_eq, Eq.ndrec, id_eq, eq_mpr_eq_cast, Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le]
+    have := d.is_adj
+    simp_all only [this, mkFrom_asSimpleGraph_eq, ne_eq, dite_true, le_refl]
   else
     suffices M huv = 0 by linarith
-    by_contra h_nonzero
+    -- We will show this by contradiction: If the value is nonzero, we can add
+    -- this edge to g and get a forest with higher weight - this contradicts
+    -- that g is actually a maximal forest.
     have h_not_Adj: ¬g.val.val.Adj u v := by
       by_contra h_Adj
       simp only [mkFrom_asSimpleGraph_eq, ne_eq] at h_Reachable
       have := SimpleGraph.Adj.reachable h_Adj
       contradiction
     let g' := g.val.add_edge huv h_not_Adj
-    sorry
-
+    by_contra h_nonzero
+    have : g.val.weight < g'.weight := by simp only [Forest.add_edge.weight_eq_add, lt_add_iff_pos_right, Nat.pos_of_ne_zero h_nonzero]
+    exact not_le_of_lt this $ g.prop g'
 
 lemma mkFrom_M_le_maxFlowValue
     (hsymm : M.Symmetrical)
