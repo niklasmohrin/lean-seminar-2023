@@ -33,7 +33,7 @@ def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
 instance { P : FlowProblem G } : Inhabited (Flow P) where
   default := P.nullFlow
 
-def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s
+def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s - flowIn flow.f P.s
 
 def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.value ≤ F.value
 
@@ -125,12 +125,6 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
     apply add_le_add
     simp [F₂.capacity]
     simp only [zero_le]
-
-theorem Flow.sub_value_eq_sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_sub : F₁ ⊆ F₂) : value (Flow.sub h_sub) = F₂.value - F₁.value := by
-  simp [value, flowOut, sub]
-  apply fintype_sum_sub_distrib_of_sub_nonneg
-  intro x
-  exact h_sub
 
 def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap v u)) : Flow P where
   f a b := if a = u ∧ b = v ∨ a = v ∧ b = u then 1 else 0
