@@ -35,7 +35,7 @@ instance {M : PairMatrix V ℕ} : Nonempty (Forest M) := by
   simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, IsEmpty.forall_iff, implies_true, forall_const, and_self]
 
 namespace Forest
-  variable {V : Type*} [Fintype V] {M : PairMatrix V ℕ} 
+  variable {V : Type*} [Fintype V] {M : PairMatrix V ℕ}
 
   instance Forest_Adj_DecidablePred {F : Forest M} : DecidablePred (fun e : V × V => F.val.Adj e.fst e.snd) := Classical.decPred _
 
@@ -72,14 +72,36 @@ namespace Forest
                                                               have : (F.edges).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
                                                               exact Nat.mul_le_mul_right M_max this
 
-  def add_edge (g : Forest M) {u v : V} (huv : u ≠ v) (h_non_Adj : ¬g.val.Adj u v) : Forest M := sorry
+  -- constructs a new forest from g with the additional edge (u, v)
+  def add_edge (g : Forest M) {u v : V} (huv : u ≠ v) (h_not_Reach : ¬g.val.Reachable u v) : Forest M where
+    val := {
+      Adj := fun a b => g.val.Adj a b ∨ a = u ∧ b = v ∨ a = v ∧ b = u
+      symm := by
+        intro a b hab
+        apply Or.elim hab
+        intro h_Adj
+        exact Or.inl h_Adj.symm
+        aesop
+      loopless := by
+        intro a ha
+        apply Or.elim ha
+        exact g.val.loopless a
+        intro heq
+        apply Or.elim heq
+        intro heq
+        simp_all only [ne_eq, and_false, and_true, or_self]
+        intro heq
+        simp_all only [ne_eq, and_true, true_and, or_self, false_or, and_self, not_true]
+    }
+    property := by
+      sorry
 
   lemma add_edge.weight_eq_add
       (g : Forest M)
       {u v : V}
       (huv : u ≠ v)
-      (h_non_Adj : ¬g.val.Adj u v) :
-      (g.add_edge huv h_non_Adj).weight = g.weight + M huv := sorry
+      (h_not_Reach : ¬g.val.Reachable u v) :
+      (g.add_edge huv h_not_Reach).weight = g.weight + M huv := sorry
 end Forest
 
 abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
@@ -127,7 +149,7 @@ lemma mkFrom_cap_def
     (hsymm : M.Symmetrical)
     (g : Forest M)
     (huv : (u, v) ∈ g.edges) :
-    (mkFrom M hsymm g).cap u v = M (g.edges_ne huv) := by 
+    (mkFrom M hsymm g).cap u v = M (g.edges_ne huv) := by
   unfold mkFrom
   aesop
 
@@ -180,7 +202,7 @@ lemma mkFrom_maxFlowValue_le_M
     by_contra h_nonzero
     have h_not_Adj: ¬g.val.val.Adj u v := by
       by_contra h_Adj
-      simp only [mkFrom_asSimpleGraph_eq, ne_eq] at h_Reachable 
+      simp only [mkFrom_asSimpleGraph_eq, ne_eq] at h_Reachable
       have := SimpleGraph.Adj.reachable h_Adj
       contradiction
     let g' := g.val.add_edge huv h_not_Adj
