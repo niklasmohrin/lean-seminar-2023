@@ -71,6 +71,15 @@ namespace Forest
                                                               have : (F.edges).card ≤ Fintype.card (V × V) := by apply this
                                                               have : (F.edges).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
                                                               exact Nat.mul_le_mul_right M_max this
+
+  def add_edge (g : Forest M) {u v : V} (huv : u ≠ v) (h_non_Adj : ¬g.val.Adj u v) : Forest M := sorry
+
+  lemma add_edge.weight_eq_add
+      (g : Forest M)
+      {u v : V}
+      (huv : u ≠ v)
+      (h_non_Adj : ¬g.val.Adj u v) :
+      (g.add_edge huv h_non_Adj).weight = g.weight + M huv := sorry
 end Forest
 
 abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
@@ -122,6 +131,7 @@ lemma mkFrom_cap_def
   unfold mkFrom
   aesop
 
+@[simp]
 lemma mkFrom_asSimpleGraph_eq
     (hsymm : M.Symmetrical)
     (g : Forest M) :
@@ -154,7 +164,28 @@ lemma mkFrom_maxFlowValue_le_M
     (g : MaximalForest M)
     {u v : V}
     (huv : u ≠ v) :
-    M huv ≤ (mkFrom M hsymm g).maxFlowValue u v := sorry
+    M huv ≤ (mkFrom M hsymm g).maxFlowValue u v := by
+  let N := (mkFrom M hsymm g)
+  if h_Reachable : N.asSimpleGraph.Reachable u v then
+    let Pr : FlowProblem N.toNetwork := {s := u, t := v}
+    suffices h : ∃ F : Flow Pr, M huv = F.value by
+      obtain ⟨F, hF⟩ := h
+      simp only [hF, Network.maxFlowValue, FlowProblem.maxFlow, ge_iff_le]
+      apply Finset.le_max'
+      simp only [Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
+    obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
+    sorry
+  else
+    suffices M huv = 0 by linarith
+    by_contra h_nonzero
+    have h_not_Adj: ¬g.val.val.Adj u v := by
+      by_contra h_Adj
+      simp only [mkFrom_asSimpleGraph_eq, ne_eq] at h_Reachable 
+      have := SimpleGraph.Adj.reachable h_Adj
+      contradiction
+    let g' := g.val.add_edge huv h_not_Adj
+    sorry
+
 
 lemma mkFrom_M_le_maxFlowValue
     (hsymm : M.Symmetrical)
