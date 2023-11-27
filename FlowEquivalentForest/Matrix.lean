@@ -45,6 +45,8 @@ namespace Forest
 
   lemma edges_Adj {F : Forest M} (he : e ∈ F.edges) : F.val.Adj e.fst e.snd :=
     (Finset.mem_filter.mp he).right
+  lemma mem_edges {F : Forest M} (h_Adj : F.val.Adj e.fst e.snd) : e ∈ F.edges := by
+    simp_all only [Finset.mem_filter, Finset.mem_univ]
 
   lemma edges_ne {F : Forest M} (he : e ∈ F.edges) : e.fst ≠ e.snd := by
     by_contra heq
@@ -72,6 +74,9 @@ namespace Forest
                                                               have : (F.edges).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
                                                               exact Nat.mul_le_mul_right M_max this
 
+  @[simp]
+  lemma Forest.le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne ≤ g.weight := sorry
+
   -- constructs a new forest from g with the additional edge (u, v)
   def add_edge (g : Forest M) {u v : V} (huv : u ≠ v) (h_not_Reach : ¬g.val.Reachable u v) : Forest M where
     val := {
@@ -96,12 +101,24 @@ namespace Forest
     property := by
       sorry
 
+  @[simp]
   lemma add_edge.weight_eq_add
       (g : Forest M)
       {u v : V}
       (huv : u ≠ v)
       (h_not_Reach : ¬g.val.Reachable u v) :
       (g.add_edge huv h_not_Reach).weight = g.weight + M huv := sorry
+
+  def remove_edge (g : Forest M) (h_Adj : g.val.Adj u v) : Forest M := sorry
+  lemma remove_edge.disconnect
+      {g : Forest M}
+      (P : g.val.Path s t)
+      {d : g.val.Dart}
+      (hd : d ∈ P.val.darts) :
+      ¬(g.remove_edge d.is_adj).val.Reachable s t := sorry
+  @[simp]
+  lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
+      (g.remove_edge h_Adj).weight = g.weight - M h_Adj.ne := sorry
 end Forest
 
 abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
