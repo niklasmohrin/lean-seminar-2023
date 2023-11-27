@@ -217,12 +217,7 @@ lemma mkFrom_maxFlowValue_le_M
     -- We will show this by contradiction: If the value is nonzero, we can add
     -- this edge to g and get a forest with higher weight - this contradicts
     -- that g is actually a maximal forest.
-    have h_not_Adj: ¬g.val.val.Adj u v := by
-      by_contra h_Adj
-      simp only [mkFrom_asSimpleGraph_eq, ne_eq] at h_Reachable
-      have := SimpleGraph.Adj.reachable h_Adj
-      contradiction
-    let g' := g.val.add_edge huv h_not_Adj
+    let g' := g.val.add_edge huv (by rwa[mkFrom_asSimpleGraph_eq] at h_Reachable)
     by_contra h_nonzero
     have : g.val.weight < g'.weight := by simp only [Forest.add_edge.weight_eq_add, lt_add_iff_pos_right, Nat.pos_of_ne_zero h_nonzero]
     exact not_le_of_lt this $ g.prop g'
