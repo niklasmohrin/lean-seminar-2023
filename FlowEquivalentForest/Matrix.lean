@@ -75,7 +75,7 @@ namespace Forest
                                                               exact Nat.mul_le_mul_right M_max this
 
   @[simp]
-  lemma Forest.le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne ≤ g.weight := sorry
+  lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne ≤ g.weight := sorry
 
   -- constructs a new forest from g with the additional edge (u, v)
   def add_edge (g : Forest M) {u v : V} (huv : u ≠ v) (h_not_Reach : ¬g.val.Reachable u v) : Forest M where
@@ -216,19 +216,40 @@ lemma mkFrom_maxFlowValue_le_M
 
     obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
     have P := P.toPath
-    have le_M_huv e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
-      -- If this would be false, then we could use e instead of (u, v) in g and
-      -- get a forest with bigger weight.
-      sorry
-    -- Now that we know that the capacity along the path is big enough, we can
-    -- construct a flow from it.
+
+    have M_huv_le e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
+      -- We construct a forest by replacing the edge e with the edge (u, v). If
+      -- M (u, v) > M e, this forest would have a bigger weight - a
+      -- contradiction to the maximality of g.
+      intro he
+      -- TODO: The sorries here are because we really want to rewrite the types
+      -- of e and P with mkFrom_asSimpleGraph_eq so that they belong to g
+      -- again, but then we lose all hypotheses about them, because they still
+      -- only hold in N.asSimpleGraph. This seems like something people from
+      -- the Zulip could help us with.
+      have h_Adj_in_g : g.val.val.Adj e.fst e.snd := sorry -- e.is_adj
+      let g' := g.val.remove_edge h_Adj_in_g
+      have : ¬g'.val.Reachable u v := sorry -- Forest.remove_edge.disconnect P he
+      let g'' := g'.add_edge huv this
+
+      by_contra hlt
+      rw[not_le] at hlt 
+      have : g.val.weight < g''.weight := by calc
+        g.val.weight < g.val.weight + (M huv - M e.is_adj.ne) := lt_add_of_pos_right _ (Nat.sub_pos_of_lt hlt)
+        _            = g.val.weight + M huv - M e.is_adj.ne := by rw[Nat.add_sub_assoc (Nat.le_of_lt hlt)]
+        _            = g.val.weight - M e.is_adj.ne + M huv := Nat.sub_add_comm (g.val.le_weight h_Adj_in_g)
+        _            = g''.weight := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
+      exact not_le_of_lt this $ g.prop g''
+
+    -- Now that we know that the capacity along the path is big enough, we
+    -- construct the flow.
     use Flow.fromPath huv P
     simp[Flow.fromPath.value_eq_bottleneck, UndirectedNetwork.bottleneck]
     intro d hd
-    apply le_trans (le_M_huv d hd)
+    apply le_trans $ M_huv_le d hd
     simp only [mkFrom, ne_eq, Eq.ndrec, id_eq, eq_mpr_eq_cast, Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le]
     have := d.is_adj
-    simp_all only [this, mkFrom_asSimpleGraph_eq, ne_eq, dite_true, le_refl]
+    simp_all only [mkFrom_asSimpleGraph_eq, dite_true, le_refl]
   else
     suffices M huv = 0 by linarith
     -- We will show this by contradiction: If the value is nonzero, we can add
