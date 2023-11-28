@@ -78,27 +78,33 @@ namespace Forest
   lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne ≤ g.weight := sorry
 
   -- constructs a new forest from g with the additional edge (u, v)
-  def add_edge (g : Forest M) {u v : V} (huv : u ≠ v) (h_not_Reach : ¬g.val.Reachable u v) : Forest M where
-    val := {
-      Adj := fun a b => g.val.Adj a b ∨ a = u ∧ b = v ∨ a = v ∧ b = u
-      symm := by
-        intro a b hab
-        apply Or.elim hab
-        intro h_Adj
-        exact Or.inl h_Adj.symm
-        aesop
-      loopless := by
-        intro a ha
-        apply Or.elim ha
-        exact g.val.loopless a
-        intro heq
-        apply Or.elim heq
-        intro heq
-        simp_all only [ne_eq, and_false, and_true, or_self]
-        intro heq
-        simp_all only [ne_eq, and_true, true_and, or_self, false_or, and_self, not_true]
-    }
+  def add_edge
+      (g : Forest M)
+      {u v : V}
+      (huv : u ≠ v)
+      (h_M : 0 < min (M huv) (M huv.symm))
+      (h_not_Reach : ¬g.val.Reachable u v) :
+    Forest M where
+    val := g.val ⊔ SimpleGraph.fromEdgeSet {⟦(u,v)⟧}
     property := by
+      apply And.intro
+      rw [SimpleGraph.isAcyclic_iff_forall_adj_isBridge]
+      intro c d h_Adj
+      rw [SimpleGraph.isBridge_iff]
+      apply And.intro
+      assumption
+      simp only [fromEdgeSet_adj]
+      simp at h_Adj
+      simp
+
+
+      sorry
+
+      intro a b hab h_Adj
+      apply Or.elim h_Adj
+      intro h_Adj
+      exact g.prop.right a b hab h_Adj
+      intro heq
       sorry
 
   @[simp]
@@ -106,16 +112,19 @@ namespace Forest
       (g : Forest M)
       {u v : V}
       (huv : u ≠ v)
+      (h_M : 0 < min (M huv) (M huv.symm))
       (h_not_Reach : ¬g.val.Reachable u v) :
-      (g.add_edge huv h_not_Reach).weight = g.weight + M huv := sorry
+      (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv := sorry
 
   def remove_edge (g : Forest M) (h_Adj : g.val.Adj u v) : Forest M := sorry
+
   lemma remove_edge.disconnect
       {g : Forest M}
       (P : g.val.Path s t)
       {d : g.val.Dart}
       (hd : d ∈ P.val.darts) :
       ¬(g.remove_edge d.is_adj).val.Reachable s t := sorry
+
   @[simp]
   lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
       (g.remove_edge h_Adj).weight = g.weight - M h_Adj.ne := sorry
@@ -255,10 +264,11 @@ lemma mkFrom_maxFlowValue_le_M
     -- We will show this by contradiction: If the value is nonzero, we can add
     -- this edge to g and get a forest with higher weight - this contradicts
     -- that g is actually a maximal forest.
-    let g' := g.val.add_edge huv (by rwa[mkFrom_asSimpleGraph_eq] at h_Reachable)
-    by_contra h_nonzero
-    have : g.val.weight < g'.weight := by simp only [Forest.add_edge.weight_eq_add, lt_add_iff_pos_right, Nat.pos_of_ne_zero h_nonzero]
-    exact not_le_of_lt this $ g.prop g'
+    sorry -- the code below previously proved this, but the forest lemma changed
+    -- let g' := g.val.add_edge huv (by rwa[mkFrom_asSimpleGraph_eq] at h_Reachable)
+    -- by_contra h_nonzero
+    -- have : g.val.weight < g'.weight := by simp only [Forest.add_edge.weight_eq_add, lt_add_iff_pos_right, Nat.pos_of_ne_zero h_nonzero]
+    -- exact not_le_of_lt this $ g.prop g'
 
 lemma mkFrom_M_le_maxFlowValue
     (hsymm : M.Symmetrical)
