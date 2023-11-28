@@ -239,16 +239,17 @@ lemma mkFrom_maxFlowValue_le_M
       have h_Adj_in_g : g.val.val.Adj e.fst e.snd := sorry -- e.is_adj
       let g' := g.val.remove_edge h_Adj_in_g
       have : ¬g'.val.Reachable u v := sorry -- Forest.remove_edge.disconnect P he
-      let g'' := g'.add_edge huv this
+      sorry -- below is the previous proof which does not work anymore with the updated definition of add_edge
+      -- let g'' := g'.add_edge huv this
 
-      by_contra hlt
-      rw[not_le] at hlt 
-      have : g.val.weight < g''.weight := by calc
-        g.val.weight < g.val.weight + (M huv - M e.is_adj.ne) := lt_add_of_pos_right _ (Nat.sub_pos_of_lt hlt)
-        _            = g.val.weight + M huv - M e.is_adj.ne := by rw[Nat.add_sub_assoc (Nat.le_of_lt hlt)]
-        _            = g.val.weight - M e.is_adj.ne + M huv := Nat.sub_add_comm (g.val.le_weight h_Adj_in_g)
-        _            = g''.weight := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
-      exact not_le_of_lt this $ g.prop g''
+      -- by_contra hlt
+      -- rw[not_le] at hlt
+      -- have : g.val.weight < g''.weight := by calc
+      --   g.val.weight < g.val.weight + (M huv - M e.is_adj.ne) := lt_add_of_pos_right _ (Nat.sub_pos_of_lt hlt)
+      --   _            = g.val.weight + M huv - M e.is_adj.ne := by rw[Nat.add_sub_assoc (Nat.le_of_lt hlt)]
+      --   _            = g.val.weight - M e.is_adj.ne + M huv := Nat.sub_add_comm (g.val.le_weight h_Adj_in_g)
+      --   _            = g''.weight := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
+      -- exact not_le_of_lt this $ g.prop g''
 
     -- Now that we know that the capacity along the path is big enough, we
     -- construct the flow.
