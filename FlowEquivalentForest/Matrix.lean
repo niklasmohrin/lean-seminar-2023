@@ -210,7 +210,6 @@ theorem mkFrom_IsAcyclic
 
 lemma mkFrom_maxFlowValue_le_M
     (hsymm : M.Symmetrical)
-    (htri : M.TriangleInequality)
     (g : MaximalForest M)
     {u v : V}
     (huv : u ≠ v) :
@@ -292,7 +291,7 @@ theorem mkFrom_hasMatrixM
     (g : MaximalForest M) :
     @M = (mkFrom M hsymm g).matrix := by
   funext u v huv
-  exact Nat.le_antisymm (mkFrom_maxFlowValue_le_M M hsymm htri g huv) (mkFrom_M_le_maxFlowValue M hsymm htri g huv)
+  exact Nat.le_antisymm (mkFrom_maxFlowValue_le_M M hsymm g huv) (mkFrom_M_le_maxFlowValue M hsymm htri g huv)
 
 end mkFlowEquivalentForest
 end
