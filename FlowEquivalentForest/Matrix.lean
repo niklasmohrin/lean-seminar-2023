@@ -75,7 +75,7 @@ namespace Forest
                                                               exact Nat.mul_le_mul_right M_max this
 
   @[simp]
-  lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne ≤ g.weight := sorry
+  lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne + M h_Adj.ne.symm ≤ g.weight := sorry
 
   -- constructs a new forest from g with the additional edge (u, v)
   def add_edge
@@ -107,6 +107,7 @@ namespace Forest
       intro heq
       sorry
 
+  -- Adding an (undirected) edge increases the weight by the two corresponding matrix values.
   @[simp]
   lemma add_edge.weight_eq_add
       (g : Forest M)
@@ -114,7 +115,7 @@ namespace Forest
       (huv : u ≠ v)
       (h_M : 0 < min (M huv) (M huv.symm))
       (h_not_Reach : ¬g.val.Reachable u v) :
-      (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv := sorry
+      (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv + M huv.symm := sorry
 
   def remove_edge (g : Forest M) (h_Adj : g.val.Adj u v) : Forest M := sorry
 
@@ -125,9 +126,10 @@ namespace Forest
       (hd : d ∈ P.val.darts) :
       ¬(g.remove_edge d.is_adj).val.Reachable s t := sorry
 
+  -- Removing an (undirected) edge decreases the weight by the two corresponding matrix values.
   @[simp]
   lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
-      (g.remove_edge h_Adj).weight = g.weight - M h_Adj.ne := sorry
+      (g.remove_edge h_Adj).weight = g.weight - M h_Adj.ne - M h_Adj.ne.symm := sorry
 end Forest
 
 abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
@@ -213,63 +215,68 @@ lemma mkFrom_maxFlowValue_le_M
     {u v : V}
     (huv : u ≠ v) :
     M huv ≤ (mkFrom M hsymm g).maxFlowValue u v := by
+  wlog h_nonzero : 0 < M huv
+  · linarith
+
   let N := (mkFrom M hsymm g)
-  if h_Reachable : N.asSimpleGraph.Reachable u v then
-    let Pr : FlowProblem N.toNetwork := {s := u, t := v}
-    suffices h : ∃ F : Flow Pr, M huv ≤ F.value by
-      obtain ⟨F, hF⟩ := h
-      simp only [Network.maxFlowValue, FlowProblem.maxFlow, ge_iff_le]
-      apply le_trans hF
-      apply Finset.le_max'
-      simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
 
-    obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
-    have P := P.toPath
+  have h_uv_pos_weight : 0 < min (M huv) (M huv.symm) := (by simp only [lt_min_iff]; exact ⟨by linarith, by rw[hsymm]; linarith⟩)
+  have h_Reachable : N.asSimpleGraph.Reachable u v := by
+    -- We will show this by contradiction: If u and v are not connected, we can
+    -- connect them with their direct edge and get a forest with increased
+    -- weight - this contradicts that g is actually a maximal forest.
+    by_contra h
+    let g' := g.val.add_edge huv h_uv_pos_weight (by rwa[mkFrom_asSimpleGraph_eq] at h)
+    have : g.val.weight < g'.weight := by rw[Forest.add_edge.weight_eq_add]; linarith
+    exact not_le_of_lt this $ g.prop g'
 
-    have M_huv_le e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
-      -- We construct a forest by replacing the edge e with the edge (u, v). If
-      -- M (u, v) > M e, this forest would have a bigger weight - a
-      -- contradiction to the maximality of g.
-      intro he
-      -- TODO: The sorries here are because we really want to rewrite the types
-      -- of e and P with mkFrom_asSimpleGraph_eq so that they belong to g
-      -- again, but then we lose all hypotheses about them, because they still
-      -- only hold in N.asSimpleGraph. This seems like something people from
-      -- the Zulip could help us with.
-      have h_Adj_in_g : g.val.val.Adj e.fst e.snd := sorry -- e.is_adj
-      let g' := g.val.remove_edge h_Adj_in_g
-      have : ¬g'.val.Reachable u v := sorry -- Forest.remove_edge.disconnect P he
-      sorry -- below is the previous proof which does not work anymore with the updated definition of add_edge
-      -- let g'' := g'.add_edge huv this
+  let Pr : FlowProblem N.toNetwork := {s := u, t := v}
+  suffices h : ∃ F : Flow Pr, M huv ≤ F.value by
+    obtain ⟨F, hF⟩ := h
+    simp only [Network.maxFlowValue, FlowProblem.maxFlow, ge_iff_le]
+    apply le_trans hF
+    apply Finset.le_max'
+    simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
 
-      -- by_contra hlt
-      -- rw[not_le] at hlt
-      -- have : g.val.weight < g''.weight := by calc
-      --   g.val.weight < g.val.weight + (M huv - M e.is_adj.ne) := lt_add_of_pos_right _ (Nat.sub_pos_of_lt hlt)
-      --   _            = g.val.weight + M huv - M e.is_adj.ne := by rw[Nat.add_sub_assoc (Nat.le_of_lt hlt)]
-      --   _            = g.val.weight - M e.is_adj.ne + M huv := Nat.sub_add_comm (g.val.le_weight h_Adj_in_g)
-      --   _            = g''.weight := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
-      -- exact not_le_of_lt this $ g.prop g''
+  obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
+  have P := P.toPath
 
-    -- Now that we know that the capacity along the path is big enough, we
-    -- construct the flow.
-    use Flow.fromPath huv P
-    simp[Flow.fromPath.value_eq_bottleneck, UndirectedNetwork.bottleneck]
-    intro d hd
-    apply le_trans $ M_huv_le d hd
-    simp only [mkFrom, ne_eq, Eq.ndrec, id_eq, eq_mpr_eq_cast, Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le]
-    have := d.is_adj
-    simp_all only [mkFrom_asSimpleGraph_eq, dite_true, le_refl]
-  else
-    suffices M huv = 0 by linarith
-    -- We will show this by contradiction: If the value is nonzero, we can add
-    -- this edge to g and get a forest with higher weight - this contradicts
-    -- that g is actually a maximal forest.
-    sorry -- the code below previously proved this, but the forest lemma changed
-    -- let g' := g.val.add_edge huv (by rwa[mkFrom_asSimpleGraph_eq] at h_Reachable)
-    -- by_contra h_nonzero
-    -- have : g.val.weight < g'.weight := by simp only [Forest.add_edge.weight_eq_add, lt_add_iff_pos_right, Nat.pos_of_ne_zero h_nonzero]
-    -- exact not_le_of_lt this $ g.prop g'
+  have M_huv_le e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
+    -- We construct a forest by replacing the edge e with the edge (u, v). If
+    -- M (u, v) > M e, this forest would have a bigger weight - a
+    -- contradiction to the maximality of g.
+    intro he
+    -- TODO: The sorries here are because we really want to rewrite the types
+    -- of e and P with mkFrom_asSimpleGraph_eq so that they belong to g
+    -- again, but then we lose all hypotheses about them, because they still
+    -- only hold in N.asSimpleGraph. This seems like something people from
+    -- the Zulip could help us with.
+    have h_Adj_in_g : g.val.val.Adj e.fst e.snd := sorry -- e.is_adj
+    let g' := g.val.remove_edge h_Adj_in_g
+    have : ¬g'.val.Reachable u v := sorry -- Forest.remove_edge.disconnect P he
+    let g'' := g'.add_edge huv h_uv_pos_weight this
+
+    by_contra hlt
+    rw[not_le] at hlt
+    let old := e.is_adj.ne
+    let new := huv
+    have : g.val.weight < g''.weight := by calc
+      g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, ge_iff_le, lt_add_iff_pos_right, gt_iff_lt, zero_lt_mul_left, tsub_pos_iff_lt]
+      _            = g.val.weight + 2 * M new - 2 * M old                   := by rw[Nat.mul_sub_left_distrib, Nat.add_sub_assoc (Nat.mul_le_mul_left 2 (Nat.le_of_lt hlt))]
+      _            = g.val.weight - 2 * M old + 2 * M new                   := Nat.sub_add_comm (by rw[two_mul]; nth_rw 2 [hsymm]; exact Forest.le_weight h_Adj_in_g)
+      _            = g.val.weight - M old - M old.symm + M new + M new.symm := by rw[two_mul, two_mul]; nth_rw 2 [hsymm _ _ old, hsymm _ _ new]; rw[Nat.sub_add_eq, Nat.add_assoc]
+      _            = g''.weight                                             := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
+    exact not_le_of_lt this $ g.prop g''
+
+  -- Now that we know that the capacity along the path is big enough, we
+  -- construct the flow.
+  use Flow.fromPath huv P
+  simp[Flow.fromPath.value_eq_bottleneck, UndirectedNetwork.bottleneck]
+  intro d hd
+  apply le_trans $ M_huv_le d hd
+  simp only [mkFrom, ne_eq, Eq.ndrec, id_eq, eq_mpr_eq_cast, Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le]
+  have := d.is_adj
+  simp_all only [mkFrom_asSimpleGraph_eq, dite_true, le_refl]
 
 lemma mkFrom_M_le_maxFlowValue
     (hsymm : M.Symmetrical)
