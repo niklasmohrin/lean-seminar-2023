@@ -8,7 +8,7 @@ import Mathlib.Tactic.Basic
 def PairMatrix (α β : Type*) := {x y : α} → (hxy : x ≠ y) → β
 
 -- Symmetry of a PairMatrix requires that the order of the input pair does not matter.
-def PairMatrix.Symmetrical (M : PairMatrix α β) := ∀ x y, (h : x ≠ y) → M h = M h.symm
+def PairMatrix.Symmetrical (M : PairMatrix α β) := ∀ {x y}, (h : x ≠ y) → M h = M h.symm
 
 -- The values in a PairMatrix with finitely many cells are bounded from above.
 theorem PairMatrix.bounded {M : PairMatrix α β} [Fintype α] [Nonempty β] [LinearOrder β] :

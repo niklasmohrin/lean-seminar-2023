@@ -264,7 +264,7 @@ lemma mkFrom_maxFlowValue_le_M
       g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, ge_iff_le, lt_add_iff_pos_right, gt_iff_lt, zero_lt_mul_left, tsub_pos_iff_lt]
       _            = g.val.weight + 2 * M new - 2 * M old                   := by rw[Nat.mul_sub_left_distrib, Nat.add_sub_assoc (Nat.mul_le_mul_left 2 (Nat.le_of_lt hlt))]
       _            = g.val.weight - 2 * M old + 2 * M new                   := Nat.sub_add_comm (by rw[two_mul]; nth_rw 2 [hsymm]; exact Forest.le_weight h_Adj_in_g)
-      _            = g.val.weight - M old - M old.symm + M new + M new.symm := by rw[two_mul, two_mul]; nth_rw 2 [hsymm _ _ old, hsymm _ _ new]; rw[Nat.sub_add_eq, Nat.add_assoc]
+      _            = g.val.weight - M old - M old.symm + M new + M new.symm := by rw[two_mul, two_mul]; nth_rw 2 [hsymm old, hsymm new]; rw[Nat.sub_add_eq, Nat.add_assoc]
       _            = g''.weight                                             := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
     exact not_le_of_lt this $ g.prop g''
 
