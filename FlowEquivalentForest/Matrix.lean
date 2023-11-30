@@ -208,7 +208,7 @@ theorem mkFrom_IsAcyclic
   rw[mkFrom_asSimpleGraph_eq]
   aesop
 
-lemma mkFrom_maxFlowValue_le_M
+lemma mkFrom_M_le_maxFlowValue
     (hsymm : M.Symmetrical)
     (g : MaximalForest M)
     {u v : V}
@@ -277,7 +277,7 @@ lemma mkFrom_maxFlowValue_le_M
   have := d.is_adj
   simp_all only [mkFrom_asSimpleGraph_eq, dite_true, le_refl]
 
-lemma mkFrom_M_le_maxFlowValue
+lemma mkFrom_maxFlowValue_le_M
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
     (g : MaximalForest M)
@@ -299,7 +299,7 @@ theorem mkFrom_hasMatrixM
     (g : MaximalForest M) :
     @M = (mkFrom M hsymm g).matrix := by
   funext u v huv
-  exact Nat.le_antisymm (mkFrom_maxFlowValue_le_M M hsymm g huv) (mkFrom_M_le_maxFlowValue M hsymm htri g huv)
+  exact Nat.le_antisymm (mkFrom_M_le_maxFlowValue M hsymm g huv) (mkFrom_maxFlowValue_le_M M hsymm htri g huv)
 
 end mkFlowEquivalentForest
 end
