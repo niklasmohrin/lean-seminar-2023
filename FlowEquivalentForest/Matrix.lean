@@ -283,7 +283,15 @@ lemma mkFrom_M_le_maxFlowValue
     (g : MaximalForest M)
     {u v : V}
     (huv : u ≠ v) :
-    (mkFrom M hsymm g).maxFlowValue u v ≤ M huv := sorry
+    (mkFrom M hsymm g).maxFlowValue u v ≤ M huv := by
+  let N := mkFrom M hsymm g
+  wlog h_Reachable : N.asSimpleGraph.Reachable u v
+  · linarith[maxFlow_eq_zero_from_not_Reachable N h_Reachable]
+
+  obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
+  have P := P.toPath
+  rw[Acyclic_Path_maxflow_eq_bottleneck N (sorry) huv P]
+  sorry
 
 theorem mkFrom_hasMatrixM
     (hsymm : M.Symmetrical)
