@@ -1,5 +1,6 @@
 import Mathlib.Tactic.Linarith
 import Mathlib.Algebra.BigOperators.Basic
+import Mathlib.Combinatorics.SimpleGraph.Acyclic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
 import FlowEquivalentForest.Network
@@ -181,11 +182,11 @@ def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap 
 lemma edge_flow_value_zero (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap v u)) : (Flow.edge P h_cap).value = 0 := by
   sorry
 
-lemma disconnected_zero
+lemma maxFlow_eq_zero_from_not_Reachable
     (G : UndirectedNetwork V)
-    (s t : V)
-    (h : ¬G.asSimpleGraph.Reachable s t) :
-    G.maxFlowValue s t = 0 := sorry
+    {u v : V}
+    (h : ¬G.asSimpleGraph.Reachable u v) :
+    G.maxFlowValue u v = 0 := sorry
 
 lemma Walk_length_nonzero_from_ne
     {G : SimpleGraph V}
@@ -315,3 +316,11 @@ lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 :
 lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
   intro u v
   simp only [FlowProblem.nullFlow, zero_le]
+
+theorem Acyclic_Path_maxflow_eq_bottleneck
+    (G : UndirectedNetwork V)
+    (hG : G.asSimpleGraph.IsAcyclic)
+    {u v : V}
+    (huv : u ≠ v)
+    (P : G.asSimpleGraph.Path u v) :
+    G.maxFlowValue u v = G.bottleneck huv P := sorry
