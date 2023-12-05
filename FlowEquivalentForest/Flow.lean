@@ -179,14 +179,18 @@ def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap 
     exact h_cap.2
     simp_all only [ge_iff_le, lt_min_iff, zero_le]
 
-lemma edge_flow_value_zero (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap v u)) : (Flow.edge P h_cap).value = 0 := by
+lemma edge_flow_value_zero
+    (P : FlowProblem G)
+    {u v : V}
+    (h_cap : 0 < min (G.cap u v) (G.cap v u)) :
+    (Flow.edge P h_cap).value = 0 := by
   sorry
 
 lemma maxFlow_eq_zero_from_not_Reachable
     (G : UndirectedNetwork V)
     {u v : V}
     (h : ¬G.asSimpleGraph.Reachable u v) :
-    G.maxFlowValue u v = 0 := sorry
+  G.maxFlowValue u v = 0 := sorry
 
 lemma Walk_length_nonzero_from_ne
     {G : SimpleGraph V}
