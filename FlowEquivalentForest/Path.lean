@@ -58,11 +58,73 @@ theorem SimpleGraph.Path.ind.{u₁}
     ) this
 termination_by SimpleGraph.Path.ind P _ _ => P.val.length
 
+@[ext]
+structure SimpleGraph.NonemptyPath {V : Type*} (G : SimpleGraph V) (u v : V) where
+  path : G.Path u v
+  ne : u ≠ v
+
 -- A path containing just a single edge.
 @[simp]
 def SimpleGraph.Adj.toPath {G : SimpleGraph V} (h : G.Adj u v) : G.Path u v where
   val := h.toWalk
   property := by aesop
+
+@[simp]
+def SimpleGraph.Adj.toNonemptyPath {G : SimpleGraph V} (h : G.Adj u v) : G.NonemptyPath u v where
+  path := h.toPath
+  ne := h.ne
+
+def SimpleGraph.NonemptyPath.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.NonemptyPath v w) (hu : u ∉ P.path.val.support) : G.NonemptyPath u w where
+  path := {
+    val := SimpleGraph.Walk.cons h_Adj P.path.val,
+    property := SimpleGraph.Walk.IsPath.cons P.path.property hu
+  }
+  ne := by aesop
+
+-- Same as SimpleGraph.Path.ind, but for non-trivial paths (paths with at least one edge).
+theorem SimpleGraph.NonemptyPath.ind.{u₁}
+    {G : SimpleGraph V}
+    {motive : (u : V) → (v : V) → G.NonemptyPath u v → Sort u₁}
+    {u v : V}
+    (P : G.NonemptyPath u v)
+    (base : ∀ u v, (h_Adj : G.Adj u v) → motive u v h_Adj.toNonemptyPath)
+    (ind : ∀ u v w P, (h_Adj : G.Adj u v) → (hu : u ∉ P.path.val.support) → v ≠ w → motive v w P → motive u w (SimpleGraph.NonemptyPath.cons h_Adj P hu)) :
+    motive u v P := by
+  cases h_cons : P.path.val with
+  | nil => have := P.ne; contradiction
+  | @cons _ b c h_Adj tail =>
+    let tail_path : G.Path b v := {
+      val := tail,
+      property := by
+        have := P.path.property
+        rw[h_cons] at this
+        exact SimpleGraph.Walk.IsPath.of_cons this
+    }
+
+    if hbv : b = v then
+      subst hbv
+      have : h_Adj.toNonemptyPath = P := by
+        ext
+        simp[h_cons]
+        apply Eq.symm
+        exact (SimpleGraph.Walk.isPath_iff_eq_nil tail).mp tail_path.property
+      subst this
+      apply base
+    else
+      let tail_nonemptypath : G.NonemptyPath b v := { path := tail_path, ne := hbv }
+      have hu : u ∉ tail.support := by
+        by_contra hu
+        have : List.Duplicate u P.path.val.support := by aesop
+        exact this.not_nodup P.path.property.support_nodup
+
+      have : tail.length < P.path.val.length := by simp_all only [Walk.length_cons, lt_add_iff_pos_right]
+      have ih := SimpleGraph.NonemptyPath.ind tail_nonemptypath base ind
+
+      have : P = cons h_Adj tail_nonemptypath hu := by ext; simp[h_cons]; rfl
+      rw[this]
+
+      exact ind u b v tail_nonemptypath h_Adj hu hbv ih
+termination_by SimpleGraph.NonemptyPath.ind P _ _ => P.path.val.length
 
 open SimpleGraph
 
@@ -70,7 +132,17 @@ example
     {G : SimpleGraph V}
     (P : G.Path u v) :
     P.val.support.length = P.val.darts.length + 1 := by
-  induction' P using SimpleGraph.Path.ind with u P u v w P h_Adj hu ih
-  · rw[SimpleGraph.Path.loop_eq P]
+  induction P using SimpleGraph.Path.ind with
+  | base u P =>
+    rw[SimpleGraph.Path.loop_eq P]
     simp only [Path.nil_coe, Walk.support_nil, List.length_singleton, Walk.darts_nil, List.length_nil, zero_add]
-  · rw[SimpleGraph.Adj.cons, SimpleGraph.Walk.support_cons, SimpleGraph.Walk.darts_cons, List.length_cons, List.length_cons, ih]
+  | ind u v w P h_Adj hu ih =>
+    rw[SimpleGraph.Adj.cons, SimpleGraph.Walk.support_cons, SimpleGraph.Walk.darts_cons, List.length_cons, List.length_cons, ih]
+
+example
+    {G : SimpleGraph V}
+    (P : G.NonemptyPath u v) :
+    P.path.val.support.length = P.path.val.darts.length + 1 := by
+  induction P using SimpleGraph.NonemptyPath.ind with
+  | base u v h_Adj => simp
+  | ind u v w P h_Adj hu hvw ih => simp
