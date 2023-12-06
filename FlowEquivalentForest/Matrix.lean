@@ -240,22 +240,22 @@ lemma mkFrom_M_le_maxFlowValue
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P := P.toPath
 
-  -- This step has to connect knowledge of N.asSimpleGraph and g.val, which we
-  -- know to be equal. To avoid having to convert each fact separately (which
-  -- also sometimes doesn't work, because rewriting a variable does not
-  -- automatically rewrite all hypotheses about it), we want to use `subst` to
-  -- replace all occurrences of N.asSimpleGraph with g.val. However `subst` can
-  -- only substitute free variables, not arbitrary expression like
-  -- N.asSimpleGraph. Therefore, we phrase the statement in terms of any graph
-  -- "N_asSimpleGraph" and pass in N.asSimpleGraph when using it and pass in
-  -- N.asSimpleGraph when using it. This way, we can substitute this graph for
-  -- g.val at the beginning and stop worrying about it.
-  have M_huv_le
-      {N_asSimpleGraph : SimpleGraph V}
-      {P : N_asSimpleGraph.Path u v}
-      (heq : N_asSimpleGraph = g.val)
-      e :
-      (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
+  have M_huv_le e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
+    -- This step has to connect knowledge of N.asSimpleGraph and g.val, which
+    -- we know to be equal. To avoid having to convert each fact separately
+    -- (which also sometimes doesn't work, because rewriting a variable does
+    -- not automatically rewrite all hypotheses about it), we want to use
+    -- `subst` to replace all occurrences of N.asSimpleGraph with g.val.
+    -- However `subst` can only substitute free variables, not arbitrary
+    -- expression like N.asSimpleGraph. Therefore, we use `generalize` to
+    -- forget that we are dealing with N.asSimpleGraph and instead reason about
+    -- some arbitrary graph "N_asSimpleGraph" (note that instead of a period,
+    -- there is an underscore), for which the hypotheses we know about
+    -- N.asSimpleGraph still hold - in particular, we know that this graph is
+    -- equal to g.val. This way, we can `subst` this graph for g.val at the
+    -- beginning and stop worrying about it.
+    have heq := mkFrom_asSimpleGraph_eq M hsymm g
+    generalize N.asSimpleGraph = N_asSimpleGraph at *
     subst heq
     -- We construct a forest by replacing the edge e with the edge (u, v). If
     -- M (u, v) > M e, this forest would have a bigger weight - a
@@ -283,7 +283,7 @@ lemma mkFrom_M_le_maxFlowValue
   use Flow.fromPath huv P
   simp[Flow.fromPath.value_eq_bottleneck, UndirectedNetwork.bottleneck]
   intro d hd
-  apply le_trans $ M_huv_le (mkFrom_asSimpleGraph_eq M hsymm g) d hd
+  apply le_trans $ M_huv_le  d hd
   simp only [mkFrom, ne_eq, Eq.ndrec, id_eq, eq_mpr_eq_cast, Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le]
   have := d.is_adj
   simp_all only [mkFrom_asSimpleGraph_eq, dite_true, le_refl]
