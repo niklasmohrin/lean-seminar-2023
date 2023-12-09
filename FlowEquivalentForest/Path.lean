@@ -2,6 +2,7 @@ import Mathlib.Tactic.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
+import Mathlib.Logic.Basic
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
@@ -12,7 +13,18 @@ def contains_edge {G : SimpleGraph V} (P : G.Path s t) (u v : V) :=
 lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
     ∃! u, contains_edge P u v := sorry
 lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
-    ∃! w, contains_edge P v w := sorry
+    ∃! w, contains_edge P v w := by
+  by_contra
+  let Pr : G.Path t s := P.reverse
+  have hpr : Pr.val.support.contains v := by
+    simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
+  let w' : V := Classical.choose (pred_exists hpr ht)
+  have h' : contains_edge Pr w' v := by
+    sorry
+  have h'' : contains_edge P v w' := by
+    sorry
+  -- ...?
+  sorry
 
 -- Adds an edge to the front of a path.
 @[simp]
