@@ -45,7 +45,7 @@ namespace Forest
 
   lemma edges_Adj {F : Forest M} (he : e ∈ F.edges) : F.val.Adj e.fst e.snd :=
     (Finset.mem_filter.mp he).right
-  lemma mem_edges {F : Forest M} (h_Adj : F.val.Adj e.fst e.snd) : e ∈ F.edges := by
+  lemma mem_edges (F : Forest M) (h_Adj : F.val.Adj u v) : (u, v) ∈ F.edges := by
     simp_all only [ne_eq, Finset.mem_filter, Finset.mem_univ, and_self]
 
   lemma edges_ne {F : Forest M} (he : e ∈ F.edges) : e.fst ≠ e.snd := by
@@ -58,6 +58,7 @@ namespace Forest
     have := F.val.symm $ edges_Adj huv
     simp_all only [Finset.mem_filter, Finset.mem_univ, ne_eq, true_and, and_self]
 
+  @[simp]
   def weight (F : Forest M) := ∑ e : F.edges, M (F.edges_ne e.prop)
 
   lemma weight_bounded (M : PairMatrix V ℕ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
@@ -75,7 +76,17 @@ namespace Forest
                                                               exact Nat.mul_le_mul_right M_max this
 
   @[simp]
-  lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne + M h_Adj.ne.symm ≤ g.weight := sorry
+  lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne + M h_Adj.ne.symm ≤ g.weight := by
+    let e₁ : g.edges := { val := (u, v), property := mem_edges g h_Adj }
+    let e₂ : g.edges := { val := (v, u), property := mem_edges g h_Adj.symm }
+    let f (e : g.edges) := M $ g.edges_ne e.prop
+    simp only [weight, ge_iff_le]
+    refine @Finset.add_le_sum g.edges _ _ f _ e₁ e₂ ?_ ?_ ?_ ?_
+    · intro _ _
+      simp only [ge_iff_le, zero_le]
+    · simp only [Finset.univ_eq_attach, Finset.mem_attach]
+    · simp only [Finset.univ_eq_attach, Finset.mem_attach]
+    · aesop
 
   -- constructs a new forest from g with the additional edge (u, v)
   def add_edge
