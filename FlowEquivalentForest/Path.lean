@@ -2,17 +2,27 @@ import Mathlib.Tactic.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
+import Mathlib.Logic.Basic
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
 
+@[simp]
 def contains_edge {G : SimpleGraph V} (P : G.Path s t) (u v : V) :=
   ∃ h : G.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
 
-lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
-    ∃! u, contains_edge P u v := sorry
-lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
-    ∃! w, contains_edge P v w := sorry
+@[simp]
+lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.reverse.reverse = P := by
+  ext
+  simp_all only [SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.reverse_reverse]
+
+@[simp]
+lemma contains_edge.mem_reverse {G : SimpleGraph V} {P : G.Path s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
+  obtain ⟨h', h''⟩ := h
+  use h'.symm
+  simp_all only [List.elem_iff, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.darts_reverse, List.mem_reverse,
+    List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
+    SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
 
 -- Adds an edge to the front of a path.
 @[simp]
@@ -146,3 +156,20 @@ example
   induction P using SimpleGraph.NonemptyPath.ind with
   | base u v h_Adj => simp
   | ind u v w P h_Adj hu hvw ih => simp
+
+
+
+lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
+    ∃! u, contains_edge P u v := sorry
+
+lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
+    ∃! w, contains_edge P v w := by
+  let Pr : G.Path t s := P.reverse
+  have hpr : Pr.val.support.contains v := by
+    simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
+  obtain ⟨w, hw⟩ := pred_exists hpr ht
+  use w
+  constructor
+  · exact P.reverse_reverse ▸ contains_edge.mem_reverse hw.left
+  · intro y hy
+    exact hw.right y (contains_edge.mem_reverse hy)
