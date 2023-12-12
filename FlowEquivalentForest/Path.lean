@@ -7,31 +7,22 @@ import Mathlib.Logic.Basic
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
 
+@[simp]
 def contains_edge {G : SimpleGraph V} (P : G.Path s t) (u v : V) :=
   ∃ h : G.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
 
-lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
-    ∃! u, contains_edge P u v := sorry
+@[simp]
+lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.reverse.reverse = P := by
+  ext
+  simp_all only [SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.reverse_reverse]
 
-lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
-    ∃! w, contains_edge P v w := by
-  constructor
-  · simp_all
-    have h : contains_edge P v ?w := by
-      -- must be true as support contains v and v ≠ t?
-      by_contra
-      sorry
-    simp [h]
-    intro y
-    have h2: contains_edge P v y → y = ?w := by
-      sorry
-    exact h2
-
-  · let Pr : G.Path t s := P.reverse
-    have hpr : Pr.val.support.contains v := by
-      simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
-    let w' : V := Classical.choose (pred_exists hpr ht)
-    exact w'
+@[simp]
+lemma contains_edge.mem_reverse {G : SimpleGraph V} {P : G.Path s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
+  obtain ⟨h', h''⟩ := h
+  use h'.symm
+  simp_all only [List.elem_iff, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.darts_reverse, List.mem_reverse,
+    List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
+    SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
 
 -- Adds an edge to the front of a path.
 @[simp]
@@ -167,12 +158,18 @@ example
   | ind u v w P h_Adj hu hvw ih => simp
 
 
--- lemma xxx  {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
---   v ∈ P.val.support.tail := by
---   by_contra
---   have : v = s := by rw [SimpleGraph.Walk.mem_support_iff]
---   contradiction
 
--- lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
---     ∃! u, contains_edge P u v := by
---   by_contra
+lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
+    ∃! u, contains_edge P u v := sorry
+
+lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
+    ∃! w, contains_edge P v w := by
+  let Pr : G.Path t s := P.reverse
+  have hpr : Pr.val.support.contains v := by
+    simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
+  obtain ⟨w, hw⟩ := pred_exists hpr ht
+  use w
+  constructor
+  · exact P.reverse_reverse ▸ contains_edge.mem_reverse hw.left
+  · intro y hy
+    exact hw.right y (contains_edge.mem_reverse hy)
