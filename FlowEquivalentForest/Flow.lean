@@ -199,7 +199,7 @@ lemma Walk_length_nonzero_from_ne
     0 < P.length :=
   match P with
   | SimpleGraph.Walk.nil => by contradiction
-  | SimpleGraph.Walk.cons _ _ => by simp only [SimpleGraph.Walk.length_cons, add_pos_iff, or_true]
+  | SimpleGraph.Walk.cons _ _ => by simp_all only [ne_eq, SimpleGraph.Walk.length_cons, add_pos_iff, zero_lt_one, or_true]
 
 lemma Walk_darts_Nonempty_from_ne
     {G : SimpleGraph V}

@@ -127,7 +127,7 @@ theorem SimpleGraph.NonemptyPath.ind.{u₁}
         have : List.Duplicate u P.path.val.support := by aesop
         exact this.not_nodup P.path.property.support_nodup
 
-      have : tail.length < P.path.val.length := by simp_all only [Walk.length_cons, lt_add_iff_pos_right]
+      have : tail.length < P.path.val.length := by simp_all only [Walk.length_cons, lt_add_iff_pos_right, zero_lt_one]
       have ih := SimpleGraph.NonemptyPath.ind tail_nonemptypath base ind
 
       have : P = cons h_Adj tail_nonemptypath hu := by ext; simp[h_cons]; rfl

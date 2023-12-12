@@ -15,6 +15,5 @@ package LeanSeminar where
 lean_lib FlowEquivalentForest where
   moreLeanArgs := moreLeanArgs
 
--- Last commit with Lean 4.1.0 in their `lean-toolchain` file
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"@"bf1ceb82960fe37c5f22a2b07d26ca12f27716ba"
+  "https://github.com/leanprover-community/mathlib4.git"@"v4.3.0"
