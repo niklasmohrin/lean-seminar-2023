@@ -7,24 +7,50 @@ import Mathlib.Logic.Basic
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
 
+-- lemma reverse_edges {u v : V} (p : G.Walk u v) : p.reverse.edges = p.edges.reverse := by simp_all only [SimpleGraph.Walk.edges_reverse]
+
 def contains_edge {G : SimpleGraph V} (P : G.Path s t) (u v : V) :=
   ∃ h : G.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
 
 lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
     ∃! u, contains_edge P u v := sorry
+
 lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
     ∃! w, contains_edge P v w := by
-  by_contra
-  let Pr : G.Path t s := P.reverse
-  have hpr : Pr.val.support.contains v := by
-    simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
-  let w' : V := Classical.choose (pred_exists hpr ht)
-  have h' : contains_edge Pr w' v := by
-    sorry
-  have h'' : contains_edge P v w' := by
-    sorry
-  -- ...?
-  sorry
+  constructor
+  · simp_all
+    have h : contains_edge P v ?w := by
+      -- must be true as support contains v and v ≠ t?
+      by_contra
+      sorry
+    simp [h]
+    intro y
+    have h2: contains_edge P v y → y = ?w := by
+      sorry
+    exact h2
+
+  -- · simp_all
+  --   -- Not sure if we'll need this
+  --   have has_dart : ∃ h : G.Adj v ?w, P.val.darts.contains (SimpleGraph.Dart.mk (v, ?w) h) := by
+  --     rw [<- contains_edge]
+  --     exact has_edge
+  --     simp_all only [List.elem_iff, ne_eq]
+  --     exact s
+
+  --   simp_all
+  --   intro y
+  --   let Pr : G.Path t s := P.reverse
+  --   by_contra
+  --   simp_all
+    -- have hpr : contains_edge Pr ?w v := by
+    --   rw [contains_edge]
+    --   simp_all [SimpleGraph.Walk.darts_reverse]
+    --   sorry
+  · let Pr : G.Path t s := P.reverse
+    have hpr : Pr.val.support.contains v := by
+      simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
+    let w' : V := Classical.choose (pred_exists hpr ht)
+    exact w'
 
 -- Adds an edge to the front of a path.
 @[simp]
@@ -158,3 +184,14 @@ example
   induction P using SimpleGraph.NonemptyPath.ind with
   | base u v h_Adj => simp
   | ind u v w P h_Adj hu hvw ih => simp
+
+
+-- lemma xxx  {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
+--   v ∈ P.val.support.tail := by
+--   by_contra
+--   have : v = s := by rw [SimpleGraph.Walk.mem_support_iff]
+--   contradiction
+
+-- lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
+--     ∃! u, contains_edge P u v := by
+--   by_contra
