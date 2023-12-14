@@ -212,42 +212,39 @@ lemma Walk_darts_Nonempty_from_ne
 
 def UndirectedNetwork.bottleneck
     {G : UndirectedNetwork V}
-    (h : s ≠ t)
-    (P : G.asSimpleGraph.Path s t) : ℕ
-  := (P.val.darts.toFinset.image (λ e => G.cap e.fst e.snd)).min' (by
+    (P : G.asSimpleGraph.NonemptyPath s t) : ℕ
+  := (P.path.val.darts.toFinset.image (λ e => G.cap e.fst e.snd)).min' (by
     apply (Finset.Nonempty.image_iff _).mpr
-    exact Walk_darts_Nonempty_from_ne h P.val
+    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
   )
 
 @[simp]
 lemma UndirectedNetwork.bottleneck.le_dart
     {G : UndirectedNetwork V}
-    (h : s ≠ t)
-    (P : G.asSimpleGraph.Path s t)
+    (P : G.asSimpleGraph.NonemptyPath s t)
     {d : G.asSimpleGraph.Dart}
-    (hd : P.val.darts.contains d) :
-    G.bottleneck h P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
+    (hd : P.path.val.darts.contains d) :
+    G.bottleneck  P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
 
 def Flow.fromPath
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
-    (h : Pr.s ≠ Pr.t)
-    (P : G.asSimpleGraph.Path Pr.s Pr.t) :
+    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t) :
     Flow Pr :=
-  let contains_edge := contains_edge P
+  let contains_edge := contains_edge P.path
   have {u v} : Decidable (contains_edge u v) := Classical.dec _
 
   -- (Maybe not needed): Except for the ends of the path, every vertex has a predecessor iff it has a successor
   -- have pred_iff_succ {v : V} (hinner : v ≠ Pr.s ∧ v ≠ Pr.t) : (∃ u, contains_edge u v) ↔ (∃ w, contains_edge v w) := by sorry
 
-  let b := G.bottleneck h P
+  let b := G.bottleneck P
   let f u v : ℕ := if contains_edge u v then b else 0
 
   have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := sorry
 
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
     intro hv
-    if hp : P.val.support.contains v then
+    if hp : P.path.val.support.contains v then
       obtain ⟨u, hu_pred, hu_uniq⟩ := pred_exists hp hv.left
       obtain ⟨w, hw_succ, hw_uniq⟩ := succ_exists hp hv.right
 
@@ -299,8 +296,8 @@ def Flow.fromPath
     if he : contains_edge u v then
       calc
         f u v = b                := by simp only [he, ite_true]
-        _     = G.bottleneck h P := rfl
-        _     ≤ G.cap u v        := UndirectedNetwork.bottleneck.le_dart h P he.snd
+        _     = G.bottleneck P := rfl
+        _     ≤ G.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
     else
       have : f u v = 0 := by simp only [he, ite_false]
       linarith
@@ -310,9 +307,8 @@ def Flow.fromPath
 lemma Flow.fromPath.value_eq_bottleneck
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
-    (h : Pr.s ≠ Pr.t)
-    (P : G.asSimpleGraph.Path Pr.s Pr.t) :
-    (Flow.fromPath h P).value = G.bottleneck h P := sorry
+    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t) :
+    (Flow.fromPath P).value = G.bottleneck P := sorry
 
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
@@ -324,7 +320,5 @@ lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := 
 theorem Acyclic_Path_maxflow_eq_bottleneck
     (G : UndirectedNetwork V)
     (hG : G.asSimpleGraph.IsAcyclic)
-    {u v : V}
-    (huv : u ≠ v)
-    (P : G.asSimpleGraph.Path u v) :
-    G.maxFlowValue u v = G.bottleneck huv P := sorry
+    (P : G.asSimpleGraph.NonemptyPath u v) :
+    G.maxFlowValue u v = G.bottleneck P := sorry

@@ -249,9 +249,9 @@ lemma mkFrom_M_le_maxFlowValue
     simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
-  have P := P.toPath
+  have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
 
-  have M_huv_le e : (e ∈ P.val.darts) → M huv ≤ M e.is_adj.ne := by
+  have M_huv_le e : (e ∈ P.path.val.darts) → M huv ≤ M e.is_adj.ne := by
     -- This step has to connect knowledge of N.asSimpleGraph and g.val, which
     -- we know to be equal. To avoid having to convert each fact separately
     -- (which also sometimes doesn't work, because rewriting a variable does
@@ -274,7 +274,7 @@ lemma mkFrom_M_le_maxFlowValue
     intro he
     have h_Adj_in_g : g.val.val.Adj e.fst e.snd := e.is_adj
     let g' := g.val.remove_edge h_Adj_in_g
-    have : ¬g'.val.Reachable u v := Forest.remove_edge.disconnect P he
+    have : ¬g'.val.Reachable u v := Forest.remove_edge.disconnect P.path he
     let g'' := g'.add_edge huv h_uv_pos_weight this
 
     by_contra hlt
@@ -291,7 +291,7 @@ lemma mkFrom_M_le_maxFlowValue
 
   -- Now that we know that the capacity along the path is big enough, we
   -- construct the flow.
-  use Flow.fromPath huv P
+  use Flow.fromPath P
   simp[Flow.fromPath.value_eq_bottleneck, UndirectedNetwork.bottleneck]
   intro d hd
   apply le_trans $ M_huv_le  d hd
@@ -311,16 +311,16 @@ lemma mkFrom_maxFlowValue_le_M
   · linarith[maxFlow_eq_zero_from_not_Reachable N h_Reachable]
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
-  have P := P.toPath
+  have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
   have := mkFrom_IsAcyclic M hsymm g
-  rw[Acyclic_Path_maxflow_eq_bottleneck N this huv P]
+  rw[Acyclic_Path_maxflow_eq_bottleneck N this P]
 
-  have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P.ne P.path ≤ M P.ne := by
+  have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
     | base u v h_Adj => sorry
     | ind u v w P h_Adj hu hvw ih => sorry
 
-  exact triangle_along_path { path := P, ne := huv }
+  exact triangle_along_path P
 
 theorem mkFrom_hasMatrixM
     (hsymm : M.Symmetrical)
