@@ -210,6 +210,7 @@ lemma Walk_darts_Nonempty_from_ne
   apply List.ne_nil_of_length_pos
   simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
 
+@[simp]
 def UndirectedNetwork.bottleneck
     {G : UndirectedNetwork V}
     (P : G.asSimpleGraph.NonemptyPath s t) : ℕ
@@ -217,6 +218,19 @@ def UndirectedNetwork.bottleneck
     apply (Finset.Nonempty.image_iff _).mpr
     exact Walk_darts_Nonempty_from_ne P.ne P.path.val
   )
+
+lemma UndirectedNetwork.bottleneck.single_edge
+    {G : UndirectedNetwork V}
+    (h: G.asSimpleGraph.Adj u v) :
+    G.bottleneck h.toNonemptyPath = G.cap u v := sorry
+
+lemma UndirectedNetwork.bottleneck.cons
+    {G : UndirectedNetwork V}
+    (h_Adj : G.asSimpleGraph.Adj u v)
+    (P : G.asSimpleGraph.NonemptyPath v w)
+    (hu : u ∉ P.path.val.support) :
+    G.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (G.bottleneck h_Adj.toNonemptyPath) (G.bottleneck P) :=
+  sorry
 
 @[simp]
 lemma UndirectedNetwork.bottleneck.le_dart
