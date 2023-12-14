@@ -312,7 +312,8 @@ lemma mkFrom_maxFlowValue_le_M
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P := P.toPath
-  rw[Acyclic_Path_maxflow_eq_bottleneck N (sorry) huv P]
+  have := mkFrom_IsAcyclic M hsymm g
+  rw[Acyclic_Path_maxflow_eq_bottleneck N this huv P]
 
   have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P.ne P.path ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
