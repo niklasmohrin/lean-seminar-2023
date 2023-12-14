@@ -17,28 +17,6 @@ lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.
   simp_all only [SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.reverse_reverse]
 
 
-lemma SimpleGraph.Path.no_two_incoming {G : SimpleGraph V} (P : G.Path s t) (a1 : contains_edge P a c) (a2 : contains_edge P b c) : a = b := by
-  rw [contains_edge] at a1
-  rw [contains_edge] at a2
-  -- Not sure if needed:
-  have h1 (a1 : contains_edge P a c) :  P.val.support.contains a := by
-    simp
-    obtain ⟨h', h''⟩ := a1
-    simp at h''
-    exact (SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts P.val h'')
-
-  have h2 (a1 : contains_edge P b c) :  P.val.support.contains b := by
-    simp
-    obtain ⟨h', h''⟩ := a1
-    simp at h''
-    exact (SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts P.val h'')
-
-
-  sorry
-  -- simp [h1, h2, SimpleGraph.Path.nodup_support]
-
-
-
 @[simp]
 lemma contains_edge.mem_reverse {G : SimpleGraph V} {P : G.Path s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
   obtain ⟨h', h''⟩ := h
@@ -179,6 +157,19 @@ example
   induction P using SimpleGraph.NonemptyPath.ind with
   | base u v h_Adj => simp
   | ind u v w P h_Adj hu hvw ih => simp
+
+
+
+lemma SimpleGraph.Path.no_two_incoming {G : SimpleGraph V} (P : G.Path s t) (a1 : contains_edge P a c) (a2 : contains_edge P b c) : a = b := by
+  induction P using SimpleGraph.Path.ind with
+  | base u P => aesop -- Path u u contradicts hs and hp
+  | ind u v' w P h_Adj hu ih =>
+    simp_all
+    by_cases hv : v' = c
+    · simp_all [hv]
+      sorry
+    · aesop
+
 
 
 lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
