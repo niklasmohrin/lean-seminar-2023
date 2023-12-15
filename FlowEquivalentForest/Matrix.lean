@@ -324,11 +324,10 @@ lemma mkFrom_maxFlowValue_le_M
       have huv : u ≠ v := h_Adj.ne
       have huw : u ≠ w := by aesop
       rw[UndirectedNetwork.bottleneck.cons]
-      calc
-        min (N.cap u v) (UndirectedNetwork.bottleneck P) ≤ min (N.cap u v) (M hvw) :=
-          min_le_min_left (Network.cap N.toNetwork u v) ih
-        _ ≤ min (M huv) (M hvw) := by aesop
-        _ ≤ M huw := htri u v w huv hvw huw
+      calc min (N.cap u v) (N.bottleneck P)
+        _ ≤ min (N.cap u v) (M hvw) := min_le_min_left _ ih
+        _ ≤ min (M huv) (M hvw)     := by aesop
+        _ ≤ M huw                   := htri u v w huv hvw huw
 
   exact triangle_along_path P
 
