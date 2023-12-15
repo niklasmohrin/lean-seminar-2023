@@ -257,7 +257,7 @@ def Flow.fromPath
   let b := G.bottleneck P
   let f u v : ℕ := if contains_edge u v then b else 0
 
-  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := sorry
+  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, not_exists, exists_false, ite_false, not_true_eq_false]
 
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
     intro hv
@@ -302,8 +302,18 @@ def Flow.fromPath
         _           = ∑ u', f u' v                                 := Finset.sum_add_sum_compl us _
         _           = flowIn f v                                   := rfl
     else
-      have h_out u : f v u = 0 := sorry
-      have h_in u : f u v = 0 := sorry
+      have h_out u : f v u = 0 := by
+        by_contra h_nonzero
+        have ⟨h_Adj, h_dart⟩  := contains_edge_from_nonzero h_nonzero
+        have : SimpleGraph.Dart.mk (v,u) h_Adj ∈ P.path.val.darts := List.mem_of_elem_eq_true h_dart
+        have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts _ this
+        simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop, exists_and_right, and_imp, implies_true, forall_const,not_true_eq_false]
+      have h_in u : f u v = 0 := by
+        by_contra h_nonzero
+        have ⟨h_Adj, h_dart⟩  := contains_edge_from_nonzero h_nonzero
+        have : SimpleGraph.Dart.mk (u,v) h_Adj ∈ P.path.val.darts := List.mem_of_elem_eq_true h_dart
+        have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_snd_mem_support_of_mem_darts _ this
+        simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop, exists_and_right, and_imp, implies_true, forall_const,not_true_eq_false]
       calc
         flowOut f v = ∑ u : V, f v u := rfl
         _           = 0              := Finset.sum_eq_zero $ fun u _ => h_out u
