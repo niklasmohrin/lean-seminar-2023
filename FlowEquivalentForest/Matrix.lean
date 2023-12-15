@@ -317,8 +317,18 @@ lemma mkFrom_maxFlowValue_le_M
 
   have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
-    | base u v h_Adj => sorry
-    | ind u v w P h_Adj hu hvw ih => sorry
+    | base u v h_Adj =>
+      simp only [mkFrom, UndirectedNetwork.bottleneck.single_edge]
+      aesop
+    | ind u v w P h_Adj hu hvw ih =>
+      have huv : u ≠ v := h_Adj.ne
+      have huw : u ≠ w := by aesop
+      rw[UndirectedNetwork.bottleneck.cons]
+      calc
+        min (N.cap u v) (UndirectedNetwork.bottleneck P) ≤ min (N.cap u v) (M hvw) :=
+          min_le_min_left (Network.cap N.toNetwork u v) ih
+        _ ≤ min (M huv) (M hvw) := by aesop
+        _ ≤ M huw := htri u v w huv hvw huw
 
   exact triangle_along_path P
 

@@ -229,7 +229,7 @@ lemma UndirectedNetwork.bottleneck.cons
     (h_Adj : G.asSimpleGraph.Adj u v)
     (P : G.asSimpleGraph.NonemptyPath v w)
     (hu : u ∉ P.path.val.support) :
-    G.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (G.bottleneck h_Adj.toNonemptyPath) (G.bottleneck P) :=
+    G.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (G.cap u v) (G.bottleneck P) :=
   sorry
 
 @[simp]
