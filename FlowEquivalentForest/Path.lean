@@ -31,6 +31,9 @@ def SimpleGraph.Adj.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w
   val := SimpleGraph.Walk.cons h_Adj P.val
   property := SimpleGraph.Walk.IsPath.cons P.property hu
 
+lemma SimpleGraph.Path.cons.darts {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w) (hu : u ∉ P.val.support) : (h_Adj.cons P hu).val.darts = Dart.mk (u,v) h_Adj :: P.val.darts := by
+  simp_all only [Adj.cons, Walk.darts_cons]
+
 /-
 Induction on paths.
 
@@ -91,6 +94,8 @@ def SimpleGraph.NonemptyPath.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G
     property := SimpleGraph.Walk.IsPath.cons P.path.property hu
   }
   ne := by aesop
+
+lemma SimpleGraph.NonemptyPath.cons.darts {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.NonemptyPath v w) (hu : u ∉ P.path.val.support) : (SimpleGraph.NonemptyPath.cons h_Adj P hu).path.val.darts = Dart.mk (u,v) h_Adj :: P.path.val.darts := rfl
 
 -- Same as SimpleGraph.Path.ind, but for non-trivial paths (paths with at least one edge).
 theorem SimpleGraph.NonemptyPath.ind.{u₁}

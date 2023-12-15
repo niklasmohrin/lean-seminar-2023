@@ -222,15 +222,18 @@ def UndirectedNetwork.bottleneck
 lemma UndirectedNetwork.bottleneck.single_edge
     {G : UndirectedNetwork V}
     (h: G.asSimpleGraph.Adj u v) :
-    G.bottleneck h.toNonemptyPath = G.cap u v := sorry
+    G.bottleneck h.toNonemptyPath = G.cap u v := by
+  simp_all only [bottleneck, SimpleGraph.Adj.toNonemptyPath, SimpleGraph.Adj.toPath, SimpleGraph.Walk.darts_cons, SimpleGraph.Walk.darts_nil, List.toFinset_cons, List.toFinset_nil, insert_emptyc_eq, Finset.image_singleton, Finset.min'_singleton]
 
 lemma UndirectedNetwork.bottleneck.cons
     {G : UndirectedNetwork V}
     (h_Adj : G.asSimpleGraph.Adj u v)
     (P : G.asSimpleGraph.NonemptyPath v w)
     (hu : u ∉ P.path.val.support) :
-    G.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (G.cap u v) (G.bottleneck P) :=
-  sorry
+    G.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (G.cap u v) (G.bottleneck P) := by
+  simp [SimpleGraph.NonemptyPath.cons.darts]
+  rw[min_comm]
+  apply Finset.min'_insert
 
 @[simp]
 lemma UndirectedNetwork.bottleneck.le_dart
