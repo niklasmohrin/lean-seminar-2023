@@ -161,11 +161,25 @@ namespace Forest
       (h_not_Reach : ¬g.val.Reachable u v) :
       (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv + M huv.symm := sorry
 
-  def remove_edge (g : Forest M) (h_Adj : g.val.Adj u v) : Forest M where
+  def remove_edge (g : Forest M) (u v : V) : Forest M where
     val := g.val.deleteEdges {⟦(u, v)⟧}
     property := by
       constructor
-      · sorry
+      · by_contra h
+        suffices ¬g.val.IsAcyclic from this g.prop.left
+        simp[isAcyclic_iff_path_unique] at h ⊢
+        obtain ⟨a, b, p₁, hp₁, p₂, hp₂, hne⟩ := h
+        have hle := SimpleGraph.deleteEdges_le g.val {⟦(u, v)⟧}
+        use a
+        use b
+        use p₁.mapLe hle
+        use (SimpleGraph.Walk.mapLe_isPath hle).mpr hp₁
+        use p₂.mapLe hle
+        use (SimpleGraph.Walk.mapLe_isPath hle).mpr hp₂
+        unfold Walk.mapLe
+        by_contra heq
+        refine hne $ Walk.map_injective_of_injective ?_ a b $ heq
+        exact (Setoid.injective_iff_ker_bot ⇑(Hom.mapSpanningSubgraphs hle)).mpr rfl
       · intro a b hab h_Adj
         rw[deleteEdges_adj] at h_Adj
         exact g.prop.right a b hab h_Adj.left
@@ -175,12 +189,12 @@ namespace Forest
       (P : g.val.Path s t)
       {d : g.val.Dart}
       (hd : d ∈ P.val.darts) :
-      ¬(g.remove_edge d.is_adj).val.Reachable s t := sorry
+      ¬(g.remove_edge d.fst d.snd).val.Reachable s t := sorry
 
   -- Removing an (undirected) edge decreases the weight by the two corresponding matrix values.
   @[simp]
   lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
-      (g.remove_edge h_Adj).weight = g.weight - M h_Adj.ne - M h_Adj.ne.symm := sorry
+      (g.remove_edge u v).weight = g.weight - M h_Adj.ne - M h_Adj.ne.symm := sorry
 end Forest
 
 abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
@@ -312,8 +326,7 @@ lemma mkFrom_M_le_maxFlowValue
     -- M (u, v) > M e, this forest would have a bigger weight - a
     -- contradiction to the maximality of g.
     intro he
-    have h_Adj_in_g : g.val.val.Adj e.fst e.snd := e.is_adj
-    let g' := g.val.remove_edge h_Adj_in_g
+    let g' := g.val.remove_edge e.fst e.snd
     have : ¬g'.val.Reachable u v := Forest.remove_edge.disconnect P.path he
     let g'' := g'.add_edge huv h_uv_pos_weight this
 
@@ -324,9 +337,9 @@ lemma mkFrom_M_le_maxFlowValue
     have : g.val.weight < g''.weight := by calc
       g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [ne_eq, ge_iff_le, lt_add_iff_pos_right, gt_iff_lt, zero_lt_two, zero_lt_mul_left, tsub_pos_iff_lt]
       _            = g.val.weight + 2 * M new - 2 * M old                   := by rw[Nat.mul_sub_left_distrib, Nat.add_sub_assoc (Nat.mul_le_mul_left 2 (Nat.le_of_lt hlt))]
-      _            = g.val.weight - 2 * M old + 2 * M new                   := Nat.sub_add_comm (by rw[two_mul]; nth_rw 2 [hsymm]; exact Forest.le_weight h_Adj_in_g)
+      _            = g.val.weight - 2 * M old + 2 * M new                   := Nat.sub_add_comm (by rw[two_mul]; nth_rw 2 [hsymm]; exact Forest.le_weight e.is_adj)
       _            = g.val.weight - M old - M old.symm + M new + M new.symm := by rw[two_mul, two_mul]; nth_rw 2 [hsymm old, hsymm new]; rw[Nat.sub_add_eq, Nat.add_assoc]
-      _            = g''.weight                                             := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub]
+      _            = g''.weight                                             := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub, e.is_adj]
     exact not_le_of_lt this $ g.prop g''
 
   -- Now that we know that the capacity along the path is big enough, we
