@@ -161,7 +161,14 @@ namespace Forest
       (h_not_Reach : ¬g.val.Reachable u v) :
       (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv + M huv.symm := sorry
 
-  def remove_edge (g : Forest M) (h_Adj : g.val.Adj u v) : Forest M := sorry
+  def remove_edge (g : Forest M) (h_Adj : g.val.Adj u v) : Forest M where
+    val := g.val.deleteEdges {⟦(u, v)⟧}
+    property := by
+      constructor
+      · sorry
+      · intro a b hab h_Adj
+        rw[deleteEdges_adj] at h_Adj
+        exact g.prop.right a b hab h_Adj.left
 
   lemma remove_edge.disconnect
       {g : Forest M}
