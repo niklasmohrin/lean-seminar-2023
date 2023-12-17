@@ -95,28 +95,61 @@ namespace Forest
       (huv : u ≠ v)
       (h_M : 0 < min (M huv) (M huv.symm))
       (h_not_Reach : ¬g.val.Reachable u v) :
-    Forest M where
-    val := g.val ⊔ SimpleGraph.fromEdgeSet {⟦(u,v)⟧}
+      Forest M where
+    val := SimpleGraph.fromEdgeSet $ g.val.edgeSet ∪ {⟦(u,v)⟧}
     property := by
-      apply And.intro
-      rw [SimpleGraph.isAcyclic_iff_forall_adj_isBridge]
-      intro c d h_Adj
-      rw [SimpleGraph.isBridge_iff]
-      apply And.intro
-      assumption
-      simp only [fromEdgeSet_adj]
-      simp at h_Adj
-      simp
+      have h_eq_add_sub : g.val = fromEdgeSet (g.val.edgeSet ∪ {⟦(u, v)⟧}) \ fromEdgeSet {⟦(u, v)⟧} := by
+        simp
+        ext a b
+        if hab : ⟦(a, b)⟧ = ⟦(u, v)⟧ then
+          simp[hab]
+          by_contra h
+          rw[←mem_edgeSet, hab, mem_edgeSet] at h
+          exact h_not_Reach h.reachable
+        else
+          aesop
 
-
-      sorry
-
-      intro a b hab h_Adj
-      apply Or.elim h_Adj
-      intro h_Adj
-      exact g.prop.right a b hab h_Adj
-      intro heq
-      sorry
+      constructor
+      · rw[SimpleGraph.isAcyclic_iff_forall_edge_isBridge, Sym2.forall]
+        intro a b hab
+        if h_ab_uv : ⟦(a, b)⟧ = ⟦(u, v)⟧ then
+          rw[h_ab_uv, SimpleGraph.isBridge_iff]
+          constructor
+          · exact (fromEdgeSet_adj _).mpr ⟨by simp only [Set.union_singleton, mem_edgeSet, Set.mem_insert_iff, true_or], huv⟩
+          · rwa[←h_eq_add_sub]
+        else
+          rw[isBridge_iff_mem_and_forall_cycle_not_mem]
+          constructor
+          · exact hab
+          · intro x c hc
+            exfalso
+            if hcuv : ⟦(u, v)⟧ ∈ c.edges then
+              have : v ∈ c.support := Walk.snd_mem_support_of_mem_edges c hcuv
+              let c' := c.rotate this
+              have hc' := hc.rotate this
+              -- TODO: The tail of c' is a walk from v to u, without using the
+              -- inserted edge (u, v) edge. This contradicts that u and v are
+              -- disconnected in g.
+              sorry
+            else
+              -- TODO: c is a cycle in g, because the added edge is not part of
+              -- it. I can maybe be transferred back to g, where it would then
+              -- be a contradiction to g being a forest.
+              sorry
+      · intro a b hab h_Adj
+        if h_Adj' : g.val.Adj a b then
+          exact g.prop.right a b hab h_Adj'
+        else
+          simp only [Set.union_singleton, fromEdgeSet_adj, Set.mem_insert_iff, Quotient.eq, Sym2.rel_iff] at h_Adj
+          match h_Adj.left with
+          | Or.inl h => match h with
+            | Or.inl ⟨ha, hb⟩ =>
+              subst ha hb
+              exact lt_of_lt_of_le h_M (Nat.min_le_left _ _)
+            | Or.inr ⟨ha, hb⟩ =>
+              subst ha hb
+              exact lt_of_lt_of_le h_M (Nat.min_le_right _ _)
+          | Or.inr h => contradiction
 
   -- Adding an (undirected) edge increases the weight by the two corresponding matrix values.
   @[simp]
