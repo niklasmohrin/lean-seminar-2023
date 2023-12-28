@@ -171,13 +171,6 @@ namespace Forest
         rw[deleteEdges_adj] at h_Adj
         exact g.prop.right a b hab h_Adj.left
 
-  lemma remove_edge.disconnect
-      {g : Forest M}
-      (P : g.val.Path s t)
-      {d : g.val.Dart}
-      (hd : d ∈ P.val.darts) :
-      ¬(g.remove_edge d.fst d.snd).val.Reachable s t := sorry
-
   -- Removing an (undirected) edge decreases the weight by the two corresponding matrix values.
   @[simp]
   lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
@@ -314,7 +307,7 @@ lemma mkFrom_M_le_maxFlowValue
     -- contradiction to the maximality of g.
     intro he
     let g' := g.val.remove_edge e.fst e.snd
-    have : ¬g'.val.Reachable u v := Forest.remove_edge.disconnect P.path he
+    have : ¬g'.val.Reachable u v := g.val.val.deleteEdges_not_reachable_of_mem_edges g.val.prop.left P.path (SimpleGraph.Walk.mem_edges_of_mem_darts he)
     let g'' := g'.add_edge huv h_uv_pos_weight this
 
     by_contra hlt

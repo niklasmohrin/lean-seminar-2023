@@ -20,3 +20,10 @@ theorem deleteEdges_isAcyclic (G : SimpleGraph V) (hG : G.IsAcyclic) (s : Set (S
   by_contra heq
   refine hne $ Walk.map_injective_of_injective ?_ a b $ heq
   exact (Setoid.injective_iff_ker_bot ⇑(Hom.mapSpanningSubgraphs hle)).mpr rfl
+
+theorem deleteEdges_not_reachable_of_mem_edges
+    (G : SimpleGraph V)
+    (hG : G.IsAcyclic)
+    (p : G.Path s t)
+    (huv : ⟦(u, v)⟧ ∈ p.val.edges) :
+    ¬Reachable (G.deleteEdges {⟦(u, v)⟧}) s t := sorry

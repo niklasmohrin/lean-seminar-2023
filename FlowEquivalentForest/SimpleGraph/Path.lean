@@ -25,6 +25,10 @@ lemma contains_edge.mem_reverse {G : SimpleGraph V} {P : G.Path s t} (h : contai
     List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
     SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
 
+lemma SimpleGraph.Walk.mem_edges_of_mem_darts {p : G.Walk s t} {d : G.Dart} (hd : d ∈ p.darts) : d.edge ∈ p.edges := by
+  simp only [SimpleGraph.Walk.edges, List.mem_map]
+  use d
+
 -- Adds an edge to the front of a path.
 @[simp]
 def SimpleGraph.Adj.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w) (hu : u ∉ P.val.support) : G.Path u w where
