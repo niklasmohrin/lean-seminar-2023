@@ -5,7 +5,7 @@ import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
 import FlowEquivalentForest.Network
 import FlowEquivalentForest.Util
-import FlowEquivalentForest.Path
+import FlowEquivalentForest.SimpleGraph.Path
 
 open BigOperators
 
