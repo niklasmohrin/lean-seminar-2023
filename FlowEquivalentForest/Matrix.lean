@@ -6,6 +6,7 @@ import Mathlib.Tactic.Linarith
 import FlowEquivalentForest.Flow
 import FlowEquivalentForest.PairMatrix
 import FlowEquivalentForest.Util
+import FlowEquivalentForest.SimpleGraph.Basic
 import FlowEquivalentForest.SimpleGraph.Acyclic
 
 noncomputable section
@@ -97,7 +98,7 @@ namespace Forest
       (h_M : 0 < min (M huv) (M huv.symm))
       (h_not_Reach : ¬g.val.Reachable u v) :
       Forest M where
-    val := SimpleGraph.fromEdgeSet $ g.val.edgeSet ∪ {⟦(u,v)⟧}
+    val := g.val.addEdges {⟦(u,v)⟧}
     property := by
       have h_eq_add_sub : g.val = fromEdgeSet (g.val.edgeSet ∪ {⟦(u, v)⟧}) \ fromEdgeSet {⟦(u, v)⟧} := by
         simp
@@ -117,7 +118,7 @@ namespace Forest
           rw[h_ab_uv, SimpleGraph.isBridge_iff]
           constructor
           · exact (fromEdgeSet_adj _).mpr ⟨by simp only [Set.union_singleton, mem_edgeSet, Set.mem_insert_iff, true_or], huv⟩
-          · rwa[←h_eq_add_sub]
+          · rwa[addEdges, ←h_eq_add_sub]
         else
           rw[isBridge_iff_mem_and_forall_cycle_not_mem]
           constructor
@@ -141,7 +142,7 @@ namespace Forest
         if h_Adj' : g.val.Adj a b then
           exact g.prop.right a b hab h_Adj'
         else
-          simp only [Set.union_singleton, fromEdgeSet_adj, Set.mem_insert_iff, Quotient.eq, Sym2.rel_iff] at h_Adj
+          simp only [addEdges, Set.union_singleton, fromEdgeSet_adj, Set.mem_insert_iff, Quotient.eq, Sym2.rel_iff] at h_Adj
           match h_Adj.left with
           | Or.inl h => match h with
             | Or.inl ⟨ha, hb⟩ =>
