@@ -6,6 +6,7 @@ import Mathlib.Tactic.Linarith
 import FlowEquivalentForest.Flow
 import FlowEquivalentForest.PairMatrix
 import FlowEquivalentForest.Util
+import FlowEquivalentForest.SimpleGraph.Acyclic
 
 noncomputable section
 
@@ -35,7 +36,7 @@ instance {M : PairMatrix V ℕ} : Nonempty (Forest M) := by
   simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, IsEmpty.forall_iff, implies_true, forall_const, and_self]
 
 namespace Forest
-  variable {V : Type*} [Fintype V] {M : PairMatrix V ℕ}
+  variable {M : PairMatrix V ℕ}
 
   instance Forest_Adj_DecidablePred {F : Forest M} : DecidablePred (fun e : V × V => F.val.Adj e.fst e.snd) := Classical.decPred _
 
@@ -165,21 +166,7 @@ namespace Forest
     val := g.val.deleteEdges {⟦(u, v)⟧}
     property := by
       constructor
-      · by_contra h
-        suffices ¬g.val.IsAcyclic from this g.prop.left
-        simp[isAcyclic_iff_path_unique] at h ⊢
-        obtain ⟨a, b, p₁, hp₁, p₂, hp₂, hne⟩ := h
-        have hle := SimpleGraph.deleteEdges_le g.val {⟦(u, v)⟧}
-        use a
-        use b
-        use p₁.mapLe hle
-        use (SimpleGraph.Walk.mapLe_isPath hle).mpr hp₁
-        use p₂.mapLe hle
-        use (SimpleGraph.Walk.mapLe_isPath hle).mpr hp₂
-        unfold Walk.mapLe
-        by_contra heq
-        refine hne $ Walk.map_injective_of_injective ?_ a b $ heq
-        exact (Setoid.injective_iff_ker_bot ⇑(Hom.mapSpanningSubgraphs hle)).mpr rfl
+      · exact g.val.deleteEdges_isAcyclic g.prop.left _
       · intro a b hab h_Adj
         rw[deleteEdges_adj] at h_Adj
         exact g.prop.right a b hab h_Adj.left
