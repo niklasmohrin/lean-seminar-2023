@@ -255,9 +255,6 @@ def Flow.fromPath
   let contains_edge := contains_edge P.path
   have {u v} : Decidable (contains_edge u v) := Classical.dec _
 
-  -- (Maybe not needed): Except for the ends of the path, every vertex has a predecessor iff it has a successor
-  -- have pred_iff_succ {v : V} (hinner : v ≠ Pr.s ∧ v ≠ Pr.t) : (∃ u, contains_edge u v) ↔ (∃ w, contains_edge v w) := by sorry
-
   let b := G.bottleneck P
   let f u v : ℕ := if contains_edge u v then b else 0
 
@@ -269,9 +266,6 @@ def Flow.fromPath
       obtain ⟨u, hu_pred, hu_uniq⟩ := pred_exists hp hv.left
       obtain ⟨w, hw_succ, hw_uniq⟩ := succ_exists hp hv.right
 
-      have other_in {u'} (h : u' ≠ u) : f u' v = 0 := by
-        by_contra hne
-        exact h (hu_uniq u' (contains_edge_from_nonzero hne))
       let us := Finset.filter (contains_edge · v) Finset.univ
       have us_singleton : us = {u} := Finset.eq_singleton_iff_unique_mem.mpr ⟨Finset.mem_filter.mpr ⟨Finset.mem_univ u, hu_pred⟩, fun x hx => hu_uniq x (Finset.mem_filter.mp hx).right⟩
       have sum_usc_zero : (∑ u' in usᶜ, f u' v) = 0 := by
@@ -282,9 +276,6 @@ def Flow.fromPath
         exact Finset.mem_compl.mp hu' this
 
       -- The same again, but the other way around
-      have other_out {w'} (h : w' ≠ w) : f v w' = 0 := by
-        by_contra hne
-        exact h (hw_uniq w' (contains_edge_from_nonzero hne))
       let ws := Finset.filter (contains_edge v ·) Finset.univ
       have ws_singleton : ws = {w} := Finset.eq_singleton_iff_unique_mem.mpr ⟨Finset.mem_filter.mpr ⟨Finset.mem_univ w, hw_succ⟩, fun x hx => hw_uniq x (Finset.mem_filter.mp hx).right⟩
       have sum_wsc_zero : (∑ w' in wsᶜ, f v w') = 0 := by
