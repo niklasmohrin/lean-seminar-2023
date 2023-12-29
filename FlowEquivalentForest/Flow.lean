@@ -366,4 +366,12 @@ theorem Acyclic_Path_maxflow_eq_bottleneck
     (G : UndirectedNetwork V)
     (hG : G.asSimpleGraph.IsAcyclic)
     (P : G.asSimpleGraph.NonemptyPath u v) :
-    G.maxFlowValue u v = G.bottleneck P := sorry
+    G.maxFlowValue u v = G.bottleneck P := by
+  suffices G.maxFlowValue u v ≤ G.bottleneck P by
+    refine Nat.le_antisymm this ?_
+    have := Flow.fromPath.value_eq_bottleneck (G := G) (Pr := {s := u, t := v}) P
+    rw[←this]
+    apply Finset.le_max'
+    simp only [Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
+
+  sorry
