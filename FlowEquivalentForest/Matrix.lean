@@ -100,44 +100,8 @@ namespace Forest
       Forest M where
     val := g.val.addEdges {⟦(u,v)⟧}
     property := by
-      have h_eq_add_sub : g.val = fromEdgeSet (g.val.edgeSet ∪ {⟦(u, v)⟧}) \ fromEdgeSet {⟦(u, v)⟧} := by
-        simp
-        ext a b
-        if hab : ⟦(a, b)⟧ = ⟦(u, v)⟧ then
-          simp[hab]
-          by_contra h
-          rw[←mem_edgeSet, hab, mem_edgeSet] at h
-          exact h_not_Reach h.reachable
-        else
-          aesop
-
       constructor
-      · rw[SimpleGraph.isAcyclic_iff_forall_edge_isBridge, Sym2.forall]
-        intro a b hab
-        if h_ab_uv : ⟦(a, b)⟧ = ⟦(u, v)⟧ then
-          rw[h_ab_uv, SimpleGraph.isBridge_iff]
-          constructor
-          · exact (fromEdgeSet_adj _).mpr ⟨by simp only [Set.union_singleton, mem_edgeSet, Set.mem_insert_iff, true_or], huv⟩
-          · rwa[addEdges, ←h_eq_add_sub]
-        else
-          rw[isBridge_iff_mem_and_forall_cycle_not_mem]
-          constructor
-          · exact hab
-          · intro x c hc
-            exfalso
-            if hcuv : ⟦(u, v)⟧ ∈ c.edges then
-              have : v ∈ c.support := Walk.snd_mem_support_of_mem_edges c hcuv
-              let c' := c.rotate this
-              have hc' := hc.rotate this
-              -- TODO: The tail of c' is a walk from v to u, without using the
-              -- inserted edge (u, v) edge. This contradicts that u and v are
-              -- disconnected in g.
-              sorry
-            else
-              -- TODO: c is a cycle in g, because the added edge is not part of
-              -- it. I can maybe be transferred back to g, where it would then
-              -- be a contradiction to g being a forest.
-              sorry
+      · exact g.val.addEdges_isAcyclic_of_not_reachable g.prop.left h_not_Reach
       · intro a b hab h_Adj
         if h_Adj' : g.val.Adj a b then
           exact g.prop.right a b hab h_Adj'
