@@ -178,8 +178,6 @@ lemma SimpleGraph.Path.no_two_incoming {G : SimpleGraph V} (P : G.Path s t) (a1 
       sorry
     · aesop
 
-
-
 lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
     ∃! u, contains_edge P u v := by
   induction P using SimpleGraph.Path.ind with
@@ -207,3 +205,14 @@ lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t
   · exact P.reverse_reverse ▸ contains_edge.mem_reverse hw.left
   · intro y hy
     exact hw.right y (contains_edge.mem_reverse hy)
+
+lemma no_pred_first (P : G.Path s t) : ¬contains_edge P u s := by
+  have h0 : P.val.support.indexOf s = 0 := by
+    unfold Walk.support
+    aesop
+
+  by_contra h
+  obtain ⟨_, h_dart⟩ := h
+  suffices P.val.support.indexOf u < P.val.support.indexOf s by simp_all only [not_lt_zero']
+
+  sorry

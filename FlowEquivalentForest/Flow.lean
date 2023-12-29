@@ -17,7 +17,10 @@ structure FlowProblem { V : Type* } (G : Network V) where
 
 variable { G : Network V }
 
+@[simp]
 def flowIn (f : V → V → ℕ) (v : V) := ∑ u, f u v
+
+@[simp]
 def flowOut (f : V → V → ℕ) (v : V) := ∑ u, f v u
 
 @[ext]
@@ -34,6 +37,7 @@ def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
 instance { P : FlowProblem G } : Inhabited (Flow P) where
   default := P.nullFlow
 
+@[simp]
 def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s - flowIn flow.f P.s
 
 def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.value ≤ F.value
@@ -331,11 +335,24 @@ def Flow.fromPath
 
   { f, conservation, capacity }
 
+@[simp]
 lemma Flow.fromPath.value_eq_bottleneck
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
     (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t) :
-    (Flow.fromPath P).value = G.bottleneck P := sorry
+    (Flow.fromPath P).value = G.bottleneck P := by
+  let F := Flow.fromPath P
+  let b := G.bottleneck P
+
+  have h_in : flowIn F.f Pr.s = 0 := by
+    simp only [flowIn, Finset.sum_eq_zero_iff, Finset.mem_univ, forall_true_left]
+    intro u
+    suffices ¬contains_edge P.path u Pr.s by simp_all only [fromPath, contains_edge, ite_false]
+    exact no_pred_first P.path
+
+  have h_out : flowOut F.f Pr.s = b := sorry
+
+  rw[Flow.value, h_in, h_out, Nat.sub_zero]
 
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
