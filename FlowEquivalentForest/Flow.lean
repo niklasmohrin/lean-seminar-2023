@@ -350,7 +350,17 @@ lemma Flow.fromPath.value_eq_bottleneck
     suffices ¬contains_edge P.path u Pr.s by simp_all only [fromPath, contains_edge, ite_false]
     exact no_pred_first P.path
 
-  have h_out : flowOut F.f Pr.s = b := sorry
+
+  obtain ⟨v, hv⟩ := succ_exists (List.elem_iff.mpr (SimpleGraph.Walk.start_mem_support P.path.val)) P.ne
+  have h_out_succ : F.f Pr.s v = b := by simp only [fromPath, hv.left, ite_true]
+  have h_out : flowOut F.f Pr.s = b := by
+    rw[←h_out_succ]
+    apply Finset.sum_eq_single
+    · intro v' _ hne
+      suffices ¬contains_edge P.path Pr.s v' by simp only [fromPath, this, ite_false]
+      by_contra h
+      exact hne $ hv.right v' h
+    · have := Finset.mem_univ v; intro; contradiction
 
   rw[Flow.value, h_in, h_out, Nat.sub_zero]
 
