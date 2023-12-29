@@ -29,6 +29,12 @@ lemma SimpleGraph.Walk.mem_edges_of_mem_darts {p : G.Walk s t} {d : G.Dart} (hd 
   simp only [SimpleGraph.Walk.edges, List.mem_map]
   use d
 
+-- Like `Walk.transfer`, but for `Path`s.
+@[simp]
+def SimpleGraph.Path.transfer {G : SimpleGraph V} (p : G.Path u v) (H : SimpleGraph V) (h : ∀ e ∈ p.val.edges, e ∈ H.edgeSet) : H.Path u v where
+  val := p.val.transfer H h
+  property := p.prop.transfer h
+
 -- Adds an edge to the front of a path.
 @[simp]
 def SimpleGraph.Adj.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w) (hu : u ∉ P.val.support) : G.Path u w where

@@ -2,6 +2,7 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Acyclic
 
 import FlowEquivalentForest.SimpleGraph.Basic
+import FlowEquivalentForest.SimpleGraph.Path
 
 namespace SimpleGraph
 
@@ -28,9 +29,26 @@ theorem deleteEdges_not_reachable_of_mem_edges
     (hG : G.IsAcyclic)
     (p : G.Path s t)
     (huv : ⟦(u, v)⟧ ∈ p.val.edges) :
-    ¬Reachable (G.deleteEdges {⟦(u, v)⟧}) s t := sorry
+    ¬Reachable (G.deleteEdges {⟦(u, v)⟧}) s t := by
+  by_contra h
+  have p' := (Classical.choice h).toPath
+  let p'' := p'.transfer G (by
+    intro e he
+    have := p'.val.edges_subset_edgeSet he
+    rw[edgeSet_deleteEdges] at this
+    simp_all only [mem_edgeSet, Set.mem_diff]
+  )
 
-lemma foo (G H : SimpleGraph V) (h : G.edgeSet = H.edgeSet) : G = H := by exact edgeSet_inj.mp h
+  suffices p ≠ p'' from this (hG.path_unique p p'')
+  suffices ⟦(u, v)⟧ ∉ p''.val.edges by
+    by_contra heq
+    subst heq
+    contradiction
+  simp only [Path.transfer, Walk.edges_transfer]
+  by_contra hmem
+  have := p'.val.edges_subset_edgeSet hmem
+  rw[edgeSet_deleteEdges] at this
+  simp_all only [Set.mem_diff, Set.mem_singleton_iff, not_true_eq_false]
 
 theorem addEdges_isAcyclic_of_not_reachable
     (G : SimpleGraph V)
