@@ -64,29 +64,36 @@ theorem Flow.path_decomposition.f_eq_path_count (F : Flow Pr) :
 --     ∃ d ∈ p.path.val.darts, N.cap d.fst d.snd = N.bottleneck p ∧ ∀ p' : N.asSimpleGraph.Walk s t, d ∈ p'.darts := sorry
 
 -- Using it for our proof (would still need to construct hd, but should be fine):
-theorem Flow.value_le_cap
+theorem Flow.value_le_f
     (F : Flow Pr)
     (d : N.asSimpleGraph.Dart)
     (hd : ∀ p : N.asSimpleGraph.Walk Pr.s Pr.t, d ∈ p.darts):
-    F.value ≤ N.cap d.fst d.snd := by
-  wlog hC : F.CycleFree
-  · exact (Flow.remove_all_cycles.value F).symm ▸ this F.remove_all_cycles d hd (Flow.remove_all_cycles.CycleFree F)
+    F.value ≤ F.f d.fst d.snd := by
+  let u := d.fst
+  let v := d.snd
 
-  suffices ∀ n, ∀ F : Flow Pr, F.value = n → F.value = F.f d.fst d.snd from
-    this F.value F rfl ▸ F.capacity _ _
+  suffices ∀ n, ∀ F : Flow Pr, F.value = n → F.value ≤ F.f u v from this F.value F rfl
+
   intro n
   induction n with
-  | zero => sorry -- cycle free and value zero => must be null flow
+  | zero => intro F hF; linarith[hF]
   | succ n ih =>
     intro F hF
     obtain p := F.exists_path_of_value_nonzero (by linarith)
     let F' := F.remove_path p
     have hF' : F'.value = n := by linarith[Flow.remove_path.value F p, hF]
-    rw[←Flow.remove_path.value F p]
-    rw[ih F' hF']
+    have hf : F'.f u v + 1 = F.f u v := by
+      have hp : contains_edge p.path u v := ⟨d.is_adj, List.elem_iff.mpr (hd p.path)⟩
+      simp only [Flow.remove_path, hp, ite_true]
+      have : F.f u v ≠ 0 := by
+        by_contra h₀
+        have h := h₀ ▸ p.val.prop d
+        simp[SimpleGraph.Walk.dart_counts] at h
+        exact List.not_mem_of_count_eq_zero h $ hd p
 
-    have hp : contains_edge p.path d.fst d.snd := ⟨d.is_adj, List.elem_iff.mpr (hd p.path)⟩
+      exact Nat.succ_pred this
 
-    simp only [Flow.remove_path, hp, ite_true]
-    have : F.f d.fst d.snd ≠ 0 := sorry -- because p uses this edge
-    exact Nat.succ_pred this
+    calc
+      F.value = F'.value + 1 := (Flow.remove_path.value F p).symm
+      _       ≤ F'.f u v + 1 := Nat.add_le_add_right (ih F' hF') 1
+      _       = F.f u v      := hf
