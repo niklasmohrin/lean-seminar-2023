@@ -1,4 +1,4 @@
-import FlowEquivalentForest.Flow
+import FlowEquivalentForest.Flow.Basic
 
 open BigOperators
 

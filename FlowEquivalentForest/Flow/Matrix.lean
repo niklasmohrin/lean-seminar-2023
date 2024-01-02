@@ -3,7 +3,7 @@ import Mathlib.Combinatorics.SimpleGraph.Acyclic
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Tactic.Linarith
 
-import FlowEquivalentForest.Flow
+import FlowEquivalentForest.Flow.Basic
 import FlowEquivalentForest.PairMatrix
 import FlowEquivalentForest.Util
 import FlowEquivalentForest.SimpleGraph.Basic
