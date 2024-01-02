@@ -7,6 +7,24 @@ import Mathlib.Logic.Basic
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
 
+lemma Walk_length_nonzero_from_ne
+    {G : SimpleGraph V}
+    (h : u ≠ v)
+    (P : G.Walk u v) :
+    0 < P.length :=
+  match P with
+  | SimpleGraph.Walk.nil => by contradiction
+  | SimpleGraph.Walk.cons _ _ => by simp_all only [ne_eq, SimpleGraph.Walk.length_cons, add_pos_iff, zero_lt_one, or_true]
+
+lemma Walk_darts_Nonempty_from_ne
+    {G : SimpleGraph V}
+    (h : u ≠ v)
+    (P : G.Walk u v) :
+    P.darts.toFinset.Nonempty := by
+  simp only [List.toFinset_nonempty_iff, ne_eq]
+  apply List.ne_nil_of_length_pos
+  simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
+
 @[simp]
 def contains_edge {G : SimpleGraph V} (P : G.Path s t) (u v : V) :=
   ∃ h : G.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
