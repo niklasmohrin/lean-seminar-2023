@@ -361,22 +361,3 @@ lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 :
 lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
   intro u v
   simp only [FlowProblem.nullFlow, zero_le]
-
-theorem Acyclic_Path_maxflow_eq_bottleneck
-    (G : UndirectedNetwork V)
-    (hG : G.asSimpleGraph.IsAcyclic)
-    (P : G.asSimpleGraph.NonemptyPath u v) :
-    G.maxFlowValue u v = G.bottleneck P := by
-  let Pr : FlowProblem G.toNetwork := {s := u, t := v}
-
-  suffices G.maxFlowValue u v ≤ G.bottleneck P by
-    refine Nat.le_antisymm this ?_
-    have := Flow.fromPath.value_eq_bottleneck (Pr := Pr) P
-    rw[←this]
-    apply Finset.le_max'
-    simp only [Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
-
-  suffices ∀ F : Flow Pr, F.value ≤ G.bottleneck P by simp_all only [Network.maxFlowValue, FlowProblem.maxFlow, Finset.mem_image, forall_exists_index, Finset.max'_le_iff, Finset.mem_univ, true_and, forall_apply_eq_imp_iff, implies_true]
-
-  intro F
-  sorry
