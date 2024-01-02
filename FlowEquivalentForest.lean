@@ -2,5 +2,5 @@ import FlowEquivalentForest.Util
 import FlowEquivalentForest.PairMatrix
 import FlowEquivalentForest.Network
 import FlowEquivalentForest.Flow
-import FlowEquivalentForest.Decomp
+import FlowEquivalentForest.Decomposition
 import FlowEquivalentForest.Matrix
