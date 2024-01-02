@@ -4,6 +4,8 @@ import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.Image
 import Mathlib.Data.Finset.Lattice
 
+import FlowEquivalentForest.SimpleGraph.Path
+
 section
 
 variable ( V : Type* ) [Fintype V] [DecidableEq V] [Nonempty V]
@@ -49,5 +51,38 @@ def UndirectedNetwork.asSimpleGraph (G : UndirectedNetwork V) : SimpleGraph V wh
     intro v hv
     rw[G.loopless] at hv
     exact LT.lt.false hv
+
+@[simp]
+def UndirectedNetwork.bottleneck
+    {G : UndirectedNetwork V}
+    (P : G.asSimpleGraph.NonemptyPath s t) : ℕ
+  := (P.path.val.darts.toFinset.image (λ e => G.cap e.fst e.snd)).min' (by
+    apply (Finset.Nonempty.image_iff _).mpr
+    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
+  )
+
+lemma UndirectedNetwork.bottleneck.single_edge
+    {G : UndirectedNetwork V}
+    (h: G.asSimpleGraph.Adj u v) :
+    G.bottleneck h.toNonemptyPath = G.cap u v := by
+  simp_all only [bottleneck, SimpleGraph.Adj.toNonemptyPath, SimpleGraph.Adj.toPath, SimpleGraph.Walk.darts_cons, SimpleGraph.Walk.darts_nil, List.toFinset_cons, List.toFinset_nil, insert_emptyc_eq, Finset.image_singleton, Finset.min'_singleton]
+
+lemma UndirectedNetwork.bottleneck.cons
+    {G : UndirectedNetwork V}
+    (h_Adj : G.asSimpleGraph.Adj u v)
+    (P : G.asSimpleGraph.NonemptyPath v w)
+    (hu : u ∉ P.path.val.support) :
+    G.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (G.cap u v) (G.bottleneck P) := by
+  simp [SimpleGraph.NonemptyPath.cons.darts]
+  rw[min_comm]
+  apply Finset.min'_insert
+
+@[simp]
+lemma UndirectedNetwork.bottleneck.le_dart
+    {G : UndirectedNetwork V}
+    (P : G.asSimpleGraph.NonemptyPath s t)
+    {d : G.asSimpleGraph.Dart}
+    (hd : P.path.val.darts.contains d) :
+    G.bottleneck  P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
 
 end
