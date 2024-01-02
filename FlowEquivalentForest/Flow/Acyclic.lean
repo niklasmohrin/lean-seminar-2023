@@ -1,4 +1,5 @@
 import FlowEquivalentForest.Flow.Decomposition
+import FlowEquivalentForest.Flow.Path
 
 variable {V : Type*} [Fintype V] [Nonempty V] [DecidableEq V]
 variable {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork}
