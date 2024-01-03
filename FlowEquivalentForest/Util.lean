@@ -5,6 +5,8 @@ import Mathlib.Algebra.BigOperators.Basic
 import Mathlib.Algebra.BigOperators.Order
 import Mathlib.Tactic.Ring
 import Mathlib.Tactic.Linarith
+import Mathlib.Data.Fintype.Prod
+
 open BigOperators
 
 -- Every nonempty (infinite) set of natural numbers that is bounded from above has a maximum.
@@ -87,3 +89,15 @@ theorem fintype_sum_sub_distrib_of_sub_nonneg
     (h_le : ∀ x : α, g x ≤ f x) :
     ∑ x, (f x - g x) = ∑ x, f x - ∑ x, g x :=
   finset_sum_sub_distrib_of_sub_nonneg Finset.univ fun x _ => h_le x
+
+-- A pair of two elements that are not equal (that is, they are not on the diagonal of a matrix).
+@[ext]
+structure NonDiag (α : Type*) extends (α × α) where
+  ne : fst ≠ snd
+
+noncomputable instance [Fintype α] : Fintype (NonDiag α) := Fintype.ofInjective NonDiag.toProd (by
+  intro a b h
+  ext
+  · exact congrArg Prod.fst h
+  · exact congrArg Prod.snd h
+)
