@@ -154,62 +154,36 @@ instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
 
 variable (M : PairMatrix V ℕ)
 
-def mkFrom (hsymm : M.Symmetrical) (g : Forest M) : UndirectedNetwork V :=
-  let cap u v := if huv : (u, v) ∈ g.edges then M (g.edges_ne huv) else 0
+def mkFrom (hsymm : M.Symmetrical) (g : Forest M)  : UndirectedNetwork V :=
+  have : DecidableRel g.val.Adj := Classical.decRel _
+  let cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
   have loopless : ∀ v, cap v v = 0 := by
     intro v
-    have : (v, v) ∉ g.edges := by
-      by_contra h
-      have : v ≠ v := g.edges_ne h
-      contradiction
-    simp only [*, ne_eq, dite_false]
+    simp only [SimpleGraph.irrefl, dite_false]
   have symm : ∀ u v, cap u v = cap v u := by
     intro u v
-    if huv : (u, v) ∈ g.edges then
-      have huv_ne := g.edges_ne huv
-      have hvu := g.edges_symm huv
-      calc
-        cap u v = M huv_ne      := dif_pos huv
-        _       = M huv_ne.symm := by rw[hsymm]
-        _       = cap v u       := Eq.symm $ dif_pos hvu
+    if huv : g.val.Adj u v then
+      simp only [dite_true, huv, huv.symm, hsymm huv.ne]
     else
-      have hvu : (v, u) ∉ g.edges := by
-        by_contra h
-        exact huv $ g.edges_symm h
-      calc
-        cap u v = 0       := dif_neg huv
-        _       = cap v u := Eq.symm $ dif_neg hvu
+      have hvu : ¬g.val.Adj v u := huv ∘ SimpleGraph.Adj.symm
+      simp only [dite_false, huv, hvu]
 
   { cap, loopless, symm }
-
-@[simp]
-lemma mkFrom_cap_def
-    (hsymm : M.Symmetrical)
-    (g : Forest M)
-    (huv : (u, v) ∈ g.edges) :
-    (mkFrom M hsymm g).cap u v = M (g.edges_ne huv) := by
-  unfold mkFrom
-  aesop
 
 @[simp]
 lemma mkFrom_asSimpleGraph_eq
     (hsymm : M.Symmetrical)
     (g : Forest M) :
     (mkFrom M hsymm g).asSimpleGraph = g.val := by
-  let N := mkFrom M hsymm g
   ext u v
   constructor
   · intro h
-    unfold mkFrom at h
-    unfold UndirectedNetwork.asSimpleGraph at h
-    simp at h
-    have : (u, v) ∈ g.edges := by by_contra; aesop
-    simp_all only [Finset.mem_filter, Finset.mem_univ, ne_eq, true_and]
-  · intro h
-    suffices 0 < N.cap u v from this
-    have he : (u, v) ∈ g.edges := by simp_all only [ne_eq, Finset.mem_filter, Finset.mem_univ, and_self]
-    suffices 0 < M (g.edges_ne he) from by simp_all only [ne_eq, Finset.mem_filter, Finset.mem_univ, and_self, mkFrom_cap_def]
-    exact g.prop.right u v (g.edges_ne he) h
+    by_contra huv
+    simp only [mkFrom, UndirectedNetwork.asSimpleGraph, dite_false, huv] at h
+    contradiction
+  · intro huv
+    simp only [mkFrom, UndirectedNetwork.asSimpleGraph, dite_true, huv]
+    exact g.prop.right u v huv.ne huv
 
 theorem mkFrom_IsAcyclic
     (hsymm : M.Symmetrical)
@@ -325,7 +299,7 @@ lemma mkFrom_maxFlowValue_le_M
       rw[UndirectedNetwork.bottleneck.cons]
       calc min (N.cap u v) (N.bottleneck P)
         _ ≤ min (N.cap u v) (M hvw) := min_le_min_left _ ih
-        _ ≤ min (M huv) (M hvw)     := by aesop
+        _ = min (M huv) (M hvw)     := by have : N.cap u v = M huv := (by rw[mkFrom_asSimpleGraph_eq] at h_Adj; simp only [mkFrom, dite_true, h_Adj]); rw[this]
         _ ≤ M huw                   := htri u v w huv hvw huw
 
   exact triangle_along_path P
