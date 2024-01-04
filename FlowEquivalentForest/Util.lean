@@ -101,3 +101,8 @@ noncomputable instance [Fintype α] : Fintype (NonDiag α) := Fintype.ofInjectiv
   · exact congrArg Prod.fst h
   · exact congrArg Prod.snd h
 )
+
+instance [DecidableEq α] : DecidableEq (NonDiag α) := by
+  intro a b
+  rw[NonDiag.ext_iff]
+  exact And.decidable

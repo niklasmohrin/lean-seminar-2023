@@ -100,6 +100,21 @@ namespace Forest
               exact lt_of_lt_of_le h_M (Nat.min_le_right _ _)
           | Or.inr h => contradiction
 
+  lemma weight_eq_add_of_dartNonDiagFinset_eq_union
+      (g g' : Forest M)
+      {u v : V}
+      (huv : u ≠ v) :
+      let e₁ := NonDiag.mk (u, v) huv
+      let e₂ := NonDiag.mk (v, u) huv.symm
+      g'.val.dartNonDiagFinset = g.val.dartNonDiagFinset ∪ {e₁, e₂} →
+      Disjoint g.val.dartNonDiagFinset {e₁, e₂} →
+      g'.weight = g.weight + M huv + M huv.symm := by
+    intro e₁ e₂ h₁ h₂
+    unfold weight
+    have : e₁ ≠ e₂ := λ h => huv ((NonDiag.ext_iff ..).mp h).left
+    rw[h₁, Finset.sum_union h₂, Finset.sum_pair this]
+    linarith
+
   -- Adding an (undirected) edge increases the weight by the two corresponding matrix values.
   @[simp]
   lemma add_edge.weight_eq_add
@@ -108,7 +123,13 @@ namespace Forest
       (huv : u ≠ v)
       (h_M : 0 < min (M huv) (M huv.symm))
       (h_not_Reach : ¬g.val.Reachable u v) :
-      (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv + M huv.symm := sorry
+      (g.add_edge huv h_M h_not_Reach).weight = g.weight + M huv + M huv.symm := by
+    let g' := g.add_edge huv h_M h_not_Reach
+    let e₁ := NonDiag.mk (u, v) huv
+    let e₂ := NonDiag.mk (v, u) huv.symm
+    have h₁ : g'.val.dartNonDiagFinset = g.val.dartNonDiagFinset ∪ {e₁, e₂} := sorry
+    have h₂ : Disjoint g.val.dartNonDiagFinset {e₁, e₂} := sorry
+    exact weight_eq_add_of_dartNonDiagFinset_eq_union g g' huv h₁ h₂
 
   def remove_edge (g : Forest M) (u v : V) : Forest M where
     val := g.val.deleteEdges {⟦(u, v)⟧}
@@ -122,7 +143,20 @@ namespace Forest
   -- Removing an (undirected) edge decreases the weight by the two corresponding matrix values.
   @[simp]
   lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
-      (g.remove_edge u v).weight = g.weight - M h_Adj.ne - M h_Adj.ne.symm := sorry
+      (g.remove_edge u v).weight = g.weight - M h_Adj.ne - M h_Adj.ne.symm := by
+    let g' := g.remove_edge u v
+    suffices g.weight = (g.remove_edge u v).weight + M h_Adj.ne + M h_Adj.ne.symm by
+      rw[this]
+      rw[Nat.add_assoc]
+      conv => right; left; left; right; rw[Nat.add_comm] -- why do I have to do this? :(
+      rw[←Nat.add_assoc]
+      simp
+    let e₁ := NonDiag.mk (u, v) h_Adj.ne
+    let e₂ := NonDiag.mk (v, u) h_Adj.ne.symm
+    have h₁ : g.val.dartNonDiagFinset = g'.val.dartNonDiagFinset ∪ {e₁, e₂} := sorry
+    have h₂ : Disjoint g'.val.dartNonDiagFinset {e₁, e₂} := sorry
+    exact weight_eq_add_of_dartNonDiagFinset_eq_union g' g h_Adj.ne h₁ h₂
+
 end Forest
 
 abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
