@@ -95,12 +95,15 @@ theorem fintype_sum_sub_distrib_of_sub_nonneg
 structure NonDiag (α : Type*) extends (α × α) where
   ne : fst ≠ snd
 
-noncomputable instance [Fintype α] : Fintype (NonDiag α) := Fintype.ofInjective NonDiag.toProd (by
+lemma NonDiag.toProd_injective : Function.Injective (@NonDiag.toProd α) := by
   intro a b h
   ext
   · exact congrArg Prod.fst h
   · exact congrArg Prod.snd h
-)
+
+noncomputable instance [Fintype α] : Fintype (NonDiag α) := Fintype.ofInjective NonDiag.toProd NonDiag.toProd_injective
+
+lemma NonDiag.card_le [Fintype α] : Fintype.card (NonDiag α) ≤ Fintype.card (α × α) := Fintype.card_le_of_injective NonDiag.toProd NonDiag.toProd_injective
 
 instance [DecidableEq α] : DecidableEq (NonDiag α) := by
   intro a b

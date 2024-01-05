@@ -40,38 +40,39 @@ namespace Forest
   variable {M : PairMatrix V ℕ}
 
   instance {F : Forest M} : DecidableRel F.val.Adj := Classical.decRel _
+  instance {F : Forest M} : DecidablePred (λ (e : (V × V)) => F.val.Adj e.fst e.snd) := Classical.decPred _
 
   @[simp]
   def weight (F : Forest M) := ∑ e in F.val.dartNonDiagFinset, M e.ne
 
   lemma weight_bounded (M : PairMatrix V ℕ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
-    sorry
-    -- let M_max := Classical.choose M.bounded
-    -- use Fintype.card V * Fintype.card V * M_max
-    -- intro F
-    -- calc
-    --   F.weight = ∑ e : F.edges, M (F.edges_ne e.prop)    := by rfl
-    --   _        ≤ ∑ _e : F.edges, M_max                   := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
-    --   _        = (F.edges).card * M_max                  := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
-    --   _        ≤ Fintype.card V * Fintype.card V * M_max := by
-    --                                                           have : (F.edges).card ≤ (@Finset.univ (V × V)).card := Finset.card_filter_le _ _
-    --                                                           have : (F.edges).card ≤ Fintype.card (V × V) := by apply this
-    --                                                           have : (F.edges).card ≤ Fintype.card V * Fintype.card V := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Fintype.card_prod]
-                                                              -- exact Nat.mul_le_mul_right M_max this
+    let M_max := Classical.choose M.bounded
+    use Fintype.card V * Fintype.card V * M_max
+    intro F
+    calc
+      F.weight = ∑ e in F.val.dartNonDiagFinset, M (e.ne) := by rfl
+      _        ≤ ∑ _e in F.val.dartNonDiagFinset, M_max   := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
+      _        = (F.val.dartNonDiagFinset).card * M_max   := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
+      _        ≤ Fintype.card V * Fintype.card V * M_max  := by
+                                                              apply Nat.mul_le_mul_right M_max
+                                                              rw[←Fintype.card_prod, ←Finset.card_univ]
+                                                              apply le_trans $ Finset.card_le_of_subset $ Finset.subset_univ F.val.dartNonDiagFinset
+                                                              repeat rw[Finset.card_univ]
+                                                              exact NonDiag.card_le
 
   @[simp]
   lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne + M h_Adj.ne.symm ≤ g.weight := by
-    sorry
-    -- let e₁ : g.edges := { val := (u, v), property := mem_edges g h_Adj }
-    -- let e₂ : g.edges := { val := (v, u), property := mem_edges g h_Adj.symm }
-    -- let f (e : g.edges) := M $ g.edges_ne e.prop
-    -- simp only [weight, ge_iff_le]
-    -- refine @Finset.add_le_sum g.edges _ _ f _ e₁ e₂ ?_ ?_ ?_ ?_
-    -- · intro _ _
-    --   simp only [ge_iff_le, zero_le]
-    -- · simp only [Finset.univ_eq_attach, Finset.mem_attach]
-    -- · simp only [Finset.univ_eq_attach, Finset.mem_attach]
-    -- · aesop
+    unfold weight
+    let e₁ := NonDiag.mk (u, v) h_Adj.ne
+    let e₂ := NonDiag.mk (v, u) h_Adj.ne.symm
+    refine Finset.add_le_sum (N := ℕ) (f := λ e => M e.ne) (i := e₁) (j := e₂) ?_ ?_ ?_ ?_
+    · intro _ _
+      exact zero_le _
+    · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj, and_self]
+    · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj.symm, and_self]
+    · by_contra h
+      rw[NonDiag.ext_iff] at h
+      exact h_Adj.ne h.left
 
   -- constructs a new forest from g with the additional edge (u, v)
   def add_edge
