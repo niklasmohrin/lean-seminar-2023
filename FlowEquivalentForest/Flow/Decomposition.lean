@@ -34,9 +34,19 @@ def Flow.Path.nil (F : Flow Pr) : F.Path v v where
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Cycle (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCycle}
+def Flow.Cycle.cycle {F : Flow Pr} (c : F.Cycle v) : N.asSimpleGraph.Cycle v where
+  val := c.val.val
+  property := c.prop
 def Flow.CycleFree (F : Flow Pr) := ∀ v, IsEmpty (F.Cycle v)
 
-def Flow.remove_cycle (F : Flow Pr) (C : F.Cycle v) : Flow Pr := sorry
+
+noncomputable instance {F : Flow Pr} {p : F.Cycle s} {u v : V} : Decidable (contains_edge p.cycle u v) := Classical.dec _
+noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr where
+  f u v := F.f u v - (if contains_edge c.cycle u v then 1 else 0)
+  conservation := sorry
+  capacity u v := by
+    refine le_trans ?_ $ F.capacity u v
+    simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
 theorem Flow.remove_cycle.value (F : Flow Pr) (C : F.Cycle v) : (F.remove_cycle C).value = F.value := sorry
 def Flow.remove_all_cycles (F : Flow Pr) : Flow Pr := sorry
 theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := sorry
