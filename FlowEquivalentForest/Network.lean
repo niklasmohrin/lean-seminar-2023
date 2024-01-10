@@ -82,7 +82,7 @@ lemma UndirectedNetwork.bottleneck.le_dart
     {G : UndirectedNetwork V}
     (P : G.asSimpleGraph.NonemptyPath s t)
     {d : G.asSimpleGraph.Dart}
-    (hd : P.path.val.darts.contains d) :
-    G.bottleneck  P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
+    (hd : d ∈ P.path.val.darts) :
+    G.bottleneck P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
 
 end

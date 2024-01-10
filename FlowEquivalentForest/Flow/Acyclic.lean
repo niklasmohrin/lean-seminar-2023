@@ -26,7 +26,7 @@ theorem Flow.value_le_f
     let F' := F.remove_path p
     have hF' : F'.value = n := by linarith[Flow.remove_path.value F p, hF]
     have hf : F'.f u v + 1 = F.f u v := by
-      have hp : contains_edge p.path u v := ⟨d.is_adj, List.elem_iff.mpr (hd p.path)⟩
+      have hp : contains_edge p.path u v := ⟨d.is_adj, (hd p.path)⟩
       simp only [Flow.remove_path, hp, ite_true]
       have : F.f u v ≠ 0 := by
         by_contra h₀

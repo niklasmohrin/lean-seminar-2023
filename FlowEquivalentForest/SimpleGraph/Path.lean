@@ -11,8 +11,7 @@ class ContainsEdge (V : outParam Type*) (α : Type*) where
 
 @[simp]
 instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Walk s t) where
-  contains_edge P u v :=
-  ∃ h : G.Adj u v, P.darts.contains $ SimpleGraph.Dart.mk (u, v) h
+  contains_edge P u v := ∃ h : G.Adj u v, (SimpleGraph.Dart.mk (u, v) h) ∈ P.darts
 
 @[simp]
 instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Path s t) where

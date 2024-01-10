@@ -58,15 +58,13 @@ noncomputable def Flow.fromPath
     else
       have h_out u : f v u = 0 := by
         by_contra h_nonzero
-        have ⟨h_Adj, h_dart⟩  := contains_edge_from_nonzero h_nonzero
-        have : SimpleGraph.Dart.mk (v,u) h_Adj ∈ P.path.val.darts := List.mem_of_elem_eq_true h_dart
-        have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts _ this
+        have ⟨h_Adj, h_dart⟩ := contains_edge_from_nonzero h_nonzero
+        have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts _ h_dart
         simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop, exists_and_right, and_imp, implies_true, forall_const,not_true_eq_false]
       have h_in u : f u v = 0 := by
         by_contra h_nonzero
         have ⟨h_Adj, h_dart⟩  := contains_edge_from_nonzero h_nonzero
-        have : SimpleGraph.Dart.mk (u,v) h_Adj ∈ P.path.val.darts := List.mem_of_elem_eq_true h_dart
-        have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_snd_mem_support_of_mem_darts _ this
+        have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_snd_mem_support_of_mem_darts _ h_dart
         simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop, exists_and_right, and_imp, implies_true, forall_const,not_true_eq_false]
       calc
         flowOut f v = ∑ u : V, f v u := rfl
