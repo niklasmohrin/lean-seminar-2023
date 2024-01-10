@@ -107,8 +107,28 @@ noncomputable instance {F : Flow Pr} {p : F.Path s t} {u v : V} : Decidable (con
 @[simp]
 noncomputable def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr where
   f u v := F.f u v - (if contains_edge p.path u v then 1 else 0)
-  conservation := sorry
-  capacity := sorry
+  conservation v := by
+    have hf' a b : (if contains_edge p.path a b then 1 else 0) ≤ F.f a b := sorry
+
+    intro hv
+    rw[flowOut, flowIn, fintype_sum_sub_distrib_of_sub_nonneg (hf' v ·), fintype_sum_sub_distrib_of_sub_nonneg (hf' · v)]
+
+    suffices (∑ u, if contains_edge p.path u v then 1 else 0) = (∑ w, if contains_edge p.path v w then 1 else 0) by
+      rw[this]
+      have := F.conservation v hv
+      rw[flowOut, flowIn] at this
+      rw[this]
+
+    if hp : v ∈ p.path.val.support then
+      obtain ⟨u, hu_pred, hu_uniq⟩ := p.path.pred_exists hp hv.left
+      obtain ⟨w, hw_succ, hw_uniq⟩ := p.path.succ_exists hp hv.right
+
+      sorry -- both sides are equal to 1
+    else
+      sorry -- both sides are equal to 0
+  capacity u v := by
+    refine le_trans ?_ $ F.capacity u v
+    simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
 
 theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) : (F.remove_path p).value + 1 = F.value := sorry
 
