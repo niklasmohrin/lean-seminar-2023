@@ -6,6 +6,10 @@ import Mathlib.Logic.Basic
 
 abbrev SimpleGraph.Cycle {G : SimpleGraph V} (v : V) := { p : G.Walk v v // p.IsCycle }
 
+def SimpleGraph.Cycle.reverse {G : SimpleGraph V} (c : G.Cycle v) : G.Cycle v where
+  val := c.val.reverse
+  property := by sorry
+
 class ContainsEdge (V : outParam Type*) (α : Type*) where
   contains_edge : α → V → V → Prop
 
@@ -14,7 +18,7 @@ instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdg
   contains_edge P u v := ∃ h : G.Adj u v, (SimpleGraph.Dart.mk (u, v) h) ∈ P.darts
 
 @[simp]
-instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Path s t) where
+instance instPathContainsEdge {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Path s t) where
   contains_edge P := ContainsEdge.contains_edge P.val
 
 @[simp]
@@ -51,12 +55,29 @@ lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.
 
 
 @[simp]
-lemma contains_edge.mem_reverse {G : SimpleGraph V} {P : G.Path s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
+lemma Walk.reverse.contains_edge {G : SimpleGraph V} {P : G.Walk s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
   obtain ⟨h', h''⟩ := h
   use h'.symm
+  simp_all only [List.elem_iff, SimpleGraph.Walk.darts_reverse, List.mem_reverse,
+    List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
+    SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
+
+@[simp]
+lemma Path.reverse.contains_edge {G : SimpleGraph V} {P : G.Path s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
+  obtain ⟨h', h''⟩ := h
+  use h'.symm
+
+  -- should be trivial with Walk.reverse.contains_edge
   simp_all only [List.elem_iff, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.darts_reverse, List.mem_reverse,
     List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
     SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
+
+@[simp]
+lemma Cycle.reverse.contains_edge {G : SimpleGraph V} {P : G.Cycle s} (h : contains_edge P u v) : contains_edge P.reverse v u := by
+  obtain ⟨h', h''⟩ := h
+  use h'.symm
+  sorry
+
 
 lemma SimpleGraph.Walk.mem_edges_of_mem_darts {p : G.Walk s t} {d : G.Dart} (hd : d ∈ p.darts) : d.edge ∈ p.edges := by
   simp only [SimpleGraph.Walk.edges, List.mem_map]
@@ -240,9 +261,9 @@ lemma SimpleGraph.Path.succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (
   obtain ⟨w, hw⟩ := SimpleGraph.Path.pred_exists hpr ht
   use w
   constructor
-  · exact P.reverse_reverse ▸ contains_edge.mem_reverse hw.left
+  · exact P.reverse_reverse ▸ Path.reverse.contains_edge hw.left
   · intro y hy
-    exact hw.right y (contains_edge.mem_reverse hy)
+    exact hw.right y (Path.reverse.contains_edge hy)
 
 lemma SimpleGraph.Cycle.pred_exists {P : G.Cycle s} (hp: v ∈ P.val.support) :
     ∃! u, contains_edge P u v := by
