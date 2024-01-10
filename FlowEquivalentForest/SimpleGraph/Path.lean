@@ -218,7 +218,7 @@ lemma SimpleGraph.Path.no_two_incoming {G : SimpleGraph V} (P : G.Path s t) (a1 
       sorry
     · aesop
 
-lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s) :
+lemma pred_exists {P : G.Path s t} (hp : v ∈ P.val.support) (hs : v ≠ s) :
     ∃! u, contains_edge P u v := by
   induction P using SimpleGraph.Path.ind with
   | base u P => aesop -- Path u u contradicts hs and hp
@@ -234,10 +234,10 @@ lemma pred_exists {P : G.Path s t} (hp : P.val.support.contains v) (hs : v ≠ s
 
 
 
-lemma succ_exists {P : G.Path s t} (hp : P.val.support.contains v) (ht : v ≠ t) :
+lemma succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (ht : v ≠ t) :
     ∃! w, contains_edge P v w := by
   let Pr : G.Path t s := P.reverse
-  have hpr : Pr.val.support.contains v := by
+  have hpr : v ∈ Pr.val.support := by
     simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
   obtain ⟨w, hw⟩ := pred_exists hpr ht
   use w
