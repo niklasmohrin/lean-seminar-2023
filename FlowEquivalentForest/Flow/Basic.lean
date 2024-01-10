@@ -21,7 +21,7 @@ variable { G : Network V }
 def flowIn (f : V → V → ℕ) (v : V) := ∑ u, f u v
 
 @[simp]
-def flowOut (f : V → V → ℕ) (v : V) := ∑ u, f v u
+def flowOut (f : V → V → ℕ) (v : V) := ∑ w, f v w
 
 @[ext]
 structure Flow (P : FlowProblem G) where
