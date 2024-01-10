@@ -22,7 +22,7 @@ abbrev Flow.Walk (F : Flow Pr) (u v : V) :=
 
 def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
   val := SimpleGraph.Walk.nil
-  property := sorry
+  property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
 def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
@@ -30,7 +30,7 @@ def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v whe
   property := p.prop
 def Flow.Path.nil (F : Flow Pr) : F.Path v v where
   val := Flow.Walk.nil
-  property := sorry
+  property := SimpleGraph.Walk.IsPath.nil
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Cycle (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCycle}
