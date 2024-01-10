@@ -1,6 +1,7 @@
 import FlowEquivalentForest.Flow.Basic
 
 open BigOperators
+open ContainsEdge
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 

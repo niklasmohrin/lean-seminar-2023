@@ -1,5 +1,8 @@
+import FlowEquivalentForest.SimpleGraph.Path
 import FlowEquivalentForest.Flow.Decomposition
 import FlowEquivalentForest.Flow.Path
+
+open ContainsEdge
 
 variable {V : Type*} [Fintype V] [Nonempty V] [DecidableEq V]
 variable {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork}

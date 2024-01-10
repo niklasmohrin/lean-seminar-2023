@@ -4,6 +4,24 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 import Mathlib.Logic.Basic
 
+abbrev SimpleGraph.Cycle {G : SimpleGraph V} (v : V) := { p : G.Walk v v // p.IsCycle }
+
+class ContainsEdge (V : outParam Type*) (α : Type*) where
+  contains_edge : α → V → V → Prop
+
+@[simp]
+instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Walk s t) where
+  contains_edge P u v :=
+  ∃ h : G.Adj u v, P.darts.contains $ SimpleGraph.Dart.mk (u, v) h
+
+@[simp]
+instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Path s t) where
+  contains_edge P := ContainsEdge.contains_edge P.val
+
+@[simp]
+instance {V : Type*} [DecidableEq V] {v : V} {G : SimpleGraph V} : ContainsEdge V (G.Cycle v) where
+  contains_edge P := ContainsEdge.contains_edge P.val
+
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
 
@@ -25,9 +43,7 @@ lemma Walk_darts_Nonempty_from_ne
   apply List.ne_nil_of_length_pos
   simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
 
-@[simp]
-def contains_edge {G : SimpleGraph V} (P : G.Path s t) (u v : V) :=
-  ∃ h : G.Adj u v, P.val.darts.contains $ SimpleGraph.Dart.mk (u, v) h
+open ContainsEdge
 
 @[simp]
 lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.reverse.reverse = P := by
@@ -59,7 +75,7 @@ def SimpleGraph.Adj.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w
   val := SimpleGraph.Walk.cons h_Adj P.val
   property := SimpleGraph.Walk.IsPath.cons P.property hu
 
-lemma SimpleGraph.Path.cons.darts {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w) (hu : u ∉ P.val.support) : (h_Adj.cons P hu).val.darts = Dart.mk (u,v) h_Adj :: P.val.darts := rfl 
+lemma SimpleGraph.Path.cons.darts {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.Path v w) (hu : u ∉ P.val.support) : (h_Adj.cons P hu).val.darts = Dart.mk (u,v) h_Adj :: P.val.darts := rfl
 
 /-
 Induction on paths.
