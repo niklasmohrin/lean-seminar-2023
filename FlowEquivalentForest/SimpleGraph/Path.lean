@@ -218,7 +218,7 @@ lemma SimpleGraph.Path.no_two_incoming {G : SimpleGraph V} (P : G.Path s t) (a1 
       sorry
     · aesop
 
-lemma pred_exists {P : G.Path s t} (hp : v ∈ P.val.support) (hs : v ≠ s) :
+lemma SimpleGraph.Path.pred_exists {P : G.Path s t} (hp : v ∈ P.val.support) (hs : v ≠ s) :
     ∃! u, contains_edge P u v := by
   induction P using SimpleGraph.Path.ind with
   | base u P => aesop -- Path u u contradicts hs and hp
@@ -233,18 +233,25 @@ lemma pred_exists {P : G.Path s t} (hp : v ∈ P.val.support) (hs : v ≠ s) :
     · aesop
 
 
-
-lemma succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (ht : v ≠ t) :
+lemma SimpleGraph.Path.succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (ht : v ≠ t) :
     ∃! w, contains_edge P v w := by
   let Pr : G.Path t s := P.reverse
   have hpr : v ∈ Pr.val.support := by
     simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
-  obtain ⟨w, hw⟩ := pred_exists hpr ht
+  obtain ⟨w, hw⟩ := SimpleGraph.Path.pred_exists hpr ht
   use w
   constructor
   · exact P.reverse_reverse ▸ contains_edge.mem_reverse hw.left
   · intro y hy
     exact hw.right y (contains_edge.mem_reverse hy)
+
+lemma SimpleGraph.Cycle.pred_exists {P : G.Cycle s} (hp: v ∈ P.val.support) :
+    ∃! u, contains_edge P u v := by
+  sorry
+
+lemma SimpleGraph.Cycle.succ_exists {P : G.Cycle s} (hp: u ∈ P.val.support) :
+    ∃! v, contains_edge P u v := by
+  sorry
 
 lemma no_pred_first (P : G.Path s t) : ¬contains_edge P u s := by
   have h0 : P.val.support.indexOf s = 0 := by

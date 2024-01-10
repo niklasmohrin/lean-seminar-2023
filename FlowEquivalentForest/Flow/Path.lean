@@ -1,4 +1,5 @@
 import FlowEquivalentForest.Flow.Basic
+import FlowEquivalentForest.SimpleGraph.Path
 
 open BigOperators
 open ContainsEdge
@@ -21,8 +22,8 @@ noncomputable def Flow.fromPath
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
     intro hv
     if hp : v ∈ P.path.val.support then
-      obtain ⟨u, hu_pred, hu_uniq⟩ := pred_exists hp hv.left
-      obtain ⟨w, hw_succ, hw_uniq⟩ := succ_exists hp hv.right
+      obtain ⟨u, hu_pred, hu_uniq⟩ := P.path.pred_exists hp hv.left
+      obtain ⟨w, hw_succ, hw_uniq⟩ := P.path.succ_exists hp hv.right
 
       let us := Finset.filter (contains_edge · v) Finset.univ
       have us_singleton : us = {u} := Finset.eq_singleton_iff_unique_mem.mpr ⟨Finset.mem_filter.mpr ⟨Finset.mem_univ u, hu_pred⟩, fun x hx => hu_uniq x (Finset.mem_filter.mp hx).right⟩
@@ -99,7 +100,7 @@ lemma Flow.fromPath.value_eq_bottleneck
     suffices ¬contains_edge P.path u Pr.s by simp_all only [fromPath, contains_edge, ite_false]
     exact no_pred_first P.path
 
-  obtain ⟨v, hv⟩ := succ_exists (SimpleGraph.Walk.start_mem_support P.path.val) P.ne
+  obtain ⟨v, hv⟩ := P.path.succ_exists (SimpleGraph.Walk.start_mem_support P.path.val) P.ne
   have h_out_succ : F.f Pr.s v = b := by simp only [fromPath, hv.left, ite_true]
   have h_out : flowOut F.f Pr.s = b := by
     rw[←h_out_succ]
