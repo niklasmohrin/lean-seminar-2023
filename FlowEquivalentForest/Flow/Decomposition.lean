@@ -108,7 +108,13 @@ noncomputable instance {F : Flow Pr} {p : F.Path s t} {u v : V} : Decidable (con
 noncomputable def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr where
   f u v := F.f u v - (if contains_edge p.path u v then 1 else 0)
   conservation v := by
-    have hf' a b : (if contains_edge p.path a b then 1 else 0) ≤ F.f a b := sorry
+    have hf' a b : (if contains_edge p.path a b then 1 else 0) ≤ F.f a b := by
+      wlog h : contains_edge p.path a b
+      · simp only [ite_false, h, zero_le]
+      simp only [ite_true, h, Nat.succ_le]
+      obtain ⟨_, h_dart⟩ := h
+      have := (Multiset.count_pos (s := p.val.val.dart_counts)).mpr h_dart
+      exact lt_of_lt_of_le this (p.val.prop _)
 
     intro hv
     rw[flowOut, flowIn, fintype_sum_sub_distrib_of_sub_nonneg (hf' v ·), fintype_sum_sub_distrib_of_sub_nonneg (hf' · v)]
