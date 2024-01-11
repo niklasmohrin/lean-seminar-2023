@@ -131,65 +131,6 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
     simp [F₂.capacity]
     simp only [zero_le]
 
-def Flow.edge (P : FlowProblem G) {u v : V} (h_cap : 0 < min (G.cap u v) (G.cap v u)) : Flow P where
-  f a b := if a = u ∧ b = v ∨ a = v ∧ b = u then 1 else 0
-  conservation := by
-    intro w _
-    simp [flowOut, flowIn]
-    have : Finset.filter (fun x ↦ w = u ∧ x = v ∨ w = v ∧ x = u) Finset.univ = Finset.filter (fun x ↦ x = u ∧ w = v ∨ x = v ∧ w = u) Finset.univ := by
-      simp [Finset.filter_or, Finset.filter_and]
-      ext
-      apply Iff.intro
-      split
-      split
-      intro h
-      simp at h ⊢
-      exact h.symm
-      intro h
-      simp at h ⊢
-      exact h
-      split
-      intro h
-      simp at h ⊢
-      exact h
-      intro h
-      simp at h ⊢
-      split
-      split
-      intro h
-      simp at h ⊢
-      exact h.symm
-      intro h
-      simp at h ⊢
-      exact h
-      split
-      intro h
-      simp at h ⊢
-      exact h
-      intro h
-      simp at h ⊢
-    rw [this]
-  capacity := by
-    intro a b
-    simp
-    split
-    have h : a = u ∧ b = v ∨ a = v ∧ b = u := by assumption
-    rcases h with h' | h'
-    rw [h'.1, h'.2]
-    simp at h_cap
-    exact h_cap.1
-    rw [h'.1, h'.2]
-    simp at h_cap
-    exact h_cap.2
-    simp_all only [ge_iff_le, lt_min_iff, zero_le]
-
-lemma edge_flow_value_zero
-    (P : FlowProblem G)
-    {u v : V}
-    (h_cap : 0 < min (G.cap u v) (G.cap v u)) :
-    (Flow.edge P h_cap).value = 0 := by
-  sorry
-
 lemma maxFlow_eq_zero_from_not_Reachable
     (G : UndirectedNetwork V)
     {u v : V}
