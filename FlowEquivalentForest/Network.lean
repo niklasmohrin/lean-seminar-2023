@@ -83,7 +83,12 @@ lemma UndirectedNetwork.bottleneck.le_dart
     (P : G.asSimpleGraph.NonemptyPath s t)
     {d : G.asSimpleGraph.Dart}
     (hd : d ∈ P.path.val.darts) :
-    G.bottleneck P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
+    G.bottleneck P ≤ G.cap d.toProd.fst d.toProd.snd := by
+  apply Finset.min'_le
+  rw[Finset.mem_image]
+  use d
+  rw[List.mem_toFinset]
+  exact ⟨hd, rfl⟩
 
 lemma UndirectedNetwork.exists_bottleneck_dart
     {N : UndirectedNetwork V}
