@@ -131,12 +131,6 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
     simp [F₂.capacity]
     simp only [zero_le]
 
-lemma maxFlow_eq_zero_from_not_Reachable
-    (G : UndirectedNetwork V)
-    {u v : V}
-    (h : ¬G.asSimpleGraph.Reachable u v) :
-  G.maxFlowValue u v = 0 := sorry
-
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
 

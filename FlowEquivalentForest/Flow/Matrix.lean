@@ -300,7 +300,7 @@ lemma mkFrom_maxFlowValue_le_M
     (mkFrom M hsymm g).maxFlowValue u v ≤ M huv := by
   let N := mkFrom M hsymm g
   wlog h_Reachable : N.asSimpleGraph.Reachable u v
-  · linarith[maxFlow_eq_zero_from_not_Reachable N h_Reachable]
+  · linarith[N.maxFlow_eq_zero_of_not_reachable h_Reachable]
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}

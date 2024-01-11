@@ -175,6 +175,17 @@ noncomputable def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow P
 
 theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) : (F.remove_path p).value + 1 = F.value := sorry
 
+lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
+    (N : UndirectedNetwork V)
+    {u v : V}
+    (h : ¬N.asSimpleGraph.Reachable u v) :
+    N.maxFlowValue u v = 0 := by
+  let Pr : FlowProblem N.toNetwork := { s := u, t := v }
+  by_contra hN
+  obtain ⟨F, hF⟩ := Pr.maxFlow_exists
+  have : F.value ≠ 0 := λ h_zero => hN $ h_zero ▸ hF.symm
+  exact h $ (F.exists_path_of_value_nonzero this).path.val.reachable
+
 -- Not needed for our theorem, but maybe fun
 -- def Flow.path_decomposition (F : Flow Pr) : Multiset (F.Path Pr.s Pr.t) := sorry
 -- theorem Flow.path_decomposition.f_eq_path_count (F : Flow Pr) :
