@@ -6,9 +6,14 @@ import Mathlib.Logic.Basic
 
 abbrev SimpleGraph.Cycle {G : SimpleGraph V} (v : V) := { p : G.Walk v v // p.IsCycle }
 
+theorem SimpleGraph.Walk.IsCycle.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCycle) : p.reverse.IsCycle where
+  edges_nodup := by rw[edges_reverse, List.nodup_reverse]; exact h.edges_nodup
+  ne_nil := sorry
+  support_nodup := sorry
+
 def SimpleGraph.Cycle.reverse {G : SimpleGraph V} (c : G.Cycle v) : G.Cycle v where
   val := c.val.reverse
-  property := by sorry
+  property := c.prop.reverse
 
 class ContainsEdge (V : outParam Type*) (α : Type*) where
   contains_edge : α → V → V → Prop
