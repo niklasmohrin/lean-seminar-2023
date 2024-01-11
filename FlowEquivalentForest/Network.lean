@@ -93,6 +93,11 @@ lemma UndirectedNetwork.bottleneck.le_dart
 lemma UndirectedNetwork.exists_bottleneck_dart
     {N : UndirectedNetwork V}
     (P : N.asSimpleGraph.NonemptyPath s t) :
-    ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := sorry
+    ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := by
+  obtain ⟨d, hd₁, hd₂⟩ := Finset.mem_image.mp (Finset.min'_mem (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)) (by
+    apply (Finset.Nonempty.image_iff _).mpr
+    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
+  ))
+  exact ⟨d, List.mem_toFinset.mp hd₁, hd₂⟩
 
 end
