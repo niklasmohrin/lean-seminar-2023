@@ -70,17 +70,46 @@ noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr wher
           exact False.elim (h (Finset.mem_univ _))
 
       have h2 : (∑ w : V, if contains_edge (Cycle.cycle c) v w then 1 else 0) = 1 := by
-        -- have : (v ∈ c.cycle.val.support) → v ∈ c.cycle.reverse.val.support := by
-        --   aesop
-        have := SimpleGraph.Walk.support_reverse c.cycle.val
-        rw [← List.mem_reverse, ← this] at hp
-        -- rw [Cycle.reverse.contains_edge c.cycle]
-        -- exact h c.cycle.reverse hp
+        obtain ⟨u, hu_pred, hu_uniq⟩ := c.pred_exists hp
+        have h1 : (if contains_edge c u v then 1 else 0) = 1 := by
+          simp only [hu_pred, ite_true]
+        nth_rw 2 [← h1]
+        refine Finset.sum_eq_single (β := ℕ) (a := u) ?_ ?_
+        · intro b hb0 hb1
+          have : ¬contains_edge c b v := by
+            intro h
+            exact hb1 (hu_uniq b h)
+          simp only [this, ite_false]
+        · intro h
+          exact False.elim (h (Finset.mem_univ _))
         sorry
 
       rw [h c.cycle hp, h2] -- both sides are equal to 1
     else
-      sorry -- both sides are equal to 0
+      have h {G : SimpleGraph V} (c : G.Cycle s) (hp : v ∉ c.val.support) : (∑ u : V, if contains_edge c u v then 1 else 0) = 0 := by
+        have h1 : ∀ u, (if contains_edge c u v then 1 else 0) = 0 := by
+          intro u
+          have (h : contains_edge c u v) : v ∈ c.val.support := by
+            have ⟨h_Adj, h_dart⟩ := h
+            have : v ∈ c.val.support := SimpleGraph.Walk.dart_snd_mem_support_of_mem_darts _ h_dart
+            exact this
+          by_contra
+          simp_all only [instContainsEdgeCycle, instContainsEdgeWalk, ne_eq, forall_exists_index, imp_false,
+            exists_false, ite_false, not_true_eq_false]
+
+      have h2 {G : SimpleGraph V} (c : G.Cycle s) (hp : v ∉ c.val.support) : (∑ w : V, if contains_edge c v w then 1 else 0) = 0 := by
+        have h1 : ∀ w, (if contains_edge c v w then 1 else 0) = 0 := by
+          intro w
+          have (h : contains_edge c v w) : v ∈ c.val.support := by
+            have ⟨h_Adj, h_dart⟩ := h
+            have : v ∈ c.val.support := SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts _ h_dart
+            exact this
+          by_contra
+          simp_all only [instContainsEdgeCycle, instContainsEdgeWalk, ne_eq, Finset.sum_eq_zero_iff, Finset.mem_univ,
+            forall_true_left, Subtype.forall, ite_eq_right_iff, one_ne_zero, forall_exists_index, imp_false,
+            exists_false, ite_false, not_true_eq_false]
+
+      rw [h c.cycle hp, h2 c.cycle hp]
   capacity u v := by
     refine le_trans ?_ $ F.capacity u v
     simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
