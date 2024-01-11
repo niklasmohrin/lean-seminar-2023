@@ -106,4 +106,3 @@ theorem addEdges_isAcyclic_of_not_reachable
         -- it. I can maybe be transferred back to g, where it would then
         -- be a contradiction to g being a forest.
         sorry
-

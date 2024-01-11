@@ -85,4 +85,9 @@ lemma UndirectedNetwork.bottleneck.le_dart
     (hd : d ∈ P.path.val.darts) :
     G.bottleneck P ≤ G.cap d.toProd.fst d.toProd.snd := by sorry
 
+lemma UndirectedNetwork.exists_bottleneck_dart
+    {N : UndirectedNetwork V}
+    (P : N.asSimpleGraph.NonemptyPath s t) :
+    ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := sorry
+
 end
