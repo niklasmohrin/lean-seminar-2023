@@ -6,10 +6,20 @@ import Mathlib.Logic.Basic
 
 abbrev SimpleGraph.Cycle {G : SimpleGraph V} (v : V) := { p : G.Walk v v // p.IsCycle }
 
+lemma SimpleGraph.Walk.reverse_ne_nil {G : SimpleGraph V} {p : G.Walk v v} (h : p ≠ nil) : p.reverse ≠ nil :=
+  λ h_nil => h $ reverse_nil ▸ SimpleGraph.Walk.reverse_reverse p ▸ congrArg SimpleGraph.Walk.reverse h_nil
+
 theorem SimpleGraph.Walk.IsCycle.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCycle) : p.reverse.IsCycle where
   edges_nodup := by rw[edges_reverse, List.nodup_reverse]; exact h.edges_nodup
-  ne_nil := sorry
-  support_nodup := sorry
+  ne_nil := SimpleGraph.Walk.reverse_ne_nil h.ne_nil
+  support_nodup := by
+    suffices List.Perm p.support.tail p.reverse.support.tail from
+      (List.Perm.nodup_iff this).mp h.support_nodup
+
+    suffices List.Perm p.support p.reverse.support by
+      rwa[support_eq_cons p, support_eq_cons p.reverse, List.perm_cons] at this
+
+    exact Walk.support_reverse _ ▸ (List.reverse_perm p.support).symm
 
 def SimpleGraph.Cycle.reverse {G : SimpleGraph V} (c : G.Cycle v) : G.Cycle v where
   val := c.val.reverse
