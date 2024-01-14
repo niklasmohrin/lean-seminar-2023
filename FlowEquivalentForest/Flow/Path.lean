@@ -9,13 +9,14 @@ variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 noncomputable def Flow.fromPath
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
-    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t) :
+    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (x : ℕ)
+    (hx : x ≤ G.bottleneck P) :
     Flow Pr :=
   let contains_edge := contains_edge P.path
   have {u v} : Decidable (contains_edge u v) := Classical.dec _
 
-  let b := G.bottleneck P
-  let f u v : ℕ := if contains_edge u v then b else 0
+  let f u v : ℕ := if contains_edge u v then x else 0
 
   have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, not_exists, exists_false, ite_false, not_true_eq_false]
 
@@ -49,7 +50,7 @@ noncomputable def Flow.fromPath
         _           = (∑ w' in ws, f v w') + (∑ w' in wsᶜ, f v w') := (Finset.sum_add_sum_compl ws _).symm
         _           = ∑ w' in ws, f v w'                           := add_right_eq_self.mpr sum_wsc_zero
         _           = f v w                                        := by rw[ws_singleton, Finset.sum_singleton]
-        _           = b                                            := if_pos hw_succ
+        _           = x                                            := if_pos hw_succ
         _           = f u v                                        := (if_pos hu_pred).symm
         _           = ∑ u' in us, f u' v                           := by rw[us_singleton, Finset.sum_singleton]
         _           = (∑ u' in us, f u' v) + (∑ u' in usᶜ, f u' v) := (add_right_eq_self.mpr sum_usc_zero).symm
@@ -74,8 +75,8 @@ noncomputable def Flow.fromPath
   have capacity u v : f u v ≤ G.cap u v := by
     if he : contains_edge u v then
       calc
-        f u v = b                := by simp only [he, ite_true]
-        _     = G.bottleneck P := rfl
+        f u v = x                := by simp only [he, ite_true]
+        _     ≤ G.bottleneck P   := hx
         _     ≤ G.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
     else
       have : f u v = 0 := by simp only [he, ite_false]
@@ -84,13 +85,14 @@ noncomputable def Flow.fromPath
   { f, conservation, capacity }
 
 @[simp]
-lemma Flow.fromPath.value_eq_bottleneck
+lemma Flow.fromPath_value
     {G : UndirectedNetwork V}
     {Pr : FlowProblem G.toNetwork}
-    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t) :
-    (Flow.fromPath P).value = G.bottleneck P := by
-  let F := Flow.fromPath P
-  let b := G.bottleneck P
+    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (x : ℕ)
+    (hx : x ≤ G.bottleneck P) :
+    (Flow.fromPath P x hx).value = x := by
+  let F := Flow.fromPath P x hx
 
   have h_in : flowIn F.f Pr.s = 0 := by
     simp only [flowIn, Finset.sum_eq_zero_iff, Finset.mem_univ, forall_true_left]
@@ -99,8 +101,8 @@ lemma Flow.fromPath.value_eq_bottleneck
     exact no_pred_first P.path
 
   obtain ⟨v, hv⟩ := P.path.succ_exists (SimpleGraph.Walk.start_mem_support P.path.val) P.ne
-  have h_out_succ : F.f Pr.s v = b := by simp only [fromPath, hv.left, ite_true]
-  have h_out : flowOut F.f Pr.s = b := by
+  have h_out_succ : F.f Pr.s v = x := by simp only [fromPath, hv.left, ite_true]
+  have h_out : flowOut F.f Pr.s = x := by
     rw[←h_out_succ]
     apply Finset.sum_eq_single
     · intro v' _ hne

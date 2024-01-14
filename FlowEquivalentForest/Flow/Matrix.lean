@@ -282,8 +282,8 @@ lemma mkFrom_M_le_maxFlowValue
 
   -- Now that we know that the capacity along the path is big enough, we
   -- construct the flow.
-  use Flow.fromPath P
-  rw[Flow.fromPath.value_eq_bottleneck]
+  use Flow.fromPath P (N.bottleneck P) (le_refl _)
+  rw[Flow.fromPath_value]
   simp only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro d hd
   apply le_trans $ M_huv_le d hd

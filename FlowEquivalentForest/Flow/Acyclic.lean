@@ -50,7 +50,7 @@ theorem Acyclic_Path_maxflow_eq_bottleneck
 
   suffices G.maxFlowValue u v ≤ G.bottleneck P by
     refine Nat.le_antisymm this ?_
-    have := Flow.fromPath.value_eq_bottleneck (Pr := Pr) P
+    have := Flow.fromPath_value (Pr := Pr) P (G.bottleneck P) (le_refl _)
     rw[←this]
     apply Finset.le_max'
     simp only [Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
