@@ -29,6 +29,8 @@ structure Flow (P : FlowProblem G) where
   conservation : ∀ v, v ≠ P.s ∧ v ≠ P.t → flowOut f v = flowIn f v
   capacity : ∀ u v, f u v ≤ G.cap u v
 
+def Flow.Backward {Pr : FlowProblem G} (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
+
 def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
   f _ _ := 0
   conservation := by aesop
@@ -94,14 +96,14 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
     exact F.capacity v u
   ⟩⟩
 
-instance {P : FlowProblem G} : HasSubset (Flow P) := ⟨fun F₁ F₂ => ∀ {u v : V}, F₁.f u v ≤ F₂.f u v⟩
+instance {P : FlowProblem G} : HasSubset (Flow P) := ⟨fun F₁ F₂ => ∀ u v : V, F₁.f u v ≤ F₂.f u v⟩
 
 instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => f.value ≤ g.value⟩
 
 @[simp]
 lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
   intro u v h
-  exact lt_of_lt_of_le h h_le
+  exact lt_of_lt_of_le h (h_le ..)
 
 def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : Flow P where
   f := F₂.f - F₁.f
@@ -111,12 +113,12 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
     have : ∑ x : V, (f F₂ v x - f F₁ v x) = ∑ x : V, f F₂ v x - ∑ x : V, f F₁ v x := by
       apply fintype_sum_sub_distrib_of_sub_nonneg
       intro x
-      exact h_le
+      exact h_le ..
     rw [this]
     have : ∑ x : V, (f F₂ x v - f F₁ x v) = ∑ x : V, f F₂ x v - ∑ x : V, f F₁ x v := by
       apply fintype_sum_sub_distrib_of_sub_nonneg
       intro x
-      exact h_le
+      exact h_le ..
     rw [this]
     have h₁ := F₁.conservation v h_v_ne_st
     have h₂ := F₂.conservation v h_v_ne_st
@@ -131,9 +133,33 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
     simp [F₂.capacity]
     simp only [zero_le]
 
+-- This is the first time that we have a problem with flows possibly being backwards:
+-- If
+-- a) F₂ has value 2 along a path from s to t and value 1 along a path from t to s, and
+-- b) F₁                                      has value 1 along a path from t to s,
+-- then subtracting F₁ from F₂ yields a flow with value 3, but the formula here would suggest 2,
+-- because in natural numbers, the value of F₁ is 0 (while it would be -1 in the integers).
+theorem Flow.sub_value
+    {Pr : FlowProblem G}
+    {F₁ F₂ : Flow Pr}
+    (hle : F₁ ⊆ F₂)
+    (hF₁ : ¬F₁.Backward) :
+    (Flow.sub hle).value = F₂.value - F₁.value := by
+  simp[value, sub]
+  rw[fintype_sum_sub_distrib_of_sub_nonneg (hle Pr.s ·)]
+  rw[fintype_sum_sub_distrib_of_sub_nonneg (hle · Pr.s)]
+  rw[Nat.sub_sub, Nat.sub_sub]
+  have hle_flowIn: ∑ u : V, f F₁ u Pr.s ≤ ∑ u : V, f F₂ u Pr.s := Finset.sum_le_sum (λ u _ => hle ..)
+  rw[←Nat.add_sub_assoc hle_flowIn]
+  rw[Nat.add_comm]
+  unfold Backward flowIn flowOut at hF₁
+  rw[←Nat.add_sub_assoc (le_of_not_lt hF₁)]
+
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
 
 lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
   intro u v
   simp only [FlowProblem.nullFlow, zero_le]
+
+lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by sorry

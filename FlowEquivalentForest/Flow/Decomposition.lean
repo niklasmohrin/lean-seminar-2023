@@ -137,7 +137,7 @@ def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Wal
     intro d
     calc
       Multiset.count d p.val.dart_counts ≤ F.f d.fst d.snd  := p.prop d
-      _                                  ≤ F'.f d.fst d.snd := h
+      _                                  ≤ F'.f d.fst d.snd := h ..
 
 def Flow.Walk.transfer.val {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : (p.transfer h).val = p.val := rfl
 
