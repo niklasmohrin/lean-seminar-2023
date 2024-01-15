@@ -4,11 +4,12 @@ import FlowEquivalentForest.SimpleGraph.Path
 open BigOperators
 open ContainsEdge
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
+variable
+  {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
+  {G : UndirectedNetwork V}
+  {Pr : FlowProblem G.toNetwork}
 
 noncomputable def Flow.fromPath
-    {G : UndirectedNetwork V}
-    {Pr : FlowProblem G.toNetwork}
     (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℕ)
     (hx : x ≤ G.bottleneck P) :
@@ -84,10 +85,22 @@ noncomputable def Flow.fromPath
 
   { f, conservation, capacity }
 
+lemma Flow.fromPath_not_backward
+    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (x : ℕ)
+    (hx : x ≤ G.bottleneck P) :
+    ¬(fromPath P x hx).Backward := by
+  unfold Backward
+  rw[not_lt]
+
+  suffices flowIn (fromPath P x hx).f Pr.s = 0 by linarith[this]
+  apply Finset.sum_eq_zero
+  intro u _
+  have : ¬contains_edge P.path u Pr.s := no_pred_first P.path
+  simp only[fromPath, this, ite_false]
+
 @[simp]
 lemma Flow.fromPath_value
-    {G : UndirectedNetwork V}
-    {Pr : FlowProblem G.toNetwork}
     (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℕ)
     (hx : x ≤ G.bottleneck P) :
