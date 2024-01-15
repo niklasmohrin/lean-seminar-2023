@@ -12,6 +12,9 @@ theorem Flow.value_le_f
     (d : N.asSimpleGraph.Dart)
     (hd : ∀ p : N.asSimpleGraph.Path Pr.s Pr.t, d ∈ p.val.darts):
     F.value ≤ F.f d.fst d.snd := by
+  wlog hst : Pr.s ≠ Pr.t
+  · exact F.value_eq_zero_of_s_eq_t (not_ne_iff.mp hst) ▸ zero_le _
+
   let u := d.fst
   let v := d.snd
 
@@ -24,10 +27,13 @@ theorem Flow.value_le_f
     intro F hF
     obtain p := F.exists_path_of_value_nonzero (by linarith)
     let F' := F.remove_path p
-    have hF' : F'.value = n := by linarith[Flow.remove_path.value F p, hF]
+    have hF' : F'.value = n := by rw[Flow.remove_path.value F p, hF]; rfl
     have hf : F'.f u v + 1 = F.f u v := by
       have hp : contains_edge p.path u v := ⟨d.is_adj, (hd p.path)⟩
-      simp only [Flow.remove_path, hp, ite_true]
+      simp only [remove_path, Flow.sub, dite_false, hst, fromPath]
+      -- annoyingly, we cannot use hp directly because the function subtraction
+      -- is not evaluated in the goal, so we need to do that first
+      simp only [HSub.hSub, Sub.sub, hp, ite_true]
       have : F.f u v ≠ 0 := by
         by_contra h₀
         have h := h₀ ▸ p.val.prop d
@@ -37,7 +43,7 @@ theorem Flow.value_le_f
       exact Nat.succ_pred this
 
     calc
-      F.value = F'.value + 1 := (Flow.remove_path.value F p).symm
+      F.value = F'.value + 1 := by rw[hF, hF']
       _       ≤ F'.f u v + 1 := Nat.add_le_add_right (ih F' hF') 1
       _       = F.f u v      := hf
 

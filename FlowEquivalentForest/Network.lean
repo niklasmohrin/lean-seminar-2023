@@ -100,4 +100,15 @@ lemma UndirectedNetwork.exists_bottleneck_dart
   ))
   exact ⟨d, List.mem_toFinset.mp hd₁, hd₂⟩
 
+lemma UndirectedNetwork.bottleneck_pos
+    {N : UndirectedNetwork V}
+    (P : N.asSimpleGraph.NonemptyPath s t) :
+    0 < N.bottleneck P := by
+  by_contra h
+  simp only [bottleneck, Finset.lt_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, not_forall, not_lt, nonpos_iff_eq_zero, exists_prop] at h
+  obtain ⟨d, _, hd₂⟩ := h
+  have : N.asSimpleGraph.Adj d.fst d.snd := d.is_adj
+  simp only [UndirectedNetwork.asSimpleGraph, hd₂, d.is_adj] at this
+  contradiction
+
 end
