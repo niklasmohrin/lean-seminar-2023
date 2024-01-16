@@ -96,9 +96,17 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
     exact F.capacity v u
   ⟩⟩
 
-instance {P : FlowProblem G} : HasSubset (Flow P) := ⟨fun F₁ F₂ => ∀ u v : V, F₁.f u v ≤ F₂.f u v⟩
+@[simp]
+instance {P : FlowProblem G} : HasSubset (Flow P) where
+  Subset F₁ F₂ := F₁.f ≤ F₂.f
 
-instance {P : FlowProblem G} : LE (Flow P) := ⟨fun f g => f.value ≤ g.value⟩
+instance {Pr : FlowProblem G} : IsPreorder (Flow Pr) (· ⊆ ·) where
+  refl F := by simp only [instHasSubsetFlow, le_refl]
+  trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSubsetFlow, le_trans h₁₂ h₂₃]
+
+@[simp]
+instance {P : FlowProblem G} : LE (Flow P) where
+  le F₁ F₂ := F₁.value ≤ F₂.value
 
 @[simp]
 lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
