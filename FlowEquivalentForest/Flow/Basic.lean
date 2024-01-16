@@ -163,7 +163,13 @@ lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := 
   simp only [FlowProblem.nullFlow, zero_le]
 
 theorem Flow.sum_flowOut_eq_sum_flowIn {Pr : FlowProblem G} (F : Flow Pr) :
-    ∑ u, flowOut F.f u = ∑ v, flowIn F.f v := sorry
+    ∑ u, flowOut F.f u = ∑ v, flowIn F.f v := by
+  unfold flowOut flowIn
+  rw[←Finset.sum_product', ←Finset.sum_product']
+  simp only [Finset.univ_product_univ]
+  apply Fintype.sum_bijective Prod.swap Prod.swap_bijective
+  intro t
+  simp only [Prod.snd_swap, Prod.fst_swap]
 
 lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by
   suffices flowOut F.f Pr.s = flowIn F.f Pr.s by rw[value, this, Nat.sub_self]
