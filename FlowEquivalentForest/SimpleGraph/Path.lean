@@ -241,17 +241,73 @@ example
   | base u v h_Adj => simp
   | ind u v w P h_Adj hu hvw ih => simp
 
+lemma SimpleGraph.Walk.start_ne_snd_of_mem_darts_of_support_nodup :
+    ∀ (p : G.Walk s t) {d : G.Dart}, d ∈ p.darts → p.support.Nodup → s ≠ d.snd
+  | Walk.cons (v := v') h p', d, hd, hp, heq => by
+    rw[darts_cons, List.mem_cons] at hd
+    rw[support_cons, List.nodup_cons] at hp
+    have := hd.resolve_right (by
+      subst heq
+      intro hmem
+      exact hp.left $ p'.dart_snd_mem_support_of_mem_darts hmem
+    )
+    rw[this] at heq
+    simp at heq
+    rw[heq] at h
+    exact G.loopless _ h
+
+lemma SimpleGraph.Walk.pred_eq_of_support_nodup
+    (p : G.Walk s t)
+    (hp : p.support.Nodup)
+    (hu : contains_edge p u v)
+    (hu' : contains_edge p u' v) :
+    u = u' := by
+  match p with
+  | Walk.nil => exact False.elim $ List.not_mem_nil _ $ darts_nil ▸ hu.2
+  | Walk.cons' _ v' _ h_adj p' =>
+    have ⟨hadj, hd⟩ := hu
+    have ⟨hadj', hd'⟩ := hu'
+    rw[darts_cons, List.mem_cons] at hd hd'
+    rw[support_cons, List.nodup_cons] at hp
+
+    if hs : s = u ∨ s = u' then
+      wlog hs' : s = u generalizing u u'
+      · exact Eq.symm $ this (u := u') (u' := u) hu' hu hadj' hd' hadj hd hs.symm (hs.resolve_left hs')
+      clear hs hu hu'
+      subst hs'
+      have hd := hd.resolve_right (hp.left ∘ p'.dart_fst_mem_support_of_mem_darts)
+      injection hd with foo
+      injection foo with _ hvv'
+      subst hvv'
+      clear hd
+
+      by_contra hsu'
+      have hd' := hd'.resolve_left (by
+        intro h
+        injection h with foo
+        injection foo with hu's
+        exact hsu' hu's.symm
+      )
+
+      exact p'.start_ne_snd_of_mem_darts_of_support_nodup hd' hp.right rfl
+    else
+      rw[not_or] at hs
+      obtain ⟨hsu, hsu'⟩ := hs
+      have h1 := hd.resolve_left (by
+        intro h
+        injection h with foo
+        injection foo with bar
+        exact hsu bar.symm
+      )
+      have h2 := hd'.resolve_left (by
+        intro h
+        injection h with foo
+        injection foo with bar
+        exact hsu' bar.symm
+      )
+      exact p'.pred_eq_of_support_nodup hp.right ⟨hadj, h1⟩ ⟨hadj', h2⟩
 
 
-lemma SimpleGraph.Path.no_two_incoming {G : SimpleGraph V} (P : G.Path s t) (a1 : contains_edge P a c) (a2 : contains_edge P b c) : a = b := by
-  induction P using SimpleGraph.Path.ind with
-  | base u P => aesop -- Path u u contradicts hs and hp
-  | ind u v' w P h_Adj hu ih =>
-    simp_all
-    by_cases hv : v' = c
-    · simp_all [hv]
-      sorry
-    · aesop
 
 lemma SimpleGraph.Path.pred_exists {P : G.Path s t} (hp : v ∈ P.val.support) (hs : v ≠ s) :
     ∃! u, contains_edge P u v := by
@@ -264,9 +320,8 @@ lemma SimpleGraph.Path.pred_exists {P : G.Path s t} (hp : v ∈ P.val.support) (
       · aesop
       · intro y hy
         have h : contains_edge (Adj.cons h_Adj P hu) u v := by aesop
-        exact SimpleGraph.Path.no_two_incoming (Adj.cons h_Adj P hu) hy h
+        exact Walk.pred_eq_of_support_nodup _ (Adj.cons h_Adj P hu).prop.support_nodup hy h
     · aesop
-
 
 lemma SimpleGraph.Path.succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (ht : v ≠ t) :
     ∃! w, contains_edge P v w := by
