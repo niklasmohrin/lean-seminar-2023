@@ -59,6 +59,35 @@ theorem max_from_Nonempty_bounded_wrt
   · intro x a
     simp_all only [Set.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
 
+lemma Finset.eq_of_sum_eq_of_forall_other_eq
+    [DecidableEq α]
+    [AddCommMonoid β]
+    [IsLeftCancelAdd β]
+    [IsRightCancelAdd β]
+    {f g : α → β}
+    (hsum : Finset.sum s f = Finset.sum s g)
+    (ha : a ∈ s)
+    (ha' : ∀ a' ∈ s, a' ≠ a → f a' = g a') :
+    f a = g a := by
+  induction s using Finset.induction_on with
+  | empty => contradiction
+  | @insert x s' hx ih =>
+    rw[Finset.sum_insert hx, Finset.sum_insert hx] at hsum
+    if hax : a = x then
+      subst hax
+      have : Finset.sum s' f = Finset.sum s' g := sum_congr rfl (by
+        intro b hb
+        exact ha' b (mem_insert_of_mem hb) (ne_of_mem_of_not_mem hb hx)
+      )
+      exact add_right_cancel (this ▸ hsum)
+    else
+      apply ih
+      · have := ha' x (mem_insert_self x s') (hax ∘ Eq.symm)
+        exact add_left_cancel $ this ▸ hsum
+      · exact mem_of_mem_insert_of_ne ha hax
+      · intro b hb hne
+        exact ha' b (mem_insert_of_mem hb) hne
+
 /--
 If we sum over a difference of natural numbers such that none of the terms ever
 get clamp at zero, we can split the sum of differences into a difference of

@@ -162,4 +162,13 @@ lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := 
   intro u v
   simp only [FlowProblem.nullFlow, zero_le]
 
-lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by sorry
+theorem Flow.sum_flowOut_eq_sum_flowIn {Pr : FlowProblem G} (F : Flow Pr) :
+    ∑ u, flowOut F.f u = ∑ v, flowIn F.f v := sorry
+
+lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by
+  suffices flowOut F.f Pr.s = flowIn F.f Pr.s by rw[value, this, Nat.sub_self]
+
+  exact Finset.eq_of_sum_eq_of_forall_other_eq
+    F.sum_flowOut_eq_sum_flowIn
+    (Finset.mem_univ _)
+    (λ v _ hv => F.conservation v ⟨hv, (hPr ▸ hv)⟩)
