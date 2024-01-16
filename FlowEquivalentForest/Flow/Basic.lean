@@ -163,6 +163,14 @@ theorem Flow.sub_value
   unfold Backward flowIn flowOut at hF₁
   rw[←Nat.add_sub_assoc (le_of_not_lt hF₁)]
 
+theorem Flow.sub_subset
+    {Pr : FlowProblem G}
+    {F₁ F₂ : Flow Pr}
+    (hle : F₁ ⊆ F₂):
+    (Flow.sub hle) ⊆ F₂ := by
+  intro u v
+  simp only [sub, Pi.sub_apply, tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
+
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
 
