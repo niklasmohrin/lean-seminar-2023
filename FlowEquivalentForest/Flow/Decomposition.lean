@@ -118,6 +118,8 @@ noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr wher
     simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
 theorem Flow.remove_cycle.value (F : Flow Pr) (C : F.Cycle v) : (F.remove_cycle C).value = F.value := sorry
 
+theorem Flow.remove_cycle.subset (F : Flow Pr) (C : F.Cycle v) : F.remove_cycle C ⊆ F := sorry
+
 noncomputable def Flow.remove_all_cycles (F : Flow Pr) : Flow Pr :=
   have : Decidable (F.CycleFree) := Classical.dec _
   if hF : F.CycleFree then
@@ -130,7 +132,16 @@ termination_by Flow.remove_all_cycles F => ∑ u, ∑ v, F.f u v
 
 theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := sorry
 theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value = F.value := sorry
-theorem Flow.remove_all_cycles.subset (F : Flow Pr) : F.remove_all_cycles ⊆ F := sorry
+theorem Flow.remove_all_cycles.subset (F : Flow Pr) : F.remove_all_cycles ⊆ F := by
+  have : Decidable (F.CycleFree) := Classical.dec _
+  unfold Flow.remove_all_cycles
+  if hF : F.CycleFree then
+    simp only [dite_true, hF]
+    sorry -- Have not shown Flow Subset Relation to be reflexive
+  else
+    let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
+    simp only [dite_false, hF]
+    sorry
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t where
   val := p.val
