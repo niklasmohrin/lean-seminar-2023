@@ -96,7 +96,7 @@ lemma Flow.fromPath_not_backward
   suffices flowIn (fromPath P x hx).f Pr.s = 0 by linarith[this]
   apply Finset.sum_eq_zero
   intro u _
-  have : ¬contains_edge P.path u Pr.s := no_pred_first P.path
+  have : ¬contains_edge P.path u Pr.s := P.path.no_pred_first
   simp only[fromPath, this, ite_false]
 
 @[simp]
@@ -111,7 +111,7 @@ lemma Flow.fromPath_value
     simp only [flowIn, Finset.sum_eq_zero_iff, Finset.mem_univ, forall_true_left]
     intro u
     suffices ¬contains_edge P.path u Pr.s by simp_all only [fromPath, contains_edge, ite_false]
-    exact no_pred_first P.path
+    exact P.path.no_pred_first
 
   obtain ⟨v, hv⟩ := P.path.succ_exists (SimpleGraph.Walk.start_mem_support P.path.val) P.ne
   have h_out_succ : F.f Pr.s v = x := by simp only [fromPath, hv.left, ite_true]

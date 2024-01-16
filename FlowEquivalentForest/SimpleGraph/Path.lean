@@ -343,13 +343,6 @@ lemma SimpleGraph.Cycle.succ_exists {P : G.Cycle s} (hp: u ∈ P.val.support) :
     ∃! v, contains_edge P u v := by
   sorry
 
-lemma no_pred_first (P : G.Path s t) : ¬contains_edge P u s := by
-  have h0 : P.val.support.indexOf s = 0 := by
-    unfold Walk.support
-    aesop
-
-  by_contra h
-  obtain ⟨_, h_dart⟩ := h
-  suffices P.val.support.indexOf u < P.val.support.indexOf s by simp_all only [not_lt_zero']
-
-  sorry
+lemma SimpleGraph.Path.no_pred_first (p : G.Path s t) : ¬contains_edge p u s := by
+  intro ⟨hadj, hd⟩
+  exact p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup rfl
