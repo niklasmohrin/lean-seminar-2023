@@ -171,6 +171,17 @@ theorem Flow.sub_subset
   intro u v
   simp only [sub, Pi.sub_apply, tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
 
+lemma Flow.zero_of_sub_neutral
+    {Pr : FlowProblem G}
+    {F₁ F₂ : Flow Pr}
+    (hle : F₂ ⊆ F₁)
+    (hsub : F₁ = Flow.sub hle):
+    F₂ = Pr.nullFlow := by
+  ext u v
+  unfold sub at hsub
+  have h1 : F₁.f - F₂.f = F₁.f := by sorry
+  sorry
+
 lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, G.loopless v]
 
