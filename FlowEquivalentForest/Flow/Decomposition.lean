@@ -130,7 +130,17 @@ noncomputable def Flow.remove_all_cycles (F : Flow Pr) : Flow Pr :=
     (F.remove_cycle c).remove_all_cycles
 termination_by Flow.remove_all_cycles F => ∑ u, ∑ v, F.f u v
 
-theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := sorry
+theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := by
+  have : Decidable (F.CycleFree) := Classical.dec _
+  unfold Flow.remove_all_cycles
+  if hF : F.CycleFree then
+    simp only [dite_true, hF]
+  else
+    let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
+    simp only [dite_true, hF]
+    have : ∑ u, ∑ v, (F.remove_cycle c).f u v < ∑ u, ∑ v, F.f u v := sorry
+    exact Flow.remove_all_cycles.CycleFree ((F.remove_cycle c))
+termination_by Flow.remove_all_cycles.CycleFree F => ∑ u, ∑ v, F.f u v
 
 theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value = F.value := by
   have : Decidable (F.CycleFree) := Classical.dec _
