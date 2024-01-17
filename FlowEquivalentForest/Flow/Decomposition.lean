@@ -132,7 +132,19 @@ termination_by Flow.remove_all_cycles F => ∑ u, ∑ v, F.f u v
 
 theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := sorry
 
-theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value = F.value := sorry
+theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value = F.value := by
+  have : Decidable (F.CycleFree) := Classical.dec _
+  unfold Flow.remove_all_cycles
+  if hF : F.CycleFree then
+    simp only [dite_true, hF]
+  else
+    let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
+    simp only [dite_false, hF]
+    have : ∑ u, ∑ v, (F.remove_cycle c).f u v < ∑ u, ∑ v, F.f u v := sorry
+    have h1: (remove_all_cycles (remove_cycle F c)).value =  (remove_cycle F c).value := by exact Flow.remove_all_cycles.value ( remove_cycle F c)
+    have h2 : (remove_cycle F c).value = F.value := by exact Flow.remove_cycle.value F c
+    apply Eq.trans h1 h2
+termination_by Flow.remove_all_cycles.value F => ∑ u, ∑ v, F.f u v
 
 theorem Flow.remove_all_cycles.subset (F : Flow Pr) : F.remove_all_cycles ⊆ F := by
   have : Decidable (F.CycleFree) := Classical.dec _
