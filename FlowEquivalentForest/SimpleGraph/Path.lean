@@ -61,6 +61,8 @@ lemma Walk_darts_Nonempty_from_ne
   apply List.ne_nil_of_length_pos
   simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
 
+lemma SimpleGraph.Walk.firstDart_mem_darts (p : G.Walk s t) (hp : ¬p.Nil) : p.firstDart hp ∈ p.darts := sorry
+
 open ContainsEdge
 
 @[simp]

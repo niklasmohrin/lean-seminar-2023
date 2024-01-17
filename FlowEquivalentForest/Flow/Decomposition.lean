@@ -40,6 +40,7 @@ def Flow.Cycle.cycle {F : Flow Pr} (c : F.Cycle v) : N.asSimpleGraph.Cycle v whe
   property := c.prop
 def Flow.CycleFree (F : Flow Pr) := ∀ v, IsEmpty (F.Cycle v)
 
+theorem Flow.flowOut_s_eq_flowIn_t_of_cycleFree (F : Flow Pr) (hF : F.CycleFree) : flowOut F.f Pr.s = flowIn F.f Pr.t := sorry
 
 noncomputable instance {F : Flow Pr} {c : F.Cycle s} {u v : V} : Decidable (contains_edge c.cycle u v) := Classical.dec _
 noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr where
@@ -200,7 +201,30 @@ where
       hvs ▸ path_so_far
     else
       let valid_us := {u : V // F.f u v ≠ 0 }
-      have : Nonempty valid_us := sorry -- By hF, if v = t, otherwise by flow conservation.
+      have : Nonempty valid_us := by
+        by_contra h
+        simp only [nonempty_subtype, not_exists, not_not] at h
+        have hin : flowIn F.f v = 0 := Finset.sum_eq_zero (λ u _ => h u)
+        if hvt : v = Pr.t then
+          subst hvt
+          have : flowOut F.f Pr.s = 0 := F.flowOut_s_eq_flowIn_t_of_cycleFree hC ▸ hin
+          have : flowOut F.f Pr.s - flowIn F.f Pr.s = 0 := by rw[this, Nat.zero_sub]
+          exact hF this
+        else
+          have h_not_nil : ¬path_so_far.val.val.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
+          let w := path_so_far.val.val.sndOfNotNil h_not_nil
+          have : F.f v w ≠ 0 := by
+            intro h
+            let d := path_so_far.val.val.firstDart h_not_nil
+            have := path_so_far.val.prop d
+            simp [SimpleGraph.Walk.firstDart_toProd, h, SimpleGraph.Walk.dart_counts, List.count_eq_zero] at this
+            exact this $ path_so_far.val.val.firstDart_mem_darts h_not_nil
+          have : flowOut F.f v ≠ 0 := by
+            intro h
+            rw[flowOut, Finset.sum_eq_zero_iff] at h
+            exact this $ h w (Finset.mem_univ w)
+          have : flowIn F.f v ≠ 0 := F.conservation v ⟨hvs, hvt⟩ ▸ this
+          exact this hin
 
       let u := Classical.choice this
       have : u.val ∉ path_so_far.val.val.support := sorry -- Otherwise, we would have constructed a cycle!
