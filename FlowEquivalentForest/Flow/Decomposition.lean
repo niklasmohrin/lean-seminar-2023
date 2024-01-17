@@ -119,7 +119,7 @@ noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr wher
     simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
 theorem Flow.remove_cycle.value (F : Flow Pr) (C : F.Cycle v) : (F.remove_cycle C).value = F.value := sorry
 
-theorem Flow.remove_cycle.subset (F : Flow Pr) (C : F.Cycle v) : F.remove_cycle C ⊆ F := sorry
+theorem Flow.remove_cycle.ssubset (F : Flow Pr) (C : F.Cycle v) : F.remove_cycle C ⊂ F := sorry
 
 noncomputable def Flow.remove_all_cycles (F : Flow Pr) : Flow Pr :=
   have : Decidable (F.CycleFree) := Classical.dec _
@@ -127,9 +127,9 @@ noncomputable def Flow.remove_all_cycles (F : Flow Pr) : Flow Pr :=
     F
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
-    have : ∑ u, ∑ v, (F.remove_cycle c).f u v < ∑ u, ∑ v, F.f u v := sorry
     (F.remove_cycle c).remove_all_cycles
-termination_by Flow.remove_all_cycles F => ∑ u, ∑ v, F.f u v
+termination_by Flow.remove_all_cycles F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
 
 theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := by
   have : Decidable (F.CycleFree) := Classical.dec _
@@ -139,9 +139,9 @@ theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.Cyc
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_true, hF]
-    have : ∑ u, ∑ v, (F.remove_cycle c).f u v < ∑ u, ∑ v, F.f u v := sorry
     exact Flow.remove_all_cycles.CycleFree ((F.remove_cycle c))
-termination_by Flow.remove_all_cycles.CycleFree F => ∑ u, ∑ v, F.f u v
+termination_by Flow.remove_all_cycles.CycleFree F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
 
 theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value = F.value := by
   have : Decidable (F.CycleFree) := Classical.dec _
@@ -151,11 +151,11 @@ theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value =
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have : ∑ u, ∑ v, (F.remove_cycle c).f u v < ∑ u, ∑ v, F.f u v := sorry
     have h1: (remove_all_cycles (remove_cycle F c)).value =  (remove_cycle F c).value := by exact Flow.remove_all_cycles.value ( remove_cycle F c)
     have h2 : (remove_cycle F c).value = F.value := by exact Flow.remove_cycle.value F c
     apply Eq.trans h1 h2
-termination_by Flow.remove_all_cycles.value F => ∑ u, ∑ v, F.f u v
+termination_by Flow.remove_all_cycles.value F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
 
 theorem Flow.remove_all_cycles.subset (F : Flow Pr) : F.remove_all_cycles ⊆ F := by
   have : Decidable (F.CycleFree) := Classical.dec _
@@ -166,11 +166,11 @@ theorem Flow.remove_all_cycles.subset (F : Flow Pr) : F.remove_all_cycles ⊆ F 
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have : ∑ u, ∑ v, (F.remove_cycle c).f u v < ∑ u, ∑ v, F.f u v := sorry
     have h1: remove_all_cycles (remove_cycle F c) ⊆  remove_cycle F c := by exact Flow.remove_all_cycles.subset (remove_cycle F c)
-    have h2 : remove_cycle F c ⊆ F := by exact Flow.remove_cycle.subset F c
+    have h2 : remove_cycle F c ⊆ F := subset_of_ssubset (Flow.remove_cycle.ssubset F c)
     exact subset_trans h1 h2
-termination_by Flow.remove_all_cycles.subset F => ∑ u, ∑ v, F.f u v
+termination_by Flow.remove_all_cycles.subset F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t where
   val := p.val

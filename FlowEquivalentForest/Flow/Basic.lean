@@ -36,8 +36,8 @@ def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
   conservation := by aesop
   capacity := by simp
 
-instance { P : FlowProblem G } : Inhabited (Flow P) where
-  default := P.nullFlow
+instance {Pr : FlowProblem G} : Zero (Flow Pr) where
+  zero := Pr.nullFlow
 
 @[simp]
 def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s - flowIn flow.f P.s
@@ -103,6 +103,16 @@ instance {P : FlowProblem G} : HasSubset (Flow P) where
 instance {Pr : FlowProblem G} : IsPreorder (Flow Pr) (· ⊆ ·) where
   refl F := by simp only [instHasSubsetFlow, le_refl]
   trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSubsetFlow, le_trans h₁₂ h₂₃]
+
+@[simp]
+instance {P : FlowProblem G} : HasSSubset (Flow P) where
+  SSubset F₁ F₂ := F₁.f < F₂.f
+
+instance {Pr : FlowProblem G} : IsStrictOrder (Flow Pr) (· ⊂ ·) where
+  irrefl F := by simp only [instHasSSubsetFlow, lt_self_iff_false, not_false_eq_true, forall_const]
+  trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSSubsetFlow, lt_trans h₁₂ h₂₃]
+
+instance {Pr : FlowProblem G} : IsNonstrictStrictOrder (Flow Pr) (· ⊆ ·) (· ⊂ ·) := sorry
 
 @[simp]
 instance {P : FlowProblem G} : LE (Flow P) where
@@ -205,3 +215,7 @@ lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.
     F.sum_flowOut_eq_sum_flowIn
     (Finset.mem_univ _)
     (λ v _ hv => F.conservation v ⟨hv, (hPr ▸ hv)⟩)
+
+def Flow.range_sum {Pr : FlowProblem G} (F : Flow Pr) : ℕ := ∑ u, ∑ v, F.f u v
+
+theorem Flow.range_sum_lt_of_ssubset {Pr : FlowProblem G} {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := sorry
