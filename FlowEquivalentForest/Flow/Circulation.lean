@@ -1,5 +1,6 @@
 import FlowEquivalentForest.Flow.Basic
 import FlowEquivalentForest.SimpleGraph.Path
+import FlowEquivalentForest.SimpleGraph.Circulation
 
 open BigOperators
 open ContainsEdge
@@ -10,9 +11,9 @@ variable
   {Pr : FlowProblem G.toNetwork}
 
 
-noncomputable instance {G : SimpleGraph V} {c : G.Cycle v0} {u v : V} : Decidable (contains_edge c u v) := Classical.dec _
+noncomputable instance {G : SimpleGraph V} {c : G.Circulation v0} {u v : V} : Decidable (contains_edge c u v) := Classical.dec _
 
-noncomputable def Flow.UnitCycle (Pr : FlowProblem G.toNetwork) (c : G.asSimpleGraph.Cycle v0) : Flow Pr where
+noncomputable def Flow.UnitCycle (Pr : FlowProblem G.toNetwork) (c : G.asSimpleGraph.Circulation v0) : Flow Pr where
   f u v := if contains_edge c u v then 1 else 0
   conservation := by
     intro v h
