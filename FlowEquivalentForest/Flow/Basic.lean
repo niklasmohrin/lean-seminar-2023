@@ -208,6 +208,35 @@ theorem Flow.sum_flowOut_eq_sum_flowIn {Pr : FlowProblem G} (F : Flow Pr) :
   intro t
   simp only [Prod.snd_swap, Prod.fst_swap]
 
+theorem Flow.flowOut_st_eq_flowIn_st {Pr : FlowProblem G} (F : Flow Pr) :
+    flowOut F.f Pr.s + flowOut F.f Pr.t = flowIn F.f Pr.s + flowIn F.f Pr.t := by
+  let st : Finset V := {Pr.s, Pr.t}
+  have h : Disjoint st stᶜ := disjoint_compl_right
+  have hsum := F.sum_flowOut_eq_sum_flowIn
+  simp only [←st.union_compl, Finset.sum_union h] at hsum
+
+  suffices ∑ u in stᶜ, flowOut F.f u = ∑ v in stᶜ, flowIn F.f v by
+    rw[this] at hsum
+    have := add_right_cancel hsum
+    if hst : Pr.s = Pr.t then
+      rw[hst] at this
+      simp only [Finset.mem_singleton, Finset.insert_eq_of_mem, Finset.sum_singleton] at this
+      simp only [hst, this]
+    else
+      simp only [Finset.sum_pair hst] at this
+      exact this
+  apply Finset.sum_congr rfl
+  intro v hv
+  simp at hv
+  exact F.conservation v hv
+
+theorem Flow.excess_s_eq_neg_excess_t {Pr : FlowProblem G} (F : Flow Pr) :
+    flowOut F.f Pr.s - flowIn F.f Pr.s = flowIn F.f Pr.t - flowOut F.f Pr.t := by
+  apply Nat.sub_eq_sub_of_add_eq_add
+  have := F.flowOut_st_eq_flowIn_st
+  conv at this => right; rw[Nat.add_comm]
+  exact this
+
 lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by
   suffices flowOut F.f Pr.s = flowIn F.f Pr.s by rw[value, this, Nat.sub_self]
 
