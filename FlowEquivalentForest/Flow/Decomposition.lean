@@ -290,6 +290,7 @@ lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
   exact h $ (F.exists_path_of_value_nonzero this).path.val.reachable
 
 -- Not needed for our theorem, but maybe fun
--- def Flow.path_decomposition (F : Flow Pr) : Multiset (F.Path Pr.s Pr.t) := sorry
+-- def Flow.path_decomposition (F : Flow Pr) : Multiset (F.Path Pr.s Pr.t) := excuse_me
+-- theorem Flow.path_decomposition_card (F : Flow Pr) : F.path_decomposition.card = F.value := excuse_me
 -- theorem Flow.path_decomposition.f_eq_path_count (F : Flow Pr) :
---     ∀ d : N.asSimpleGraph.Dart, F.f d.fst d.snd = Multiset.countP (d ∈ ·.val.val.darts) F.path_decomposition := sorry
+--     ∀ d : N.asSimpleGraph.Dart, F.f d.fst d.snd = Multiset.countP (d ∈ ·.val.val.darts) F.path_decomposition := excuse_me

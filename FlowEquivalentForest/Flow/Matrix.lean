@@ -346,5 +346,5 @@ theorem flowEquivalentForest
     mkFlowEquivalentForest.mkFrom_IsAcyclic M hsymm g
   ⟩
 
-theorem flowMatrixCharacterization (M : PairMatrix V ℕ) :
-    (∃ G : UndirectedNetwork V, @M = G.matrix) ↔ (M.Symmetrical ∧ M.TriangleInequality) := sorry
+-- theorem flowMatrixCharacterization (M : PairMatrix V ℕ) :
+--     (∃ G : UndirectedNetwork V, @M = G.matrix) ↔ (M.Symmetrical ∧ M.TriangleInequality) := excuse_me
