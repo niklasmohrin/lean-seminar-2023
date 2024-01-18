@@ -123,41 +123,10 @@ lemma Nat.sub_eq_sub_of_add_eq_add
     {a b c d : ℕ}
     (h : a + b = c + d) :
     a - d = c - b := by
-  wlog hac : a ≤ c
-  · exact (this h.symm (Nat.le_of_not_le hac)).symm
-  have hdb : d ≤ b := by
-    by_contra h''
-    simp at h''
-    have := calc
-      a + b ≤ c + b := Nat.add_le_add_right hac b
-      _ < c + d     := Nat.add_lt_add_left h'' c
-    rw[h] at this
-    exact LT.lt.false this
-
-  wlog hda : d ≤ a
-  · simp at hda
-    have : a ≤ d := Nat.le_of_lt hda
-    have : a - d = 0 := Nat.sub_eq_zero_of_le this
-    rw[this]
-    have : c ≤ b := by
-      by_contra h'
-      simp at h'
-      have := calc
-        a + b < d + b := by exact Nat.add_lt_add_right hda b
-        _ < d + c := by exact Nat.add_lt_add_left h' d
-        _ = c + d := by exact Nat.add_comm d c
-      rw[h] at this
-      exact LT.lt.false this
-    have : c - b = 0 := Nat.sub_eq_zero_of_le this
-    rw[this]
-
-  have : a + b - b = c + d - b := by exact congrFun (congrArg HSub.hSub h) b
-  have : a = c + d - b := by exact eq_tsub_of_add_eq h
-  have : a - d = c + d - b - d := by exact congr (congrArg HSub.hSub this) rfl
-  have : a - d = c + d - d - b := by rwa[Nat.sub_right_comm _ d b]
-  have : a - d = c - b := by
-    conv at this => right; left; rw[Nat.add_sub_assoc (le_refl d), Nat.sub_self, Nat.add_zero]
-    exact this
+  have : a + b - (b + d) = c + d - (b + d) := congrFun (congrArg HSub.hSub h) (b + d)
+  conv at this => right; right; rw[Nat.add_comm]
+  rw[Nat.sub_add_eq, Nat.sub_add_eq] at this
+  simp at this
   exact this
 
 -- A pair of two elements that are not equal (that is, they are not on the diagonal of a matrix).
