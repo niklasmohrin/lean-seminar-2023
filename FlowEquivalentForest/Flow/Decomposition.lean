@@ -235,7 +235,9 @@ where
       let path_with_u : F.Path u Pr.t := Flow.Path.cons u.prop this
 
       -- Proof for termination (the path got longer):
-      have : Fintype.card V - path_with_u.val.val.length < Fintype.card V - path_so_far.val.val.length := sorry
+      have : Fintype.card V - path_with_u.val.val.length < Fintype.card V - path_so_far.val.val.length := by
+        simp[Flow.Path.cons, Flow.Walk.cons, SimpleGraph.Walk.length_cons]
+        exact Nat.sub_lt_sub_left path_so_far.prop.length_lt (Nat.lt.base _)
 
       build_path path_with_u
 termination_by build_path p => Fintype.card V - p.val.val.length
