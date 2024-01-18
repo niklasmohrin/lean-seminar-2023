@@ -1,7 +1,8 @@
-import FlowEquivalentForest.Flow.Basic
-import FlowEquivalentForest.Flow.Path
 import FlowEquivalentForest.SimpleGraph.Path
 import FlowEquivalentForest.SimpleGraph.Circulation
+import FlowEquivalentForest.Flow.Basic
+import FlowEquivalentForest.Flow.Path
+import FlowEquivalentForest.Flow.Circulation
 
 open BigOperators
 open ContainsEdge
@@ -126,13 +127,10 @@ def Flow.Circulation.from_dart_and_path
 
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
-noncomputable instance {F : Flow Pr} {c : F.Circulation s} {u v : V} : Decidable (contains_edge c.circulation u v) := Classical.dec _
-noncomputable def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) : Flow Pr where
-  f u v := F.f u v - (if contains_edge c.circulation u v then 1 else 0)
-  conservation := by sorry
-  capacity u v := by
-    refine le_trans ?_ $ F.capacity u v
-    simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
+noncomputable def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) :=
+  have hle : (Flow.UnitCirculation c.circulation) ⊆ F := sorry
+  Flow.sub hle
+
 theorem Flow.remove_circulation.value (F : Flow Pr) (C : F.Circulation v) : (F.remove_circulation C).value = F.value := sorry
 
 theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := sorry
