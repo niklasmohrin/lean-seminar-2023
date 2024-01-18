@@ -18,6 +18,18 @@ theorem SimpleGraph.Walk.dart_counts_cons
     (Walk.cons h p).dart_counts = (SimpleGraph.Dart.mk (u, v) h) ::ₘ p.dart_counts := by
   simp only [dart_counts, darts_cons, Multiset.cons_coe]
 
+theorem SimpleGraph.Walk.dart_counts_takeUntil_le
+    {G : SimpleGraph V}
+    (p : G.Walk s t)
+    {x : V}
+    (hx : x ∈ p.support) :
+    (p.takeUntil x hx).dart_counts ≤ p.dart_counts := by
+  conv => right; rw[←p.take_spec hx]
+  simp only [dart_counts, darts_append, Multiset.coe_le]
+  conv => left; rw[←List.append_nil (p.takeUntil x hx).darts]
+  rw[List.subperm_append_left]
+  exact List.nil_subperm
+
 -- A FlowWalk can only visit each dart of the network as many times as the flow
 -- value on this dart.
 def IsFlowWalk (F : Flow Pr) (p : N.asSimpleGraph.Walk u v) :=
@@ -35,7 +47,7 @@ def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
 
 def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.val.support) : F.Walk v u where
   val := p.val.takeUntil u hu
-  property := sorry
+  property d := le_trans (Multiset.le_iff_count.mp (p.val.dart_counts_takeUntil_le hu) d) $ p.prop d
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
 
@@ -50,7 +62,11 @@ def Flow.Path.nil (F : Flow Pr) : F.Path v v where
 lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
     {F : Flow Pr}
     (h : F.f u v ≠ 0) :
-    N.asSimpleGraph.Adj u v := sorry
+    N.asSimpleGraph.Adj u v := by
+  by_contra h'
+  simp [asSimpleGraph] at h'
+  have := h' ▸ F.capacity u v
+  simp_all only [ne_eq, nonpos_iff_eq_zero]
 
 def Flow.Walk.cons
     {F : Flow Pr}
@@ -92,7 +108,7 @@ def Flow.Path.takeUntil
     (hu : u ∈ p.val.val.support) :
     F.Path v u where
   val := p.val.takeUntil u hu
-  property := sorry
+  property := p.prop.takeUntil hu
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCirculation}
