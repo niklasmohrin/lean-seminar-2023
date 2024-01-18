@@ -10,6 +10,13 @@ variable {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork}
 
 def SimpleGraph.Walk.dart_counts {G : SimpleGraph V} (p : G.Walk u v) : Multiset (G.Dart) := Multiset.ofList p.darts
 
+theorem SimpleGraph.Walk.dart_counts_cons
+    {G : SimpleGraph V}
+    (h : G.Adj u v)
+    (p : G.Walk v w) :
+    (Walk.cons h p).dart_counts = (SimpleGraph.Dart.mk (u, v) h) ::ₘ p.dart_counts := by
+  simp only [dart_counts, darts_cons, Multiset.cons_coe]
+
 -- A FlowWalk can only visit each dart of the network as many times as the flow
 -- value on this dart.
 def IsFlowWalk (F : Flow Pr) (p : N.asSimpleGraph.Walk u v) :=
@@ -26,12 +33,47 @@ def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
   property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
+
 def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
   val := p.val.val
   property := p.prop
+
 def Flow.Path.nil (F : Flow Pr) : F.Path v v where
   val := Flow.Walk.nil
   property := SimpleGraph.Walk.IsPath.nil
+
+lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
+    {F : Flow Pr}
+    (h : F.f u v ≠ 0) :
+    N.asSimpleGraph.Adj u v := sorry
+
+def Flow.Path.cons
+    {F : Flow Pr}
+    {p : F.Path v w}
+    (h : F.f u v ≠ 0)
+    (h' : u ∉ p.val.val.support) :
+    F.Path u w where
+  val := {
+    val := SimpleGraph.Walk.cons (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) p.val.val
+    property := by
+      intro d
+      rw[SimpleGraph.Walk.dart_counts_cons, Multiset.count_cons]
+      if hd : d = SimpleGraph.Dart.mk (u, v) (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) then
+        simp only [hd, ite_true]
+        have hdp : p.val.val.dart_counts.count d = 0 := by
+          rw[Multiset.count_eq_zero, SimpleGraph.Walk.dart_counts, Multiset.mem_coe]
+          by_contra h''
+          have := hd ▸ p.val.val.dart_fst_mem_support_of_mem_darts h''
+          exact h' this
+        rw[←hd, hdp]
+        by_contra h''
+        simp only [zero_add, not_le, Nat.lt_one_iff] at h''
+        exact h h''
+      else
+        simp only [hd, ite_false, add_zero]
+        exact p.val.prop d
+  }
+  property := p.prop.cons h'
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Cycle (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCycle}
@@ -226,7 +268,7 @@ where
 
       let u := Classical.choice this
       have : u.val ∉ path_so_far.val.val.support := sorry -- Otherwise, we would have constructed a cycle!
-      let path_with_u : F.Path u Pr.t := sorry -- Add u to the front of the path.
+      let path_with_u : F.Path u Pr.t := Flow.Path.cons u.prop this
 
       -- Proof for termination (the path got longer):
       have : Fintype.card V - path_with_u.val.val.length < Fintype.card V - path_so_far.val.val.length := sorry
