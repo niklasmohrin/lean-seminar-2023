@@ -347,3 +347,6 @@ lemma SimpleGraph.Path.succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (
 lemma SimpleGraph.Path.no_pred_first (p : G.Path s t) : ¬contains_edge p u s := by
   intro ⟨hadj, hd⟩
   exact p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup rfl
+
+theorem SimpleGraph.Path.not_contains_edge_end_start (p : G.Path u v) :
+    ¬contains_edge p.val v u := sorry

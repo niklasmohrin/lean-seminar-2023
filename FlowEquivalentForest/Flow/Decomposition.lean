@@ -33,6 +33,10 @@ def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
   val := SimpleGraph.Walk.nil
   property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]
 
+def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.val.support) : F.Walk v u where
+  val := p.val.takeUntil u hu
+  property := sorry
+
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
 
 def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
@@ -81,11 +85,29 @@ def Flow.Path.cons
   val := Flow.Walk.cons h p (h' ∘ p.val.val.mem_support_of_contains_edge_fst)
   property := p.prop.cons h'
 
+def Flow.Path.takeUntil
+    {F : Flow Pr}
+    (p : F.Path v w)
+    (u : V)
+    (hu : u ∈ p.val.val.support) :
+    F.Path v u where
+  val := p.val.takeUntil u hu
+  property := sorry
+
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCirculation}
 def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
   val := c.val.val
   property := c.prop
+
+def Flow.Circulation.from_dart_and_path
+    {F : Flow Pr}
+    (h : F.f u v ≠ 0)
+    (p : F.Path v u) :
+    F.Circulation u where
+  val := Flow.Walk.cons h p.val p.path.not_contains_edge_end_start
+  property := p.path.cons_isCirculation (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h)
+
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
 noncomputable instance {F : Flow Pr} {c : F.Circulation s} {u v : V} : Decidable (contains_edge c.circulation u v) := Classical.dec _
@@ -205,7 +227,11 @@ where
           exact this hin
 
       let u := Classical.choice this
-      have : u.val ∉ path_so_far.val.val.support := sorry -- Otherwise, we would have constructed a circulation!
+      have : u.val ∉ path_so_far.val.val.support := by
+        intro hu
+        let tail := path_so_far.takeUntil u hu
+        have := Flow.Circulation.from_dart_and_path u.prop tail
+        exact (hC _).elim this
       let path_with_u : F.Path u Pr.t := Flow.Path.cons u.prop this
 
       -- Proof for termination (the path got longer):

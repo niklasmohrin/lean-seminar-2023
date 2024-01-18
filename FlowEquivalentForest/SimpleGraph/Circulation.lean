@@ -22,6 +22,13 @@ abbrev Circulation (v : V) := {p : G.Walk v v // p.IsCirculation}
 instance : ContainsEdge V (G.Circulation v₀) where
   contains_edge c := contains_edge c.val
 
+theorem Path.cons_isCirculation (p : G.Path v u) (h : G.Adj u v) :
+    (Walk.cons h p.val).IsCirculation where
+  ne_nil := by simp only [ne_eq, not_false_eq_true]
+  support_nodup := by
+    rw[Walk.support_cons, List.tail_cons]
+    exact p.prop.support_nodup
+
 namespace Circulation
 
 lemma pred_exists {c : G.Circulation s} (hc: v ∈ c.val.support) :
