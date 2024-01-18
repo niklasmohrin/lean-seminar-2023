@@ -1,6 +1,7 @@
 import FlowEquivalentForest.Flow.Basic
 import FlowEquivalentForest.Flow.Path
 import FlowEquivalentForest.SimpleGraph.Path
+import FlowEquivalentForest.SimpleGraph.Circulation
 
 open BigOperators
 open ContainsEdge
@@ -76,73 +77,73 @@ def Flow.Path.cons
   property := p.prop.cons h'
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
-abbrev Flow.Cycle (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCycle}
-def Flow.Cycle.cycle {F : Flow Pr} (c : F.Cycle v) : N.asSimpleGraph.Cycle v where
+abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCirculation}
+def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
   val := c.val.val
   property := c.prop
-def Flow.CycleFree (F : Flow Pr) := ∀ v, IsEmpty (F.Cycle v)
+def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
-noncomputable instance {F : Flow Pr} {c : F.Cycle s} {u v : V} : Decidable (contains_edge c.cycle u v) := Classical.dec _
-noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr where
-  f u v := F.f u v - (if contains_edge c.cycle u v then 1 else 0)
+noncomputable instance {F : Flow Pr} {c : F.Circulation s} {u v : V} : Decidable (contains_edge c.circulation u v) := Classical.dec _
+noncomputable def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) : Flow Pr where
+  f u v := F.f u v - (if contains_edge c.circulation u v then 1 else 0)
   conservation := by sorry
   capacity u v := by
     refine le_trans ?_ $ F.capacity u v
     simp only [tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
-theorem Flow.remove_cycle.value (F : Flow Pr) (C : F.Cycle v) : (F.remove_cycle C).value = F.value := sorry
+theorem Flow.remove_circulation.value (F : Flow Pr) (C : F.Circulation v) : (F.remove_circulation C).value = F.value := sorry
 
-theorem Flow.remove_cycle.ssubset (F : Flow Pr) (C : F.Cycle v) : F.remove_cycle C ⊂ F := sorry
+theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := sorry
 
-noncomputable def Flow.remove_all_cycles (F : Flow Pr) : Flow Pr :=
-  have : Decidable (F.CycleFree) := Classical.dec _
-  if hF : F.CycleFree then
+noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
+  have : Decidable (F.CirculationFree) := Classical.dec _
+  if hF : F.CirculationFree then
     F
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
-    (F.remove_cycle c).remove_all_cycles
-termination_by Flow.remove_all_cycles F => F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
+    (F.remove_circulation c).remove_all_circulations
+termination_by Flow.remove_all_circulations F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
-theorem Flow.remove_all_cycles.CycleFree (F : Flow Pr) : F.remove_all_cycles.CycleFree := by
-  have : Decidable (F.CycleFree) := Classical.dec _
-  unfold Flow.remove_all_cycles
-  if hF : F.CycleFree then
+theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_all_circulations.CirculationFree := by
+  have : Decidable (F.CirculationFree) := Classical.dec _
+  unfold Flow.remove_all_circulations
+  if hF : F.CirculationFree then
     simp only [dite_true, hF]
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_true, hF]
-    exact Flow.remove_all_cycles.CycleFree ((F.remove_cycle c))
-termination_by Flow.remove_all_cycles.CycleFree F => F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
+    exact Flow.remove_all_circulations.CirculationFree ((F.remove_circulation c))
+termination_by Flow.remove_all_circulations.CirculationFree F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
-theorem Flow.remove_all_cycles.value (F : Flow Pr) : F.remove_all_cycles.value = F.value := by
-  have : Decidable (F.CycleFree) := Classical.dec _
-  unfold Flow.remove_all_cycles
-  if hF : F.CycleFree then
+theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulations.value = F.value := by
+  have : Decidable (F.CirculationFree) := Classical.dec _
+  unfold Flow.remove_all_circulations
+  if hF : F.CirculationFree then
     simp only [dite_true, hF]
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have h1: (remove_all_cycles (remove_cycle F c)).value =  (remove_cycle F c).value := by exact Flow.remove_all_cycles.value ( remove_cycle F c)
-    have h2 : (remove_cycle F c).value = F.value := by exact Flow.remove_cycle.value F c
+    have h1: (remove_all_circulations (remove_circulation F c)).value =  (remove_circulation F c).value := by exact Flow.remove_all_circulations.value ( remove_circulation F c)
+    have h2 : (remove_circulation F c).value = F.value := by exact Flow.remove_circulation.value F c
     apply Eq.trans h1 h2
-termination_by Flow.remove_all_cycles.value F => F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
+termination_by Flow.remove_all_circulations.value F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
-theorem Flow.remove_all_cycles.subset (F : Flow Pr) : F.remove_all_cycles ⊆ F := by
-  have : Decidable (F.CycleFree) := Classical.dec _
-  unfold Flow.remove_all_cycles
-  if hF : F.CycleFree then
+theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circulations ⊆ F := by
+  have : Decidable (F.CirculationFree) := Classical.dec _
+  unfold Flow.remove_all_circulations
+  if hF : F.CirculationFree then
     simp only [dite_true, hF]
     exact Eq.subset' rfl
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have h1: remove_all_cycles (remove_cycle F c) ⊆  remove_cycle F c := by exact Flow.remove_all_cycles.subset (remove_cycle F c)
-    have h2 : remove_cycle F c ⊆ F := subset_of_ssubset (Flow.remove_cycle.ssubset F c)
+    have h1: remove_all_circulations (remove_circulation F c) ⊆  remove_circulation F c := by exact Flow.remove_all_circulations.subset (remove_circulation F c)
+    have h2 : remove_circulation F c ⊆ F := subset_of_ssubset (Flow.remove_circulation.ssubset F c)
     exact subset_trans h1 h2
-termination_by Flow.remove_all_cycles.subset F => F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_cycle.ssubset
+termination_by Flow.remove_all_circulations.subset F => F.range_sum
+decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t where
   val := p.val
@@ -158,10 +159,10 @@ def Flow.Path.transfer {F F' : Flow Pr} (p : F.Path s t) (h : F ⊆ F') : F'.Pat
   val := p.val.transfer h
   property := Flow.Walk.transfer.val p.val h ▸ p.property
 
-theorem Flow.exists_path_of_value_nonzero_of_cycleFree
+theorem Flow.exists_path_of_value_nonzero_of_circulationFree
     (F : Flow Pr)
     (hF : F.value ≠ 0)
-    (hC : F.CycleFree) :
+    (hC : F.CirculationFree) :
     F.Path Pr.s Pr.t :=
   build_path (Flow.Path.nil F)
 where
@@ -199,7 +200,7 @@ where
           exact this hin
 
       let u := Classical.choice this
-      have : u.val ∉ path_so_far.val.val.support := sorry -- Otherwise, we would have constructed a cycle!
+      have : u.val ∉ path_so_far.val.val.support := sorry -- Otherwise, we would have constructed a circulation!
       let path_with_u : F.Path u Pr.t := Flow.Path.cons u.prop this
 
       -- Proof for termination (the path got longer):
@@ -209,11 +210,11 @@ where
 termination_by build_path p => Fintype.card V - p.val.val.length
 
 theorem Flow.exists_path_of_value_nonzero (F : Flow Pr) (hF : F.value ≠ 0) : F.Path Pr.s Pr.t :=
-  let p := Flow.exists_path_of_value_nonzero_of_cycleFree
-    F.remove_all_cycles
-    (remove_all_cycles.value F ▸ hF)
-    (remove_all_cycles.CycleFree F)
-  p.transfer $ remove_all_cycles.subset _
+  let p := Flow.exists_path_of_value_nonzero_of_circulationFree
+    F.remove_all_circulations
+    (remove_all_circulations.value F ▸ hF)
+    (remove_all_circulations.CirculationFree F)
+  p.transfer $ remove_all_circulations.subset _
 
 lemma Flow.from_flowPath_subseteq (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hPr : Pr.s ≠ Pr.t) :
     let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
