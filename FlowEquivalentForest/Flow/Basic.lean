@@ -112,7 +112,8 @@ instance {Pr : FlowProblem G} : IsStrictOrder (Flow Pr) (· ⊂ ·) where
   irrefl F := by simp only [instHasSSubsetFlow, lt_self_iff_false, not_false_eq_true, forall_const]
   trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSSubsetFlow, lt_trans h₁₂ h₂₃]
 
-instance {Pr : FlowProblem G} : IsNonstrictStrictOrder (Flow Pr) (· ⊆ ·) (· ⊂ ·) := sorry
+instance {Pr : FlowProblem G} : IsNonstrictStrictOrder (Flow Pr) (· ⊆ ·) (· ⊂ ·) where
+  right_iff_left_not_left F₁ F₂ := by constructor <;> (intro h; simp_all only [instHasSSubsetFlow, instHasSubsetFlow]; exact h)
 
 @[simp]
 instance {P : FlowProblem G} : LE (Flow P) where
