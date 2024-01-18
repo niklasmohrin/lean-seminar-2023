@@ -43,6 +43,15 @@ instance {V : Type*} [DecidableEq V] {v : V} {G : SimpleGraph V} : ContainsEdge 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {G : SimpleGraph V}
 
+open ContainsEdge
+
+lemma SimpleGraph.Walk.mem_support_of_contains_edge_fst
+    (p : G.Walk s t)
+    (h : contains_edge p u v) :
+    u ∈ p.support := by
+  obtain ⟨hadj, hd⟩ := h
+  exact p.dart_fst_mem_support_of_mem_darts hd
+
 lemma Walk_length_nonzero_from_ne
     {G : SimpleGraph V}
     (h : u ≠ v)
@@ -62,8 +71,6 @@ lemma Walk_darts_Nonempty_from_ne
   simp_all only [ne_eq, SimpleGraph.Walk.length_darts, not_false_eq_true, Walk_length_nonzero_from_ne]
 
 lemma SimpleGraph.Walk.firstDart_mem_darts (p : G.Walk s t) (hp : ¬p.Nil) : p.firstDart hp ∈ p.darts := sorry
-
-open ContainsEdge
 
 @[simp]
 lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.reverse.reverse = P := by

@@ -48,32 +48,37 @@ lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
     (h : F.f u v ≠ 0) :
     N.asSimpleGraph.Adj u v := sorry
 
+def Flow.Walk.cons
+    {F : Flow Pr}
+    (h : F.f u v ≠ 0)
+    (p : F.Walk v w)
+    (h' : ¬contains_edge p.val u v) : -- h' could be relaxed, but this suffices for our purposes
+    F.Walk u w where
+  val := SimpleGraph.Walk.cons (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) p.val
+  property := by
+    intro d
+    rw[SimpleGraph.Walk.dart_counts_cons, Multiset.count_cons]
+    if hd : d = SimpleGraph.Dart.mk (u, v) (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) then
+      simp only [hd, ite_true]
+      have hdp : p.val.dart_counts.count d = 0 := by
+        rw[Multiset.count_eq_zero, SimpleGraph.Walk.dart_counts, Multiset.mem_coe]
+        intro hd'
+        exact h' ⟨(UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h), hd ▸ hd'⟩
+      rw[←hd, hdp]
+      by_contra h''
+      simp only [zero_add, not_le, Nat.lt_one_iff] at h''
+      exact h h''
+    else
+      simp only [hd, ite_false, add_zero]
+      exact p.prop d
+
 def Flow.Path.cons
     {F : Flow Pr}
     {p : F.Path v w}
     (h : F.f u v ≠ 0)
     (h' : u ∉ p.val.val.support) :
     F.Path u w where
-  val := {
-    val := SimpleGraph.Walk.cons (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) p.val.val
-    property := by
-      intro d
-      rw[SimpleGraph.Walk.dart_counts_cons, Multiset.count_cons]
-      if hd : d = SimpleGraph.Dart.mk (u, v) (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) then
-        simp only [hd, ite_true]
-        have hdp : p.val.val.dart_counts.count d = 0 := by
-          rw[Multiset.count_eq_zero, SimpleGraph.Walk.dart_counts, Multiset.mem_coe]
-          by_contra h''
-          have := hd ▸ p.val.val.dart_fst_mem_support_of_mem_darts h''
-          exact h' this
-        rw[←hd, hdp]
-        by_contra h''
-        simp only [zero_add, not_le, Nat.lt_one_iff] at h''
-        exact h h''
-      else
-        simp only [hd, ite_false, add_zero]
-        exact p.val.prop d
-  }
+  val := Flow.Walk.cons h p (h' ∘ p.val.val.mem_support_of_contains_edge_fst)
   property := p.prop.cons h'
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
