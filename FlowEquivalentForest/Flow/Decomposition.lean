@@ -40,8 +40,6 @@ def Flow.Cycle.cycle {F : Flow Pr} (c : F.Cycle v) : N.asSimpleGraph.Cycle v whe
   property := c.prop
 def Flow.CycleFree (F : Flow Pr) := ∀ v, IsEmpty (F.Cycle v)
 
-theorem Flow.flowOut_s_eq_flowIn_t_of_cycleFree (F : Flow Pr) (hF : F.CycleFree) : flowOut F.f Pr.s = flowIn F.f Pr.t := sorry
-
 noncomputable instance {F : Flow Pr} {c : F.Cycle s} {u v : V} : Decidable (contains_edge c.cycle u v) := Classical.dec _
 noncomputable def Flow.remove_cycle (F : Flow Pr) (c : F.Cycle s) : Flow Pr where
   f u v := F.f u v - (if contains_edge c.cycle u v then 1 else 0)
@@ -207,8 +205,8 @@ where
         have hin : flowIn F.f v = 0 := Finset.sum_eq_zero (λ u _ => h u)
         if hvt : v = Pr.t then
           subst hvt
-          have : flowOut F.f Pr.s = 0 := F.flowOut_s_eq_flowIn_t_of_cycleFree hC ▸ hin
-          have : flowOut F.f Pr.s - flowIn F.f Pr.s = 0 := by rw[this, Nat.zero_sub]
+          have : flowIn F.f Pr.t - flowOut F.f Pr.t = 0 := by rw[hin, Nat.zero_sub]
+          have : flowOut F.f Pr.s - flowIn F.f Pr.s = 0 := F.excess_s_eq_neg_excess_t ▸ this
           exact hF this
         else
           have h_not_nil : ¬path_so_far.val.val.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
