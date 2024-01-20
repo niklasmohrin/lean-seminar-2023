@@ -103,9 +103,10 @@ instance {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork} : Neg (Flow Pr
 instance : HasSubset (Flow Pr) where
   Subset F₁ F₂ := F₁.f ≤ F₂.f
 
-instance : IsPreorder (Flow Pr) (· ⊆ ·) where
+instance : IsPartialOrder (Flow Pr) (· ⊆ ·) where
   refl F := by simp only [instHasSubsetFlow, le_refl]
   trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSubsetFlow, le_trans h₁₂ h₂₃]
+  antisymm F₁ F₂ h₁₂ h₂₁ := by ext u v; exact le_antisymm (h₁₂ u v) (h₂₁ u v)
 
 @[simp]
 instance : HasSSubset (Flow Pr) where
@@ -186,12 +187,19 @@ theorem Flow.sub_subset
 lemma Flow.zero_of_sub_neutral
     {F₁ F₂ : Flow Pr}
     (hle : F₂ ⊆ F₁)
-    (hsub : F₁ = Flow.sub hle):
+    (hsub : Flow.sub hle = F₁):
     F₂ = Pr.nullFlow := by
   ext u v
   unfold sub at hsub
   have h1 : F₁.f - F₂.f = F₁.f := by sorry
   sorry
+
+theorem Flow.sub_ssubset_of_nonzero
+    {F₁ F₂ : Flow Pr}
+    (h : F₁ ⊆ F₂)
+    (hF₁ : F₁ ≠ 0) :
+    Flow.sub h ⊂ F₂ :=
+  ssubset_of_subset_of_ne (Flow.sub_subset h) (hF₁ ∘ (Flow.zero_of_sub_neutral h ·))
 
 lemma flow_to_self_zero (F : Flow Pr) (v : V) : F.f v v = 0 := by
   linarith [F.capacity v v, N.loopless v]

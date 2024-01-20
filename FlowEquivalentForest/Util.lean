@@ -119,6 +119,15 @@ theorem fintype_sum_sub_distrib_of_sub_nonneg
     ∑ x, (f x - g x) = ∑ x, f x - ∑ x, g x :=
   finset_sum_sub_distrib_of_sub_nonneg Finset.univ fun x _ => h_le x
 
+theorem Fintype.sum_lt_sum
+    [Fintype ι]
+    [OrderedCancelAddCommMonoid M]
+    {f g : ι → M}
+    (hlt : f < g) :
+    Finset.sum Finset.univ f < Finset.sum Finset.univ g :=
+  have ⟨hle, a, ha⟩ := Pi.lt_def.mp hlt
+  Finset.sum_lt_sum (s := Finset.univ) (λ i _ => hle i) ⟨a, Finset.mem_univ a, ha⟩
+
 lemma Nat.sub_eq_sub_of_add_eq_add
     {a b c d : ℕ}
     (h : a + b = c + d) :
