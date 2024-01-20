@@ -10,13 +10,13 @@ import FlowEquivalentForest.SimpleGraph.Path
 
 open BigOperators
 
-variable { V : Type* } [Fintype V] [DecidableEq V] [Nonempty V]
+variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 
-structure FlowProblem { V : Type* } (G : Network V) where
+structure FlowProblem (N : Network V) where
   s : V
   t : V
 
-variable { G : Network V }
+variable {N : Network V}
 
 @[simp]
 def flowIn (f : V → V → ℕ) (v : V) := ∑ u, f u v
@@ -25,67 +25,69 @@ def flowIn (f : V → V → ℕ) (v : V) := ∑ u, f u v
 def flowOut (f : V → V → ℕ) (v : V) := ∑ w, f v w
 
 @[ext]
-structure Flow (P : FlowProblem G) where
+structure Flow (Pr : FlowProblem N) where
   f : V → V → ℕ
-  conservation : ∀ v, v ≠ P.s ∧ v ≠ P.t → flowOut f v = flowIn f v
-  capacity : ∀ u v, f u v ≤ G.cap u v
+  conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v
+  capacity : ∀ u v, f u v ≤ N.cap u v
 
-def Flow.Backward {Pr : FlowProblem G} (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
-
-def FlowProblem.nullFlow (P : FlowProblem G) : Flow P where
+def FlowProblem.nullFlow (Pr : FlowProblem N) : Flow Pr where
   f _ _ := 0
   conservation := by aesop
   capacity := by simp
 
-instance {Pr : FlowProblem G} : Zero (Flow Pr) where
+variable {Pr : FlowProblem N}
+
+instance : Zero (Flow Pr) where
   zero := Pr.nullFlow
 
-@[simp]
-def Flow.value { P : FlowProblem G } (flow : Flow P) := flowOut flow.f P.s - flowIn flow.f P.s
-
-def Flow.isMaximal { P : FlowProblem G } (F : Flow P) := ∀ F' : Flow P, F'.value ≤ F.value
+def Flow.Backward (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
 
 @[simp]
-lemma Flow.le_capMax {P : FlowProblem G} (F : Flow P) (u v : V) : F.f u v ≤ G.capMax := by
+def Flow.value (flow : Flow Pr) := flowOut flow.f Pr.s - flowIn flow.f Pr.s
+
+def Flow.isMaximal (F : Flow Pr) := ∀ F' : Flow Pr, F'.value ≤ F.value
+
+@[simp]
+lemma Flow.le_capMax (F : Flow Pr) (u v : V) : F.f u v ≤ N.capMax := by
   apply le_trans
   exact F.capacity u v
-  exact G.capMax_max
+  exact N.capMax_max
 
 noncomputable section
 
-instance { P : FlowProblem G } : Fintype (Flow P) := by
-  let c := G.capMax + 1
+instance : Fintype (Flow Pr) := by
+  let c := N.capMax + 1
   let β := V → V → Fin c
-  let inj : Flow P → β := fun F u v => ⟨F.f u v, Nat.lt_add_one_iff.mpr (F.le_capMax u v)⟩
+  let inj : Flow Pr → β := fun F u v => ⟨F.f u v, Nat.lt_add_one_iff.mpr (F.le_capMax u v)⟩
   apply Fintype.ofInjective inj
 
   intro F₁ F₂ h
   ext u v
   suffices F₁.f u v = F₂.f u v by simp_all only [add_left_inj]
 
-  have h_F : ∀ F : Flow P, Flow.f F u v = ((inj F) u v).val := by
+  have h_F : ∀ F : Flow Pr, Flow.f F u v = ((inj F) u v).val := by
     intro F
     simp only
   rw [h_F F₁, h_F F₂, h]
 
 
-def FlowProblem.maxFlow (P : FlowProblem G) : ℕ :=
-  let values := Finset.image Flow.value $ @Finset.univ (Flow P) inferInstance
+def FlowProblem.maxFlow (Pr : FlowProblem N) : ℕ :=
+  let values := Finset.image Flow.value $ @Finset.univ (Flow Pr) inferInstance
   let values_Nonempty : Finset.Nonempty values := Finset.Nonempty.image Finset.univ_nonempty Flow.value
   values.max' values_Nonempty
 
-lemma FlowProblem.maxFlow_exists { P : FlowProblem G } : ∃ F : Flow P, F.value = P.maxFlow := by
-  let values := Finset.image Flow.value $ @Finset.univ (Flow P) inferInstance
+lemma FlowProblem.maxFlow_exists : ∃ F : Flow Pr, F.value = Pr.maxFlow := by
+  let values := Finset.image Flow.value $ @Finset.univ (Flow Pr) inferInstance
 
-  have : P.maxFlow ∈ values := by
+  have : Pr.maxFlow ∈ values := by
     apply Finset.max'_mem
 
   rename_i inst inst_1 inst_2
   simp_all only [Finset.mem_image, Finset.mem_univ, true_and]
 
-def Network.maxFlowValue (G : Network V) (u v : V) := { s := u, t := v : FlowProblem G}.maxFlow
+def Network.maxFlowValue (N : Network V) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
 
-instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) :=
+instance {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork} : Neg (Flow Pr) :=
   ⟨fun F => ⟨fun u v => F.f v u, by
     intro v h_v_ne_st
     simp [flowOut, flowIn]
@@ -93,39 +95,39 @@ instance {G : UndirectedNetwork V} {P : FlowProblem G.toNetwork} : Neg (Flow P) 
   , by
     intro u v
     simp
-    rw [G.symm]
+    rw [N.symm]
     exact F.capacity v u
   ⟩⟩
 
 @[simp]
-instance {P : FlowProblem G} : HasSubset (Flow P) where
+instance : HasSubset (Flow Pr) where
   Subset F₁ F₂ := F₁.f ≤ F₂.f
 
-instance {Pr : FlowProblem G} : IsPreorder (Flow Pr) (· ⊆ ·) where
+instance : IsPreorder (Flow Pr) (· ⊆ ·) where
   refl F := by simp only [instHasSubsetFlow, le_refl]
   trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSubsetFlow, le_trans h₁₂ h₂₃]
 
 @[simp]
-instance {P : FlowProblem G} : HasSSubset (Flow P) where
+instance : HasSSubset (Flow Pr) where
   SSubset F₁ F₂ := F₁.f < F₂.f
 
-instance {Pr : FlowProblem G} : IsStrictOrder (Flow Pr) (· ⊂ ·) where
+instance : IsStrictOrder (Flow Pr) (· ⊂ ·) where
   irrefl F := by simp only [instHasSSubsetFlow, lt_self_iff_false, not_false_eq_true, forall_const]
   trans F₁ F₂ F₃ h₁₂ h₂₃ := by simp_all only [instHasSSubsetFlow, lt_trans h₁₂ h₂₃]
 
-instance {Pr : FlowProblem G} : IsNonstrictStrictOrder (Flow Pr) (· ⊆ ·) (· ⊂ ·) where
+instance : IsNonstrictStrictOrder (Flow Pr) (· ⊆ ·) (· ⊂ ·) where
   right_iff_left_not_left F₁ F₂ := by constructor <;> (intro h; simp_all only [instHasSSubsetFlow, instHasSubsetFlow]; exact h)
 
 @[simp]
-instance {P : FlowProblem G} : LE (Flow P) where
+instance : LE (Flow Pr) where
   le F₁ F₂ := F₁.value ≤ F₂.value
 
 @[simp]
-lemma flow_pos_of_le_pos {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
+lemma flow_pos_of_le_pos {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
   intro u v h
   exact lt_of_lt_of_le h (h_le ..)
 
-def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : Flow P where
+def Flow.sub {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : Flow Pr where
   f := F₂.f - F₁.f
   conservation := by
     intro v h_v_ne_st
@@ -160,7 +162,6 @@ def Flow.sub {P : FlowProblem G} {F₁ F₂ : Flow P} (h_le : F₁ ⊆ F₂) : F
 -- then subtracting F₁ from F₂ yields a flow with value 3, but the formula here would suggest 2,
 -- because in natural numbers, the value of F₁ is 0 (while it would be -1 in the integers).
 theorem Flow.sub_value
-    {Pr : FlowProblem G}
     {F₁ F₂ : Flow Pr}
     (hle : F₁ ⊆ F₂)
     (hF₁ : ¬F₁.Backward) :
@@ -176,7 +177,6 @@ theorem Flow.sub_value
   rw[←Nat.add_sub_assoc (le_of_not_lt hF₁)]
 
 theorem Flow.sub_subset
-    {Pr : FlowProblem G}
     {F₁ F₂ : Flow Pr}
     (hle : F₁ ⊆ F₂):
     (Flow.sub hle) ⊆ F₂ := by
@@ -184,7 +184,6 @@ theorem Flow.sub_subset
   simp only [sub, Pi.sub_apply, tsub_le_iff_right, le_add_iff_nonneg_right, zero_le]
 
 lemma Flow.zero_of_sub_neutral
-    {Pr : FlowProblem G}
     {F₁ F₂ : Flow Pr}
     (hle : F₂ ⊆ F₁)
     (hsub : F₁ = Flow.sub hle):
@@ -194,14 +193,14 @@ lemma Flow.zero_of_sub_neutral
   have h1 : F₁.f - F₂.f = F₁.f := by sorry
   sorry
 
-lemma flow_to_self_zero {P : FlowProblem G} (F : Flow P) (v : V) : F.f v v = 0 := by
-  linarith [F.capacity v v, G.loopless v]
+lemma flow_to_self_zero (F : Flow Pr) (v : V) : F.f v v = 0 := by
+  linarith [F.capacity v v, N.loopless v]
 
-lemma null_flow_smallest {P : FlowProblem G} (F : Flow P) : P.nullFlow ⊆ F := by
+lemma null_flow_smallest (F : Flow Pr) : Pr.nullFlow ⊆ F := by
   intro u v
   simp only [FlowProblem.nullFlow, zero_le]
 
-theorem Flow.sum_flowOut_eq_sum_flowIn {Pr : FlowProblem G} (F : Flow Pr) :
+theorem Flow.sum_flowOut_eq_sum_flowIn (F : Flow Pr) :
     ∑ u, flowOut F.f u = ∑ v, flowIn F.f v := by
   unfold flowOut flowIn
   rw[←Finset.sum_product', ←Finset.sum_product']
@@ -210,7 +209,7 @@ theorem Flow.sum_flowOut_eq_sum_flowIn {Pr : FlowProblem G} (F : Flow Pr) :
   intro t
   simp only [Prod.snd_swap, Prod.fst_swap]
 
-theorem Flow.flowOut_st_eq_flowIn_st {Pr : FlowProblem G} (F : Flow Pr) :
+theorem Flow.flowOut_st_eq_flowIn_st (F : Flow Pr) :
     flowOut F.f Pr.s + flowOut F.f Pr.t = flowIn F.f Pr.s + flowIn F.f Pr.t := by
   let st : Finset V := {Pr.s, Pr.t}
   have h : Disjoint st stᶜ := disjoint_compl_right
@@ -232,14 +231,14 @@ theorem Flow.flowOut_st_eq_flowIn_st {Pr : FlowProblem G} (F : Flow Pr) :
   simp at hv
   exact F.conservation v hv
 
-theorem Flow.excess_s_eq_neg_excess_t {Pr : FlowProblem G} (F : Flow Pr) :
+theorem Flow.excess_s_eq_neg_excess_t (F : Flow Pr) :
     flowOut F.f Pr.s - flowIn F.f Pr.s = flowIn F.f Pr.t - flowOut F.f Pr.t := by
   apply Nat.sub_eq_sub_of_add_eq_add
   have := F.flowOut_st_eq_flowIn_st
   conv at this => right; rw[Nat.add_comm]
   exact this
 
-lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by
+lemma Flow.value_eq_zero_of_s_eq_t (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by
   suffices flowOut F.f Pr.s = flowIn F.f Pr.s by rw[value, this, Nat.sub_self]
 
   exact Finset.eq_of_sum_eq_of_forall_other_eq
@@ -247,9 +246,9 @@ lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.
     (Finset.mem_univ _)
     (λ v _ hv => F.conservation v ⟨hv, (hPr ▸ hv)⟩)
 
-def Flow.range_sum {Pr : FlowProblem G} (F : Flow Pr) : ℕ := ∑ u, ∑ v, F.f u v
+def Flow.range_sum (F : Flow Pr) : ℕ := ∑ u, ∑ v, F.f u v
 
-theorem Flow.range_sum_lt_of_ssubset {Pr : FlowProblem G} {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := by
+theorem Flow.range_sum_lt_of_ssubset {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := by
   simp only [range_sum, ←Fintype.sum_prod_type']
   apply Fintype.sum_lt_sum
   simp only [instHasSSubsetFlow, Pi.lt_def] at *
