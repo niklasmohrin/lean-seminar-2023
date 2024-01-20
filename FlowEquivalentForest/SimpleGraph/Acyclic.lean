@@ -1,10 +1,13 @@
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Acyclic
+import Mathlib.Data.List.Duplicate
 
 import FlowEquivalentForest.SimpleGraph.Basic
 import FlowEquivalentForest.SimpleGraph.Path
 
 namespace SimpleGraph
+
+open ContainsEdge
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 
@@ -56,53 +59,55 @@ theorem addEdges_isAcyclic_of_not_reachable
     (huv : ¬G.Reachable u v) :
     (G.addEdges {⟦(u, v)⟧}).IsAcyclic := by
   wlog hne : u ≠ v
-  · have heq : u = v := by by_contra h; contradiction
-    subst heq
-    suffices G = G.addEdges {⟦(u, u)⟧} by rwa[←this]
-    simp only [←edgeSet_inj, addEdges, edgeSet_fromEdgeSet, Set.union_singleton, Set.mem_setOf_eq, Sym2.isDiag_iff_proj_eq, Set.insert_diff_of_mem]
-    ext e
-    constructor
-    · intro he
-      rw[Set.mem_diff]
-      exact ⟨he, G.not_isDiag_of_mem_edgeSet he⟩
-    · intro he
-      rw[Set.mem_diff] at he
-      exact he.left
+  · exact False.elim $ not_ne_iff.mp hne ▸ huv $ Reachable.refl v
 
-  have h_eq_add_sub : G = fromEdgeSet (G.edgeSet ∪ {⟦(u, v)⟧}) \ fromEdgeSet {⟦(u, v)⟧} := by
-    simp
-    ext a b
-    if hab : ⟦(a, b)⟧ = ⟦(u, v)⟧ then
-      simp[hab]
-      by_contra h
-      rw[←mem_edgeSet, hab, mem_edgeSet] at h
-      exact huv h.reachable
-    else
-      aesop
+  intro v₀ cp hcp
+  let c : SimpleGraph.Cycle _ := {
+    val := cp,
+    property := hcp,
+  }
 
-  rw[SimpleGraph.isAcyclic_iff_forall_edge_isBridge, Sym2.forall]
-  intro a b hab
-  if h_ab_uv : ⟦(a, b)⟧ = ⟦(u, v)⟧ then
-    rw[h_ab_uv, SimpleGraph.isBridge_iff]
-    constructor
-    · exact (fromEdgeSet_adj _).mpr ⟨by simp only [Set.union_singleton, mem_edgeSet, Set.mem_insert_iff, true_or], hne⟩
-    · rwa[addEdges, ←h_eq_add_sub]
+  if hc' : contains_edge c u v ∨ contains_edge c v u then
+    wlog huv' : contains_edge c u v generalizing c u v
+    · exact (Sym2.eq_swap ▸ this) (huv ∘ Reachable.symm) hne.symm c c.prop hc'.symm (hc'.resolve_left huv')
+
+    have ⟨hadj, hd⟩ := huv'
+
+    have hu := c.val.dart_fst_mem_support_of_mem_darts hd
+    have huv' := c.contains_edge_rotate hu huv'
+    let c := c.rotate hu
+
+    let p := c.val.tail c.prop.not_nil
+    have hvc := c.snd_eq_succ_start huv'
+    have p : G.Walk v u := hvc ▸ p.transfer G (by
+      intro e he
+      have := p.edges_subset_edgeSet he
+      simp at this
+      exact this.left.resolve_left (by
+        intro heq
+        subst heq
+        have : c.val.edges = ⟦(u, v)⟧ :: p.edges := by
+          rw[c.edges_eq_firstEdge_cons, List.cons_eq_cons]
+          exact ⟨by aesop, by aesop⟩
+        have : List.Duplicate ⟦(u, v)⟧ c.val.edges := this ▸ List.Mem.duplicate_cons_self he
+        exact this.not_nodup c.prop.edges_nodup
+      )
+    )
+    exact huv p.reachable.symm
   else
-    rw[isBridge_iff_mem_and_forall_cycle_not_mem]
-    constructor
-    · exact hab
-    · intro x c hc
-      exfalso
-      if hcuv : ⟦(u, v)⟧ ∈ c.edges then
-        have : v ∈ c.support := Walk.snd_mem_support_of_mem_edges c hcuv
-        let c' := c.rotate this
-        have hc' := hc.rotate this
-        -- TODO: The tail of c' is a walk from v to u, without using the
-        -- inserted edge (u, v) edge. This contradicts that u and v are
-        -- disconnected in g.
-        sorry
-      else
-        -- TODO: c is a cycle in g, because the added edge is not part of
-        -- it. I can maybe be transferred back to g, where it would then
-        -- be a contradiction to g being a forest.
-        sorry
+    have : ∀ e ∈ c.val.edges, e ∈ G.edgeSet := by
+      intro e he
+      have := c.val.edges_subset_edgeSet he
+      simp at this
+      exact this.left.resolve_left (by
+        intro heq
+        subst heq
+        cases c.val.mem_darts_of_mem_edges he with
+        | inl hd =>
+          have : contains_edge c u v := ⟨_, hd⟩
+          exact hc' $ Or.inl this
+        | inr hd =>
+          have : contains_edge c v u := ⟨_, hd⟩
+          exact hc' $ Or.inr this
+      )
+    exact hG (c.val.transfer G this) (c.prop.transfer this)

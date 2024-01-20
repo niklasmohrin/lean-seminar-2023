@@ -25,6 +25,10 @@ def SimpleGraph.Cycle.reverse {G : SimpleGraph V} (c : G.Cycle v) : G.Cycle v wh
   val := c.val.reverse
   property := c.prop.reverse
 
+def SimpleGraph.Cycle.rotate [DecidableEq V] {G : SimpleGraph V} (c : G.Cycle v) {u : V} (hu : u ∈ c.val.support) : G.Cycle u where
+  val := c.val.rotate hu
+  property := c.prop.rotate hu
+
 class ContainsEdge (V : outParam Type*) (α : Type*) where
   contains_edge : α → V → V → Prop
 
@@ -344,9 +348,51 @@ lemma SimpleGraph.Path.succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (
   · intro y hy
     exact hw.right y (Path.reverse.contains_edge hy)
 
+lemma SimpleGraph.Walk.not_nil_of_ne_nil (p : G.Walk v v) (hp : p ≠ nil) : ¬p.Nil :=
+  match p with
+  | Walk.nil => False.elim $ hp rfl
+  | Walk.cons .. => Walk.not_nil_cons
+
+lemma SimpleGraph.Walk.IsCycle.not_nil {p : G.Walk v v} (hc : p.IsCycle) : ¬p.Nil := p.not_nil_of_ne_nil hc.ne_nil
+
 lemma SimpleGraph.Path.no_pred_first (p : G.Path s t) : ¬contains_edge p u s := by
   intro ⟨hadj, hd⟩
   exact p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup rfl
 
 theorem SimpleGraph.Path.not_contains_edge_end_start (p : G.Path u v) :
     ¬contains_edge p.val v u := sorry
+
+theorem SimpleGraph.Walk.mem_darts_of_mem_edges (p : G.Walk s t) (h : ⟦(u, v)⟧ ∈ p.edges) :
+    let hadj := p.adj_of_mem_edges h
+    Dart.mk (u, v) hadj ∈ p.darts ∨ Dart.mk (v, u) hadj.symm ∈ p.darts := by
+  rw[edges, List.mem_map] at h
+  unfold Dart.edge at h
+  obtain ⟨d, hd₁, hd₂⟩ := h
+  rw[Sym2.eq_iff] at hd₂
+  cases hd₂ with
+  | inl heq =>
+    left
+    obtain ⟨hu, hv⟩ := heq
+    subst_vars
+    use hd₁
+  | inr heq =>
+    right
+    obtain ⟨hv, hu⟩ := heq
+    subst_vars
+    use hd₁
+
+theorem SimpleGraph.Cycle.succ_exists (c : G.Cycle v₀) {u : V} (hu : u ∈ c.val.support) :
+    ∃!v, contains_edge c u v := sorry
+
+abbrev SimpleGraph.Cycle.snd (c : G.Cycle v₀) := c.val.sndOfNotNil c.prop.not_nil
+
+lemma SimpleGraph.Cycle.snd_is_succ_start (c : G.Cycle v₀) : contains_edge c v₀ c.snd := sorry
+
+theorem SimpleGraph.Cycle.snd_eq_succ_start (c : G.Cycle u) (h : contains_edge c u v) : c.snd = v :=
+  (c.succ_exists c.val.start_mem_support).unique c.snd_is_succ_start h
+
+theorem SimpleGraph.Cycle.edges_eq_firstEdge_cons {G : SimpleGraph V} (c : G.Cycle v₀) :
+    c.val.edges = ⟦(v₀, c.val.sndOfNotNil c.prop.not_nil)⟧ :: (c.val.tail c.prop.not_nil).edges := sorry
+
+theorem SimpleGraph.Cycle.contains_edge_rotate (c : G.Cycle v₀) {v₀' : V} (hv₀' : v₀' ∈ c.val.support) (h : contains_edge c u v) :
+    contains_edge (c.rotate hv₀') u v := sorry
