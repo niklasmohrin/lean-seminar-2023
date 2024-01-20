@@ -1,5 +1,6 @@
 import Mathlib.Tactic.Linarith
 import Mathlib.Algebra.BigOperators.Basic
+import Mathlib.Data.Fintype.BigOperators
 import Mathlib.Combinatorics.SimpleGraph.Acyclic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
@@ -248,4 +249,12 @@ lemma Flow.value_eq_zero_of_s_eq_t {Pr : FlowProblem G} (F : Flow Pr) (hPr : Pr.
 
 def Flow.range_sum {Pr : FlowProblem G} (F : Flow Pr) : ℕ := ∑ u, ∑ v, F.f u v
 
-theorem Flow.range_sum_lt_of_ssubset {Pr : FlowProblem G} {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := sorry
+theorem Flow.range_sum_lt_of_ssubset {Pr : FlowProblem G} {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := by
+  simp only [range_sum, ←Fintype.sum_prod_type']
+  apply Fintype.sum_lt_sum
+  simp only [instHasSSubsetFlow, Pi.lt_def] at *
+  obtain ⟨h1, u, _, v, h₃⟩ := h
+  constructor
+  · intro ⟨a, b⟩
+    exact h1 a b
+  · use ⟨u, v⟩
