@@ -23,6 +23,11 @@ variable {G : SimpleGraph V}
 
 open ContainsEdge
 
+lemma SimpleGraph.Walk.contains_edge_cons_iff
+    (huv : G.Adj u v)
+    (p : G.Walk v w) :
+    (contains_edge (cons huv p) a b) ↔ a = u ∧ b = v ∨ contains_edge p a b := by aesop
+
 lemma SimpleGraph.Walk.mem_support_of_contains_edge_fst
     (p : G.Walk s t)
     (h : contains_edge p u v) :
@@ -235,6 +240,9 @@ lemma SimpleGraph.Walk.start_ne_snd_of_mem_darts_of_support_nodup :
     simp at heq
     rw[heq] at h
     exact G.loopless _ h
+
+lemma SimpleGraph.Walk.end_ne_fst_of_mem_darts_of_support_nodup :
+    ∀ (p : G.Walk s t) {d : G.Dart}, d ∈ p.darts → p.support.Nodup → t ≠ d.fst := sorry
 
 lemma SimpleGraph.Walk.pred_eq_of_support_nodup
     (p : G.Walk s t)
