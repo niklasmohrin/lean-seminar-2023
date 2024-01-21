@@ -248,7 +248,11 @@ lemma SimpleGraph.Walk.start_ne_snd_of_mem_darts_of_support_nodup :
     exact G.loopless _ h
 
 lemma SimpleGraph.Walk.end_ne_fst_of_mem_darts_of_support_nodup :
-    ∀ (p : G.Walk s t) {d : G.Dart}, d ∈ p.darts → p.support.Nodup → t ≠ d.fst := sorry
+    ∀ (p : G.Walk s t) {d : G.Dart}, d ∈ p.darts → p.support.Nodup → t ≠ d.fst := by
+  intro p d hd hp
+  apply p.reverse.start_ne_snd_of_mem_darts_of_support_nodup (d := d.symm)
+  · rwa[mem_darts_reverse, Dart.symm_symm]
+  · rwa[support_reverse, List.nodup_reverse]
 
 lemma SimpleGraph.Walk.pred_eq_of_support_nodup
     (p : G.Walk s t)
@@ -339,7 +343,11 @@ lemma SimpleGraph.Path.no_pred_first (p : G.Path s t) : ¬contains_edge p u s :=
   exact p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup rfl
 
 theorem SimpleGraph.Path.not_contains_edge_end_start (p : G.Path u v) :
-    ¬contains_edge p.val v u := sorry
+    ¬contains_edge p.val v u := by
+  intro h
+  obtain ⟨hadj, hd⟩ := h
+  have := p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup
+  simp_all only [ne_eq, not_true_eq_false]
 
 theorem SimpleGraph.Walk.mem_darts_of_mem_edges (p : G.Walk s t) (h : ⟦(u, v)⟧ ∈ p.edges) :
     let hadj := p.adj_of_mem_edges h
