@@ -129,8 +129,8 @@ namespace Forest
     let g' := g.add_edge huv h_M h_not_Reach
     let e₁ := NonDiag.mk (u, v) huv
     let e₂ := NonDiag.mk (v, u) huv.symm
-    have h₁ : g'.val.dartNonDiagFinset = g.val.dartNonDiagFinset ∪ {e₁, e₂} := sorry
-    have h₂ : Disjoint g.val.dartNonDiagFinset {e₁, e₂} := sorry
+    have h₁ : g'.val.dartNonDiagFinset = g.val.dartNonDiagFinset ∪ {e₁, e₂} := g.val.addEdges_singleton_dartNonDiagFinset huv
+    have h₂ : Disjoint g.val.dartNonDiagFinset {e₁, e₂} := g.val.dartNonDiagFinset_disjoint_of_not_adj huv (h_not_Reach ∘ SimpleGraph.Adj.reachable)
     exact weight_eq_add_of_dartNonDiagFinset_eq_union g g' huv h₁ h₂
 
   def remove_edge (g : Forest M) (u v : V) : Forest M where
@@ -153,10 +153,19 @@ namespace Forest
       conv => right; left; left; right; rw[Nat.add_comm] -- why do I have to do this? :(
       rw[←Nat.add_assoc]
       simp
-    let e₁ := NonDiag.mk (u, v) h_Adj.ne
-    let e₂ := NonDiag.mk (v, u) h_Adj.ne.symm
-    have h₁ : g.val.dartNonDiagFinset = g'.val.dartNonDiagFinset ∪ {e₁, e₂} := sorry
-    have h₂ : Disjoint g'.val.dartNonDiagFinset {e₁, e₂} := sorry
+    let e₁ := NonDiag.mk' h_Adj.ne
+    let e₂ := NonDiag.mk' h_Adj.ne.symm
+    have h₁ : g.val.dartNonDiagFinset = g'.val.dartNonDiagFinset ∪ {e₁, e₂} := by
+      conv =>
+        right
+        left
+        simp only [remove_edge, g.val.deleteEdges_singleton_dartNonDiagFinset h_Adj.ne]
+      rw[Finset.sdiff_union_self_eq_union]
+      apply Eq.symm
+      rw[Finset.union_eq_left]
+      exact g.val.subset_dartNonDiagFinset_of_adj h_Adj
+    have : ¬g'.val.Adj u v := λ h => ((g.val.deleteEdges_adj ..).mp h).right rfl
+    have h₂ : Disjoint g'.val.dartNonDiagFinset {e₁, e₂} := g'.val.dartNonDiagFinset_disjoint_of_not_adj h_Adj.ne this
     exact weight_eq_add_of_dartNonDiagFinset_eq_union g' g h_Adj.ne h₁ h₂
 
 end Forest

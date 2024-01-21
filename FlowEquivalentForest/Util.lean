@@ -143,6 +143,8 @@ lemma Nat.sub_eq_sub_of_add_eq_add
 structure NonDiag (α : Type*) extends (α × α) where
   ne : fst ≠ snd
 
+abbrev NonDiag.mk' {x y : α} (hne : x ≠ y) : NonDiag α := NonDiag.mk (x, y) hne
+
 lemma NonDiag.toProd_injective : Function.Injective (@NonDiag.toProd α) := by
   intro a b h
   ext
