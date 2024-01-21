@@ -31,11 +31,22 @@ theorem Path.cons_isCirculation (p : G.Path v u) (h : G.Adj u v) :
 
 lemma Walk.IsCirculation.not_nil {p : G.Walk v v} (hc : p.IsCirculation) : ¬p.Nil := p.not_nil_of_ne_nil hc.ne_nil
 
+theorem Walk.IsCirculation.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCirculation) : p.reverse.IsCirculation where
+  ne_nil := SimpleGraph.Walk.reverse_ne_nil h.ne_nil
+  support_nodup := by
+    suffices List.Perm p.support.tail p.reverse.support.tail from
+      (List.Perm.nodup_iff this).mp h.support_nodup
+
+    suffices List.Perm p.support p.reverse.support by
+      rwa[support_eq_cons p, support_eq_cons p.reverse, List.perm_cons] at this
+
+    exact Walk.support_reverse _ ▸ (List.reverse_perm p.support).symm
+
 namespace Circulation
 
-lemma pred_exists {c : G.Circulation s} (hc: v ∈ c.val.support) :
-    ∃! u, contains_edge c u v := by
-  sorry
+def reverse (c : G.Circulation v₀) : G.Circulation v₀ where
+  val := c.val.reverse
+  property := c.prop.reverse
 
 lemma succ_exists {c : G.Circulation s} (hu: u ∈ c.val.support) :
     ∃! v, contains_edge c u v := by
@@ -66,6 +77,13 @@ lemma succ_exists {c : G.Circulation s} (hu: u ∈ c.val.support) :
     intro v' hv'
     simp[hus] at hv'
     exact hv.right v' hv'
+
+lemma pred_exists {c : G.Circulation s} (hc: v ∈ c.val.support) :
+    ∃! u, contains_edge c u v := by
+  have : v ∈ c.val.reverse.support := by simp_all only [Walk.support_reverse, List.mem_reverse]
+  obtain ⟨u, hu⟩ := c.reverse.succ_exists this
+  simp only [instContainsEdgeCirculation, reverse, Walk.reverse_contains_edge_iff] at hu ⊢
+  use u
 
 end Circulation
 end SimpleGraph

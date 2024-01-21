@@ -62,12 +62,18 @@ lemma SimpleGraph.Path.reverse_reverse {G : SimpleGraph V} (P : G.Path s t) : P.
 
 
 @[simp]
-lemma Walk.reverse.contains_edge {G : SimpleGraph V} {P : G.Walk s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
+lemma SimpleGraph.Walk.reverse.contains_edge {G : SimpleGraph V} {P : G.Walk s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by
   obtain ⟨h', h''⟩ := h
   use h'.symm
   simp_all only [List.elem_iff, SimpleGraph.Walk.darts_reverse, List.mem_reverse,
     List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
     SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
+
+lemma SimpleGraph.Walk.reverse_contains_edge_iff {G : SimpleGraph V} {p : G.Walk s t} : contains_edge p.reverse v u ↔ contains_edge p u v := by
+  constructor
+  · conv => right; rw[←Walk.reverse_reverse p]
+    exact reverse.contains_edge
+  · exact reverse.contains_edge
 
 @[simp]
 lemma Path.reverse.contains_edge {G : SimpleGraph V} {P : G.Path s t} (h : contains_edge P u v) : contains_edge P.reverse v u := by

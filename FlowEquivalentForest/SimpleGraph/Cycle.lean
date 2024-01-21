@@ -18,23 +18,17 @@ abbrev Cycle (v : V) := { p : G.Walk v v // p.IsCycle }
 instance : ContainsEdge V (G.Cycle v) where
   contains_edge P := ContainsEdge.contains_edge P.val
 
-theorem Walk.IsCycle.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCycle) : p.reverse.IsCycle where
-  edges_nodup := by rw[edges_reverse, List.nodup_reverse]; exact h.edges_nodup
-  ne_nil := SimpleGraph.Walk.reverse_ne_nil h.ne_nil
-  support_nodup := by
-    suffices List.Perm p.support.tail p.reverse.support.tail from
-      (List.Perm.nodup_iff this).mp h.support_nodup
-
-    suffices List.Perm p.support p.reverse.support by
-      rwa[support_eq_cons p, support_eq_cons p.reverse, List.perm_cons] at this
-
-    exact Walk.support_reverse _ ▸ (List.reverse_perm p.support).symm
-
 lemma Walk.IsCycle.IsCirculation {p : G.Walk v v} (hp : p.IsCycle) : p.IsCirculation where
   ne_nil := hp.ne_nil
   support_nodup := hp.support_nodup
 
 lemma Walk.IsCycle.not_nil {p : G.Walk v v} (hc : p.IsCycle) : ¬p.Nil := hc.IsCirculation.not_nil
+
+theorem Walk.IsCycle.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCycle) : p.reverse.IsCycle where
+  edges_nodup := by rw[edges_reverse, List.nodup_reverse]; exact h.edges_nodup
+  ne_nil := h.IsCirculation.reverse.ne_nil
+  support_nodup := h.IsCirculation.reverse.support_nodup
+
 
 namespace Cycle
 
