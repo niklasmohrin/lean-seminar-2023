@@ -127,13 +127,29 @@ def Flow.Circulation.from_dart_and_path
 
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
-noncomputable def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) :=
-  have hle : (Flow.UnitCirculation c.circulation) ⊆ F := sorry
-  Flow.sub hle
+noncomputable def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr := Flow.UnitCirculation c.circulation
 
-theorem Flow.remove_circulation.value (F : Flow Pr) (C : F.Circulation v) : (F.remove_circulation C).value = F.value := sorry
+theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ⊆ F := by
+  simp [toFlow, UnitCirculation]
+  intro u v
+  if huv : contains_edge c.circulation u v then
+    simp only [huv, ite_true]
+    obtain ⟨_, hd⟩ := huv
+    have : 1 ≤ c.val.val.dart_counts.count _ := Multiset.one_le_count_iff_mem.mpr hd
+    exact le_trans this (c.val.prop _)
+  else
+    simp only [huv, ite_false, zero_le]
 
-theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := sorry
+noncomputable def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
+
+theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
+  rw[remove_circulation, Flow.sub_value c.toFlow_subset (Flow.UnitCirculation_not_backward c.circulation), Circulation.toFlow, Flow.UnitCirculation_value_zero, Nat.sub_zero]
+
+theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := by
+  rw[remove_circulation]
+  apply Flow.sub_ssubset_of_nonzero
+  rw[Circulation.toFlow]
+  exact Flow.UnitCirculation_nonzero _
 
 noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
   have : Decidable (F.CirculationFree) := Classical.dec _
@@ -166,7 +182,7 @@ theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulat
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
     have h1: (remove_all_circulations (remove_circulation F c)).value =  (remove_circulation F c).value := by exact Flow.remove_all_circulations.value ( remove_circulation F c)
-    have h2 : (remove_circulation F c).value = F.value := by exact Flow.remove_circulation.value F c
+    have h2 : (remove_circulation F c).value = F.value := by exact Flow.remove_circulation_value F c
     apply Eq.trans h1 h2
 termination_by Flow.remove_all_circulations.value F => F.range_sum
 decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset

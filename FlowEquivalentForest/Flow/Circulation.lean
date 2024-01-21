@@ -92,3 +92,12 @@ noncomputable def Flow.UnitCirculation (c : G.asSimpleGraph.Circulation v0) : Fl
   capacity := by
     intro u v
     sorry
+
+theorem Flow.UnitCirculation_value_zero (c : G.asSimpleGraph.Circulation v₀) :
+    (Flow.UnitCirculation (Pr := Pr) c).value = 0 := sorry
+
+theorem Flow.UnitCirculation_nonzero (c : G.asSimpleGraph.Circulation v₀) :
+    (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := sorry
+
+theorem Flow.UnitCirculation_not_backward (c : G.asSimpleGraph.Circulation v₀) :
+    ¬(Flow.UnitCirculation (Pr := Pr) c).Backward := sorry
