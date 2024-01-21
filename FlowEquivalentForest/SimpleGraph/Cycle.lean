@@ -49,16 +49,29 @@ theorem succ_exists (c : G.Cycle v₀) {u : V} (hu : u ∈ c.val.support) :
 
 abbrev snd (c : G.Cycle v₀) := c.val.sndOfNotNil c.prop.not_nil
 
-lemma snd_is_succ_start (c : G.Cycle v₀) : contains_edge c v₀ c.snd := sorry
+lemma snd_is_succ_start (c : G.Cycle v₀) : contains_edge c v₀ c.snd := by
+  use c.val.adj_sndOfNotNil c.prop.not_nil
+  use c.val.firstDart_mem_darts c.prop.not_nil
 
 theorem snd_eq_succ_start (c : G.Cycle u) (h : contains_edge c u v) : c.snd = v :=
   (c.succ_exists c.val.start_mem_support).unique c.snd_is_succ_start h
 
 theorem edges_eq_firstEdge_cons {G : SimpleGraph V} (c : G.Cycle v₀) :
-    c.val.edges = ⟦(v₀, c.val.sndOfNotNil c.prop.not_nil)⟧ :: (c.val.tail c.prop.not_nil).edges := sorry
+    c.val.edges = ⟦(v₀, c.val.sndOfNotNil c.prop.not_nil)⟧ :: (c.val.tail c.prop.not_nil).edges := by
+  obtain ⟨u', hadj, p', hp'⟩ := Walk.not_nil_iff.mp c.prop.not_nil
+  simp only [hp', Walk.edges_cons, List.cons_eq_cons]
+  constructor
+  · rw[Sym2.eq_iff]
+    exact Or.inl ⟨rfl, rfl⟩
+  · aesop
 
 theorem contains_edge_rotate (c : G.Cycle v₀) {v₀' : V} (hv₀' : v₀' ∈ c.val.support) (h : contains_edge c u v) :
-    contains_edge (c.rotate hv₀') u v := sorry
+    contains_edge (c.rotate hv₀') u v := by
+  obtain ⟨hadj, hd⟩ := h
+  use hadj
+  have := c.val.rotate_darts hv₀'
+  simp only [rotate, instContainsEdgeCycle, this.mem_iff]
+  use hd
 
 end Cycle
 end SimpleGraph
