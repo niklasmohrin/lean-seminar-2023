@@ -4,6 +4,7 @@ import Mathlib.Data.List.Duplicate
 
 import FlowEquivalentForest.SimpleGraph.Basic
 import FlowEquivalentForest.SimpleGraph.Path
+import FlowEquivalentForest.SimpleGraph.Cycle
 
 namespace SimpleGraph
 

@@ -4,30 +4,8 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 import Mathlib.Logic.Basic
 
-abbrev SimpleGraph.Cycle {G : SimpleGraph V} (v : V) := { p : G.Walk v v // p.IsCycle }
-
 lemma SimpleGraph.Walk.reverse_ne_nil {G : SimpleGraph V} {p : G.Walk v v} (h : p ≠ nil) : p.reverse ≠ nil :=
   λ h_nil => h $ reverse_nil ▸ SimpleGraph.Walk.reverse_reverse p ▸ congrArg SimpleGraph.Walk.reverse h_nil
-
-theorem SimpleGraph.Walk.IsCycle.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCycle) : p.reverse.IsCycle where
-  edges_nodup := by rw[edges_reverse, List.nodup_reverse]; exact h.edges_nodup
-  ne_nil := SimpleGraph.Walk.reverse_ne_nil h.ne_nil
-  support_nodup := by
-    suffices List.Perm p.support.tail p.reverse.support.tail from
-      (List.Perm.nodup_iff this).mp h.support_nodup
-
-    suffices List.Perm p.support p.reverse.support by
-      rwa[support_eq_cons p, support_eq_cons p.reverse, List.perm_cons] at this
-
-    exact Walk.support_reverse _ ▸ (List.reverse_perm p.support).symm
-
-def SimpleGraph.Cycle.reverse {G : SimpleGraph V} (c : G.Cycle v) : G.Cycle v where
-  val := c.val.reverse
-  property := c.prop.reverse
-
-def SimpleGraph.Cycle.rotate [DecidableEq V] {G : SimpleGraph V} (c : G.Cycle v) {u : V} (hu : u ∈ c.val.support) : G.Cycle u where
-  val := c.val.rotate hu
-  property := c.prop.rotate hu
 
 class ContainsEdge (V : outParam Type*) (α : Type*) where
   contains_edge : α → V → V → Prop
@@ -38,10 +16,6 @@ instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdg
 
 @[simp]
 instance instPathContainsEdge {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Path s t) where
-  contains_edge P := ContainsEdge.contains_edge P.val
-
-@[simp]
-instance {V : Type*} [DecidableEq V] {v : V} {G : SimpleGraph V} : ContainsEdge V (G.Cycle v) where
   contains_edge P := ContainsEdge.contains_edge P.val
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
@@ -99,13 +73,6 @@ lemma Path.reverse.contains_edge {G : SimpleGraph V} {P : G.Path s t} (h : conta
   simp_all only [List.elem_iff, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.darts_reverse, List.mem_reverse,
     List.mem_map, SimpleGraph.Dart.symm_involutive, Function.Involutive.exists_mem_and_apply_eq_iff,
     SimpleGraph.Dart.symm_mk, Prod.swap_prod_mk]
-
-@[simp]
-lemma Cycle.reverse.contains_edge {G : SimpleGraph V} {P : G.Cycle s} (h : contains_edge P u v) : contains_edge P.reverse v u := by
-  obtain ⟨h', h''⟩ := h
-  use h'.symm
-  sorry
-
 
 lemma SimpleGraph.Walk.mem_edges_of_mem_darts {p : G.Walk s t} {d : G.Dart} (hd : d ∈ p.darts) : d.edge ∈ p.edges := by
   simp only [SimpleGraph.Walk.edges, List.mem_map]
@@ -353,8 +320,6 @@ lemma SimpleGraph.Walk.not_nil_of_ne_nil (p : G.Walk v v) (hp : p ≠ nil) : ¬p
   | Walk.nil => False.elim $ hp rfl
   | Walk.cons .. => Walk.not_nil_cons
 
-lemma SimpleGraph.Walk.IsCycle.not_nil {p : G.Walk v v} (hc : p.IsCycle) : ¬p.Nil := p.not_nil_of_ne_nil hc.ne_nil
-
 lemma SimpleGraph.Path.no_pred_first (p : G.Path s t) : ¬contains_edge p u s := by
   intro ⟨hadj, hd⟩
   exact p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup rfl
@@ -380,19 +345,3 @@ theorem SimpleGraph.Walk.mem_darts_of_mem_edges (p : G.Walk s t) (h : ⟦(u, v)�
     obtain ⟨hv, hu⟩ := heq
     subst_vars
     use hd₁
-
-theorem SimpleGraph.Cycle.succ_exists (c : G.Cycle v₀) {u : V} (hu : u ∈ c.val.support) :
-    ∃!v, contains_edge c u v := sorry
-
-abbrev SimpleGraph.Cycle.snd (c : G.Cycle v₀) := c.val.sndOfNotNil c.prop.not_nil
-
-lemma SimpleGraph.Cycle.snd_is_succ_start (c : G.Cycle v₀) : contains_edge c v₀ c.snd := sorry
-
-theorem SimpleGraph.Cycle.snd_eq_succ_start (c : G.Cycle u) (h : contains_edge c u v) : c.snd = v :=
-  (c.succ_exists c.val.start_mem_support).unique c.snd_is_succ_start h
-
-theorem SimpleGraph.Cycle.edges_eq_firstEdge_cons {G : SimpleGraph V} (c : G.Cycle v₀) :
-    c.val.edges = ⟦(v₀, c.val.sndOfNotNil c.prop.not_nil)⟧ :: (c.val.tail c.prop.not_nil).edges := sorry
-
-theorem SimpleGraph.Cycle.contains_edge_rotate (c : G.Cycle v₀) {v₀' : V} (hv₀' : v₀' ∈ c.val.support) (h : contains_edge c u v) :
-    contains_edge (c.rotate hv₀') u v := sorry
