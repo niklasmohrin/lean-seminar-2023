@@ -44,12 +44,6 @@ def rotate [DecidableEq V] {G : SimpleGraph V} (c : G.Cycle v) {u : V} (hu : u �
   val := c.val.rotate hu
   property := c.prop.rotate hu
 
-@[simp]
-lemma reverse_contains_edge {G : SimpleGraph V} {P : G.Cycle s} (h : contains_edge P u v) : contains_edge P.reverse v u := by
-  obtain ⟨h', h''⟩ := h
-  use h'.symm
-  sorry
-
 theorem succ_exists (c : G.Cycle v₀) {u : V} (hu : u ∈ c.val.support) :
     ∃!v, contains_edge c u v := c.toCirculation.succ_exists hu
 
