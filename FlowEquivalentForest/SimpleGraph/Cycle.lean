@@ -30,9 +30,17 @@ theorem Walk.IsCycle.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCycle
 
     exact Walk.support_reverse _ ▸ (List.reverse_perm p.support).symm
 
-lemma Walk.IsCycle.not_nil {p : G.Walk v v} (hc : p.IsCycle) : ¬p.Nil := p.not_nil_of_ne_nil hc.ne_nil
+lemma Walk.IsCycle.IsCirculation {p : G.Walk v v} (hp : p.IsCycle) : p.IsCirculation where
+  ne_nil := hp.ne_nil
+  support_nodup := hp.support_nodup
+
+lemma Walk.IsCycle.not_nil {p : G.Walk v v} (hc : p.IsCycle) : ¬p.Nil := hc.IsCirculation.not_nil
 
 namespace Cycle
+
+def toCirculation (c : G.Cycle v₀) : G.Circulation v₀ where
+  val := c.val
+  property := c.prop.IsCirculation
 
 def reverse {G : SimpleGraph V} (c : G.Cycle v) : G.Cycle v where
   val := c.val.reverse
@@ -49,7 +57,7 @@ lemma reverse_contains_edge {G : SimpleGraph V} {P : G.Cycle s} (h : contains_ed
   sorry
 
 theorem succ_exists (c : G.Cycle v₀) {u : V} (hu : u ∈ c.val.support) :
-    ∃!v, contains_edge c u v := sorry
+    ∃!v, contains_edge c u v := c.toCirculation.succ_exists hu
 
 abbrev snd (c : G.Cycle v₀) := c.val.sndOfNotNil c.prop.not_nil
 
