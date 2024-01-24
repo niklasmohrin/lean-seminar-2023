@@ -132,6 +132,7 @@ noncomputable def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀)
 theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ⊆ F := by
   simp [toFlow, UnitCirculation]
   intro u v
+  unfold Flow.UnitCirculation_f
   if huv : contains_edge c.circulation u v then
     simp only [huv, ite_true]
     obtain ⟨_, hd⟩ := huv
