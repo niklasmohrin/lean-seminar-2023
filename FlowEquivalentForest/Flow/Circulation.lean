@@ -10,7 +10,6 @@ variable
   {G : UndirectedNetwork V}
   {Pr : FlowProblem G.toNetwork}
 
-
 noncomputable instance {G : SimpleGraph V} {c : G.Circulation v0} {u v : V} : Decidable (contains_edge c u v) := Classical.dec _
 
 @[simp]
@@ -101,7 +100,16 @@ theorem Flow.UnitCirculation_value_zero (c : G.asSimpleGraph.Circulation v₀) :
     (Flow.UnitCirculation (Pr := Pr) c).value = 0 := sorry
 
 theorem Flow.UnitCirculation_nonzero (c : G.asSimpleGraph.Circulation v₀) :
-    (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := sorry
+    (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := by
+  let d := c.val.firstDart c.prop.not_nil
+  suffices UnitCirculation_f c d.fst d.snd ≠ 0 by
+    intro h
+    injection h with f_eq
+    rw[f_eq] at this
+    contradiction
+  simp only [UnitCirculation_f, SimpleGraph.Walk.firstDart_toProd, ne_eq, ite_eq_right_iff, imp_false, not_not]
+  use d.is_adj
+  exact c.val.firstDart_mem_darts c.prop.not_nil
 
 theorem Flow.UnitCirculation_not_backward (c : G.asSimpleGraph.Circulation v₀) :
     ¬(Flow.UnitCirculation (Pr := Pr) c).Backward := sorry
