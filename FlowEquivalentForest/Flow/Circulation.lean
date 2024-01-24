@@ -97,7 +97,10 @@ noncomputable def Flow.UnitCirculation (c : G.asSimpleGraph.Circulation v0) : Fl
     sorry
 
 theorem Flow.UnitCirculation_value_zero (c : G.asSimpleGraph.Circulation v₀) :
-    (Flow.UnitCirculation (Pr := Pr) c).value = 0 := sorry
+    (Flow.UnitCirculation (Pr := Pr) c).value = 0 := by
+  rw [value, UnitCirculation]
+  rw [Flow.UnitCirculation_f_flowOut_eq_flowIn c Pr.s]
+  exact Nat.sub_self (flowIn (UnitCirculation_f c) Pr.s)
 
 theorem Flow.UnitCirculation_nonzero (c : G.asSimpleGraph.Circulation v₀) :
     (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := by
@@ -112,4 +115,5 @@ theorem Flow.UnitCirculation_nonzero (c : G.asSimpleGraph.Circulation v₀) :
   exact c.val.firstDart_mem_darts c.prop.not_nil
 
 theorem Flow.UnitCirculation_not_backward (c : G.asSimpleGraph.Circulation v₀) :
-    ¬(Flow.UnitCirculation (Pr := Pr) c).Backward := sorry
+    ¬(Flow.UnitCirculation (Pr := Pr) c).Backward := by
+  rw [Backward, UnitCirculation, not_lt, Flow.UnitCirculation_f_flowOut_eq_flowIn c Pr.s]
