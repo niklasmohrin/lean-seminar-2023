@@ -138,6 +138,19 @@ lemma Nat.sub_eq_sub_of_add_eq_add
   simp at this
   exact this
 
+lemma Nat.eq_zero_of_sub_eq_self_of_le {n m : ℕ} (h : m - n = m) (h' : n ≤ m) : n = 0 := by
+  induction m with
+  | zero => exact le_zero.mp h'
+  | succ m ih =>
+    if hn : n = m + 1 then
+      rw[hn, Nat.sub_self] at h
+      contradiction
+    else
+      have := Nat.lt_of_le_of_ne h' hn
+      have := Nat.le_of_lt_succ this
+      rw[Nat.succ_sub this] at h
+      exact ih (succ_inj'.mp h) this
+
 -- A pair of two elements that are not equal (that is, they are not on the diagonal of a matrix).
 @[ext]
 structure NonDiag (α : Type*) extends (α × α) where

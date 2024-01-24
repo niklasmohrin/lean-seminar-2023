@@ -186,13 +186,12 @@ theorem Flow.sub_subset
 
 lemma Flow.zero_of_sub_neutral
     {F₁ F₂ : Flow Pr}
-    (hle : F₂ ⊆ F₁)
-    (hsub : Flow.sub hle = F₁):
-    F₂ = Pr.nullFlow := by
+    (hle : F₁ ⊆ F₂)
+    (hsub : Flow.sub hle = F₂):
+    F₁ = 0 := by
+  simp only [sub, Flow.ext_iff] at hsub
   ext u v
-  unfold sub at hsub
-  have h1 : F₁.f - F₂.f = F₁.f := by sorry
-  sorry
+  exact Nat.eq_zero_of_sub_eq_self_of_le (congrFun (congrFun hsub u) v) (hle u v)
 
 theorem Flow.sub_ssubset_of_nonzero
     {F₁ F₂ : Flow Pr}
