@@ -94,7 +94,16 @@ noncomputable def Flow.UnitCirculation (c : G.asSimpleGraph.Circulation v0) : Fl
   conservation v _ := UnitCirculation_f_flowOut_eq_flowIn c v
   capacity := by
     intro u v
-    sorry
+    simp
+    if h : contains_edge c u v then
+      simp [h]
+      obtain ⟨hAdj, _⟩ := h
+      unfold UndirectedNetwork.asSimpleGraph at hAdj
+      simp at hAdj
+      exact hAdj
+    else
+      simp [h]
+
 
 theorem Flow.UnitCirculation_value_zero (c : G.asSimpleGraph.Circulation v₀) :
     (Flow.UnitCirculation (Pr := Pr) c).value = 0 := by
