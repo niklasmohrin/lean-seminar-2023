@@ -22,6 +22,10 @@ abbrev Circulation (v : V) := {p : G.Walk v v // p.IsCirculation}
 instance : ContainsEdge V (G.Circulation v₀) where
   contains_edge c := contains_edge c.val
 
+instance {c : G.Circulation v₀} : DecidableRel (contains_edge c) := by
+  simp only [instContainsEdgeCirculation]
+  infer_instance
+
 theorem Path.cons_isCirculation (p : G.Path v u) (h : G.Adj u v) :
     (Walk.cons h p.val).IsCirculation where
   ne_nil := by simp only [ne_eq, not_false_eq_true]

@@ -10,10 +10,8 @@ variable
   {N : UndirectedNetwork V}
   {Pr : FlowProblem N.toNetwork}
 
-noncomputable instance {G : SimpleGraph V} {c : G.Circulation v0} {u v : V} : Decidable (contains_edge c u v) := Classical.dec _
-
 @[simp]
-noncomputable abbrev Flow.UnitCirculation_f (c : N.asSimpleGraph.Circulation v₀) (u v : V) := if contains_edge c u v then 1 else 0
+abbrev Flow.UnitCirculation_f (c : N.asSimpleGraph.Circulation v₀) (u v : V) := if contains_edge c u v then 1 else 0
 
 lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation v₀) (v : V) : flowOut (Flow.UnitCirculation_f c) v = flowIn (Flow.UnitCirculation_f c) v := by
   if h_sup : v ∈ c.val.support then
@@ -89,7 +87,7 @@ lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation 
         not_exists]
     rw [h_out, h_in]
 
-noncomputable def Flow.UnitCirculation (c : N.asSimpleGraph.Circulation v0) : Flow Pr where
+def Flow.UnitCirculation (c : N.asSimpleGraph.Circulation v0) : Flow Pr where
   f := Flow.UnitCirculation_f c
   conservation v _ := UnitCirculation_f_flowOut_eq_flowIn c v
   capacity := by
@@ -114,12 +112,12 @@ theorem Flow.UnitCirculation_value_zero (c : N.asSimpleGraph.Circulation v₀) :
 theorem Flow.UnitCirculation_nonzero (c : N.asSimpleGraph.Circulation v₀) :
     (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := by
   let d := c.val.firstDart c.prop.not_nil
-  suffices UnitCirculation_f c d.fst d.snd ≠ 0 by
+  suffices UnitCirculation_f c d.fst d.snd = 1 by
     intro h
     injection h with f_eq
     rw[f_eq] at this
     contradiction
-  simp only [UnitCirculation_f, SimpleGraph.Walk.firstDart_toProd, ne_eq, ite_eq_right_iff, imp_false, not_not]
+  suffices contains_edge c d.fst d.snd by simp_all only [SimpleGraph.Walk.firstDart_toProd, UnitCirculation_f, ite_true]
   use d.is_adj
   exact c.val.firstDart_mem_darts c.prop.not_nil
 

@@ -4,24 +4,40 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 import Mathlib.Logic.Basic
 
-lemma SimpleGraph.Walk.reverse_ne_nil {G : SimpleGraph V} {p : G.Walk v v} (h : p ≠ nil) : p.reverse ≠ nil :=
+variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
+variable {G : SimpleGraph V}
+
+lemma SimpleGraph.Walk.reverse_ne_nil {p : G.Walk v v} (h : p ≠ nil) : p.reverse ≠ nil :=
   λ h_nil => h $ reverse_nil ▸ SimpleGraph.Walk.reverse_reverse p ▸ congrArg SimpleGraph.Walk.reverse h_nil
 
 class ContainsEdge (V : outParam Type*) (α : Type*) where
   contains_edge : α → V → V → Prop
 
 @[simp]
-instance {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Walk s t) where
+instance {s t : V} : ContainsEdge V (G.Walk s t) where
   contains_edge P u v := ∃ h : G.Adj u v, (SimpleGraph.Dart.mk (u, v) h) ∈ P.darts
 
 @[simp]
-instance instPathContainsEdge {V : Type*} [DecidableEq V] {s t : V} {G : SimpleGraph V} : ContainsEdge V (G.Path s t) where
+instance instPathContainsEdge {s t : V} : ContainsEdge V (G.Path s t) where
   contains_edge P := ContainsEdge.contains_edge P.val
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-variable {G : SimpleGraph V}
-
 open ContainsEdge
+
+theorem SimpleGraph.Walk.contains_edge_iff_mem_darts (p : G.Walk s t) :
+    contains_edge p u v ↔ ∃ d ∈ p.darts, d.toProd = (u, v) := by
+  constructor
+  · intro h
+    obtain ⟨hadj, hd⟩ := h
+    use Dart.mk (u, v) hadj
+  · intro h
+    obtain ⟨d, hd, huv⟩ := h
+    obtain ⟨hu, hv⟩ := Prod.ext_iff.mp huv
+    subst_vars
+    use d.is_adj
+
+instance {p : G.Walk s t} : Decidable (contains_edge p u v) := by
+  rw[SimpleGraph.Walk.contains_edge_iff_mem_darts]
+  infer_instance
 
 lemma SimpleGraph.Walk.contains_edge_cons_iff
     (huv : G.Adj u v)
