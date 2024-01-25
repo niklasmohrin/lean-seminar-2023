@@ -127,7 +127,7 @@ def Flow.Circulation.from_dart_and_path
 
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
-noncomputable def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr := Flow.UnitCirculation c.circulation
+def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr := Flow.UnitCirculation c.circulation
 
 theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ⊆ F := by
   simp [toFlow, UnitCirculation]
@@ -141,7 +141,7 @@ theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : 
   else
     simp only [huv, ite_false, zero_le]
 
-noncomputable def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
+def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
 
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
   rw[remove_circulation, Flow.sub_value c.toFlow_subset (Flow.UnitCirculation_not_backward c.circulation), Circulation.toFlow, Flow.UnitCirculation_value_zero, Nat.sub_zero]
@@ -295,7 +295,7 @@ lemma Flow.from_flowPath_subseteq (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hPr : Pr
   exact le_trans this (p.val.prop _)
 
 
-noncomputable def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
+def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
   if hst : Pr.s = Pr.t then
     F
   else

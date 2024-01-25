@@ -9,13 +9,12 @@ variable
   {N : UndirectedNetwork V}
   {Pr : FlowProblem N.toNetwork}
 
-noncomputable def Flow.fromPath
+def Flow.fromPath
     (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℕ)
     (hx : x ≤ N.bottleneck P) :
     Flow Pr :=
   let contains_edge := contains_edge P.path
-  have {u v} : Decidable (contains_edge u v) := Classical.dec _
 
   let f u v : ℕ := if contains_edge u v then x else 0
 

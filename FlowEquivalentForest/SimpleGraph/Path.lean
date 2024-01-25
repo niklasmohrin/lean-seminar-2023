@@ -39,6 +39,10 @@ instance {p : G.Walk s t} : Decidable (contains_edge p u v) := by
   rw[SimpleGraph.Walk.contains_edge_iff_mem_darts]
   infer_instance
 
+instance {p : G.Path s t} : DecidableRel (contains_edge p) := by
+  simp only [instPathContainsEdge]
+  infer_instance
+
 lemma SimpleGraph.Walk.contains_edge_cons_iff
     (huv : G.Adj u v)
     (p : G.Walk v w) :
