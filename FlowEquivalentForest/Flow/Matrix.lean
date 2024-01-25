@@ -12,12 +12,12 @@ import FlowEquivalentForest.SimpleGraph.Acyclic
 
 noncomputable section
 
-variable { V : Type* } [Fintype V] [DecidableEq V] [Nonempty V]
+variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 
 -- Currently, there is no need to pass in `hst`, but it is needed to match the
 -- definition of PairMatrix (and we might want to restrict FlowProblem later on
 -- to assume s ≠ t)
-def Network.matrix (G : Network V) (s t : V) (hst : s ≠ t) : ℕ := G.maxFlowValue s t
+def Network.matrix (G : Network V) (s t : V) (_ : s ≠ t) : ℕ := G.maxFlowValue s t
 
 open SimpleGraph
 open BigOperators
@@ -348,11 +348,12 @@ theorem flowEquivalentForest
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality) :
     ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
-  let g : mkFlowEquivalentForest.MaximalForest M := Classical.choice inferInstance
+  open mkFlowEquivalentForest in
+  have g : MaximalForest M := Classical.choice inferInstance
   ⟨
-    mkFlowEquivalentForest.mkFrom M hsymm g,
-    mkFlowEquivalentForest.mkFrom_hasMatrixM M hsymm htri g,
-    mkFlowEquivalentForest.mkFrom_IsAcyclic M hsymm g
+    mkFrom M hsymm g,
+    mkFrom_hasMatrixM M hsymm htri g,
+    mkFrom_IsAcyclic M hsymm g
   ⟩
 
 -- theorem flowMatrixCharacterization (M : PairMatrix V ℕ) :

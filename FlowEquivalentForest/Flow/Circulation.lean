@@ -7,15 +7,15 @@ open ContainsEdge
 
 variable
   {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-  {G : UndirectedNetwork V}
-  {Pr : FlowProblem G.toNetwork}
+  {N : UndirectedNetwork V}
+  {Pr : FlowProblem N.toNetwork}
 
 noncomputable instance {G : SimpleGraph V} {c : G.Circulation v0} {u v : V} : Decidable (contains_edge c u v) := Classical.dec _
 
 @[simp]
-noncomputable abbrev Flow.UnitCirculation_f (c : G.asSimpleGraph.Circulation v₀) (u v : V) := if contains_edge c u v then 1 else 0
+noncomputable abbrev Flow.UnitCirculation_f (c : N.asSimpleGraph.Circulation v₀) (u v : V) := if contains_edge c u v then 1 else 0
 
-lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : G.asSimpleGraph.Circulation v₀) (v : V) : flowOut (Flow.UnitCirculation_f c) v = flowIn (Flow.UnitCirculation_f c) v := by
+lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation v₀) (v : V) : flowOut (Flow.UnitCirculation_f c) v = flowIn (Flow.UnitCirculation_f c) v := by
   if h_sup : v ∈ c.val.support then
     have h_out : flowOut (fun u v ↦ if contains_edge c u v then 1 else 0) v = 1 := by
       obtain ⟨w, hw_succ, hw_uniq⟩ := c.succ_exists h_sup
@@ -89,7 +89,7 @@ lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : G.asSimpleGraph.Circulation 
         not_exists]
     rw [h_out, h_in]
 
-noncomputable def Flow.UnitCirculation (c : G.asSimpleGraph.Circulation v0) : Flow Pr where
+noncomputable def Flow.UnitCirculation (c : N.asSimpleGraph.Circulation v0) : Flow Pr where
   f := Flow.UnitCirculation_f c
   conservation v _ := UnitCirculation_f_flowOut_eq_flowIn c v
   capacity := by
@@ -105,13 +105,13 @@ noncomputable def Flow.UnitCirculation (c : G.asSimpleGraph.Circulation v0) : Fl
       simp [h]
 
 
-theorem Flow.UnitCirculation_value_zero (c : G.asSimpleGraph.Circulation v₀) :
+theorem Flow.UnitCirculation_value_zero (c : N.asSimpleGraph.Circulation v₀) :
     (Flow.UnitCirculation (Pr := Pr) c).value = 0 := by
   rw [value, UnitCirculation]
   rw [Flow.UnitCirculation_f_flowOut_eq_flowIn c Pr.s]
   exact Nat.sub_self (flowIn (UnitCirculation_f c) Pr.s)
 
-theorem Flow.UnitCirculation_nonzero (c : G.asSimpleGraph.Circulation v₀) :
+theorem Flow.UnitCirculation_nonzero (c : N.asSimpleGraph.Circulation v₀) :
     (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := by
   let d := c.val.firstDart c.prop.not_nil
   suffices UnitCirculation_f c d.fst d.snd ≠ 0 by
@@ -123,6 +123,6 @@ theorem Flow.UnitCirculation_nonzero (c : G.asSimpleGraph.Circulation v₀) :
   use d.is_adj
   exact c.val.firstDart_mem_darts c.prop.not_nil
 
-theorem Flow.UnitCirculation_not_backward (c : G.asSimpleGraph.Circulation v₀) :
+theorem Flow.UnitCirculation_not_backward (c : N.asSimpleGraph.Circulation v₀) :
     ¬(Flow.UnitCirculation (Pr := Pr) c).Backward := by
   rw [Backward, UnitCirculation, not_lt, Flow.UnitCirculation_f_flowOut_eq_flowIn c Pr.s]

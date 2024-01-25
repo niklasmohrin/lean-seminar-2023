@@ -6,13 +6,13 @@ open ContainsEdge
 
 variable
   {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-  {G : UndirectedNetwork V}
-  {Pr : FlowProblem G.toNetwork}
+  {N : UndirectedNetwork V}
+  {Pr : FlowProblem N.toNetwork}
 
 noncomputable def Flow.fromPath
-    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℕ)
-    (hx : x ≤ G.bottleneck P) :
+    (hx : x ≤ N.bottleneck P) :
     Flow Pr :=
   let contains_edge := contains_edge P.path
   have {u v} : Decidable (contains_edge u v) := Classical.dec _
@@ -73,12 +73,12 @@ noncomputable def Flow.fromPath
         _           = 0              := Finset.sum_eq_zero $ fun u _ => h_out u
         _           = ∑ u, f u v     := (Finset.sum_eq_zero $ fun u _ => h_in u).symm
         _           = flowIn f v     := rfl
-  have capacity u v : f u v ≤ G.cap u v := by
+  have capacity u v : f u v ≤ N.cap u v := by
     if he : contains_edge u v then
       calc
         f u v = x                := by simp only [he, ite_true]
-        _     ≤ G.bottleneck P   := hx
-        _     ≤ G.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
+        _     ≤ N.bottleneck P   := hx
+        _     ≤ N.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
     else
       have : f u v = 0 := by simp only [he, ite_false]
       linarith
@@ -86,9 +86,9 @@ noncomputable def Flow.fromPath
   { f, conservation, capacity }
 
 lemma Flow.fromPath_not_backward
-    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℕ)
-    (hx : x ≤ G.bottleneck P) :
+    (hx : x ≤ N.bottleneck P) :
     ¬(fromPath P x hx).Backward := by
   unfold Backward
   rw[not_lt]
@@ -101,9 +101,9 @@ lemma Flow.fromPath_not_backward
 
 @[simp]
 lemma Flow.fromPath_value
-    (P : G.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℕ)
-    (hx : x ≤ G.bottleneck P) :
+    (hx : x ≤ N.bottleneck P) :
     (Flow.fromPath P x hx).value = x := by
   let F := Flow.fromPath P x hx
 
