@@ -11,7 +11,7 @@ def addEdges (G : SimpleGraph V) (s : Set (Sym2 V)) : SimpleGraph V := SimpleGra
 
 noncomputable instance {G : SimpleGraph V} : DecidableRel G.Adj := Classical.decRel _
 
-noncomputable def dartNonDiagFinset (G : SimpleGraph V) : Finset (NonDiag V) :=
+def dartNonDiagFinset (G : SimpleGraph V) [DecidableRel G.Adj] : Finset (NonDiag V) :=
   Finset.filter (λ e => G.Adj e.fst e.snd) (Finset.univ (α := NonDiag V))
 
 theorem mem_dartNonDiagFinset_iff (G : SimpleGraph V) (e : NonDiag V) : e ∈ G.dartNonDiagFinset ↔ G.Adj e.fst e.snd := by

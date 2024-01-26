@@ -6,6 +6,7 @@ import Mathlib.Algebra.BigOperators.Order
 import Mathlib.Tactic.Ring
 import Mathlib.Tactic.Linarith
 import Mathlib.Data.Fintype.Prod
+import Mathlib.Data.Fintype.Sigma
 
 open BigOperators
 
@@ -46,7 +47,7 @@ theorem max_from_Nonempty_bounded
 theorem max_from_Nonempty_bounded_wrt
     (s : Set α)
     (hs : s.Nonempty)
-    (w : α → ℕ)
+    {w : α → ℕ}
     {b : ℕ}
     (hb : ∀ x ∈ s, w x ≤ b) :
     ∃ m ∈ s, ∀ x ∈ s, w x ≤ w m := by
@@ -164,9 +165,15 @@ lemma NonDiag.toProd_injective : Function.Injective (@NonDiag.toProd α) := by
   · exact congrArg Prod.fst h
   · exact congrArg Prod.snd h
 
-noncomputable instance [Fintype α] : Fintype (NonDiag α) := Fintype.ofInjective NonDiag.toProd NonDiag.toProd_injective
+def NonDiag.equiv_sigma_ne : NonDiag α ≃ Sigma (λ a : α => Subtype (a ≠ ·)) where
+  toFun d := ⟨d.fst, d.snd, d.ne⟩
+  invFun d := ⟨(d.fst, d.snd.val), d.snd.prop⟩
+  left_inv _ := rfl
+  right_inv _ := rfl
 
-lemma NonDiag.card_le [Fintype α] : Fintype.card (NonDiag α) ≤ Fintype.card (α × α) := Fintype.card_le_of_injective NonDiag.toProd NonDiag.toProd_injective
+instance [Fintype α] [DecidableEq α] : Fintype (NonDiag α) := Fintype.ofEquiv _ NonDiag.equiv_sigma_ne.symm
+
+lemma NonDiag.card_le [Fintype α] [DecidableEq α] : Fintype.card (NonDiag α) ≤ Fintype.card (α × α) := Fintype.card_le_of_injective NonDiag.toProd NonDiag.toProd_injective
 
 instance [DecidableEq α] : DecidableEq (NonDiag α) := by
   intro a b

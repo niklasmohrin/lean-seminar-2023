@@ -10,14 +10,12 @@ import FlowEquivalentForest.Util
 import FlowEquivalentForest.SimpleGraph.Basic
 import FlowEquivalentForest.SimpleGraph.Acyclic
 
-noncomputable section
-
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 
 -- Currently, there is no need to pass in `hst`, but it is needed to match the
 -- definition of PairMatrix (and we might want to restrict FlowProblem later on
 -- to assume s ≠ t)
-def Network.matrix (G : Network V) (s t : V) (_ : s ≠ t) : ℕ := G.maxFlowValue s t
+noncomputable def Network.matrix (G : Network V) (s t : V) (_ : s ≠ t) : ℕ := G.maxFlowValue s t
 
 open SimpleGraph
 open BigOperators
@@ -40,11 +38,8 @@ instance {M : PairMatrix V ℕ} : Nonempty (Forest M) := by
 namespace Forest
   variable {M : PairMatrix V ℕ}
 
-  instance {F : Forest M} : DecidableRel F.val.Adj := Classical.decRel _
-  instance {F : Forest M} : DecidablePred (λ (e : (V × V)) => F.val.Adj e.fst e.snd) := Classical.decPred _
-
   @[simp]
-  def weight (F : Forest M) := ∑ e in F.val.dartNonDiagFinset, M e.ne
+  def weight (F : Forest M) [DecidableRel F.val.Adj] := ∑ e in F.val.dartNonDiagFinset, M e.ne
 
   lemma weight_bounded (M : PairMatrix V ℕ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
     let M_max := Classical.choose M.bounded
@@ -174,7 +169,7 @@ abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest 
 
 instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
   obtain ⟨b, hb⟩ := Forest.weight_bounded M
-  obtain ⟨F : Forest M, hF⟩ := max_from_Nonempty_bounded_wrt (@Set.univ (Forest M)) (Set.univ_nonempty) Forest.weight (fun F _ => hb F)
+  obtain ⟨F : Forest M, hF⟩ := max_from_Nonempty_bounded_wrt (@Set.univ (Forest M)) (Set.univ_nonempty) (fun F _ => hb F)
   use F
   intro F'
   simp_all only [Set.mem_univ, forall_true_left, Subtype.forall, ne_eq, true_and]
@@ -182,21 +177,15 @@ instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
 
 variable (M : PairMatrix V ℕ)
 
-def mkFrom (hsymm : M.Symmetrical) (g : Forest M)  : UndirectedNetwork V :=
-  have : DecidableRel g.val.Adj := Classical.decRel _
-  let cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
-  have loopless : ∀ v, cap v v = 0 := by
-    intro v
-    simp only [SimpleGraph.irrefl, dite_false]
-  have symm : ∀ u v, cap u v = cap v u := by
-    intro u v
+def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : UndirectedNetwork V where
+  cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
+  loopless v := by simp only [SimpleGraph.irrefl, dite_false]
+  symm u v := by
     if huv : g.val.Adj u v then
       simp only [dite_true, huv, huv.symm, hsymm huv.ne]
     else
       have hvu : ¬g.val.Adj v u := huv ∘ SimpleGraph.Adj.symm
       simp only [dite_false, huv, hvu]
-
-  { cap, loopless, symm }
 
 @[simp]
 lemma mkFrom_asSimpleGraph_eq
