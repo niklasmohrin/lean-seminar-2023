@@ -12,10 +12,11 @@ variable (V : Type*) [Fintype V] [DecidableEq V] [Nonempty V]
 
 structure Network where
   cap : V → V → ℕ
-  loopless: ∀ v, cap v v = 0
+  loopless : ∀ v, cap v v = 0
 
 structure UndirectedNetwork extends Network V where
-  symm: ∀ u v, cap u v = cap v u
+  symm : ∀ u v, cap u v = cap v u
+
 
 end
 
