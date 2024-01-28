@@ -21,7 +21,7 @@ lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation 
         simp only [hw_succ, ite_true]
       unfold flowOut
       nth_rw 2 [← h1]
-      refine Finset.sum_eq_single (β := ℕ) (a := w) ?_ ?_
+      refine Finset.sum_eq_single (β := ℤ) (a := w) ?_ ?_
       · intro b _ hb1
         have : ¬contains_edge c v b := by
           intro h
@@ -34,7 +34,7 @@ lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation 
       have h1 : (if contains_edge c u v then 1 else 0) = 1 := by
         simp only [hu_pred, ite_true]
       nth_rw 2 [← h1]
-      refine Finset.sum_eq_single (β := ℕ) (a := u) ?_ ?_
+      refine Finset.sum_eq_single (β := ℤ) (a := u) ?_ ?_
       · intro b _ hb1
         have : ¬contains_edge c b v := by
           intro h
