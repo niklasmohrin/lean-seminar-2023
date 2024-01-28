@@ -224,14 +224,14 @@ theorem Flow.exists_path_of_value_nonzero_of_circulationFree
     F.Path Pr.s Pr.t :=
   build_path (Flow.Path.nil F)
 where
-  -- Recursive definition of the path: Given a path from some vertex u to the
-  -- sink, we pick the next vertex v, add it to the front of the path and
+  -- Recursive definition of the path: Given a path from some vertex v to the
+  -- sink, we pick the next vertex u, add it to the front of the path and
   -- recurse until we arrive at the source.
   build_path {v} (path_so_far : F.Path v Pr.t) : F.Path Pr.s Pr.t :=
     if hvs : v = Pr.s then
       hvs ▸ path_so_far
     else
-      let valid_us := {u : V // F.f u v ≠ 0 }
+      let valid_us := {u : V // F.f u v ≠ 0}
       have : Nonempty valid_us := by
         by_contra h
         simp only [nonempty_subtype, not_exists, not_not] at h
@@ -242,6 +242,7 @@ where
           have : flowOut F.f Pr.s - flowIn F.f Pr.s = 0 := F.excess_s_eq_neg_excess_t ▸ this
           exact hF this
         else
+          absurd hin
           have h_not_nil : ¬path_so_far.val.val.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
           let w := path_so_far.val.val.sndOfNotNil h_not_nil
           have : F.f v w ≠ 0 := by
@@ -254,8 +255,7 @@ where
             intro h
             rw[flowOut, Finset.sum_eq_zero_iff] at h
             exact this $ h w (Finset.mem_univ w)
-          have : flowIn F.f v ≠ 0 := F.conservation v ⟨hvs, hvt⟩ ▸ this
-          exact this hin
+          exact F.conservation v ⟨hvs, hvt⟩ ▸ this
 
       let u := Classical.choice this
       have : u.val ∉ path_so_far.val.val.support := by
