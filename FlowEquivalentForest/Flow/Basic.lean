@@ -82,7 +82,6 @@ lemma FlowProblem.maxFlow_exists : ∃ F : Flow Pr, F.value = Pr.maxFlow := by
   have : Pr.maxFlow ∈ values := by
     apply Finset.max'_mem
 
-  rename_i inst inst_1 inst_2
   simp_all only [Finset.mem_image, Finset.mem_univ, true_and]
 
 def Network.maxFlowValue (N : Network V) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
