@@ -1,4 +1,5 @@
 import Mathlib.Algebra.Order.Monoid.Canonical.Defs
+import Mathlib.Data.Int.LeastGreatest
 import Mathlib.Data.Set.Image
 import Mathlib.Init.Set
 import Mathlib.Algebra.BigOperators.Basic
@@ -59,6 +60,22 @@ theorem max_from_Nonempty_bounded_wrt
   · exact hm.left
   · intro x a
     simp_all only [Set.mem_image, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+
+theorem Int.exists_greatest_of_bdd_wrt
+    (s : Set α)
+    (hs : s.Nonempty)
+    {w : α → ℤ}
+    {b : ℤ}
+    (hb : ∀ x ∈ s, w x ≤ b) :
+    ∃ m ∈ s, ∀ x ∈ s, w x ≤ w m := by
+  have : ∀ y ∈ w '' s, y ≤ b := by aesop
+  obtain ⟨m', hm'⟩ := Int.exists_greatest_of_bdd (P := w '' s) ⟨b, this⟩ (hs.image w)
+  obtain ⟨m, hm⟩ := (Set.mem_image ..).mp hm'.left
+  use m
+  constructor
+  · exact hm.left
+  · intro x hx
+    exact hm.right ▸ hm'.right (w x) (by use x)
 
 lemma Finset.eq_of_sum_eq_of_forall_other_eq
     [DecidableEq α]

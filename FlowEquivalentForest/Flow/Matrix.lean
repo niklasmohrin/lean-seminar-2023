@@ -15,12 +15,12 @@ variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 -- Currently, there is no need to pass in `hst`, but it is needed to match the
 -- definition of PairMatrix (and we might want to restrict FlowProblem later on
 -- to assume s ≠ t)
-noncomputable def Network.matrix (G : Network V) (s t : V) (_ : s ≠ t) : ℕ := G.maxFlowValue s t
+noncomputable def Network.matrix (G : Network V) (s t : V) (_ : s ≠ t) : ℤ := G.maxFlowValue s t
 
 open SimpleGraph
 open BigOperators
 
-def PairMatrix.TriangleInequality (M : PairMatrix V ℕ) :=
+def PairMatrix.TriangleInequality (M : PairMatrix V ℤ) :=
   ∀ u v w, (huv : u ≠ v) → (hvw : v ≠ w) → (huw : u ≠ w) → min (M huv) (M hvw) ≤ M huw
 
 section
@@ -28,42 +28,47 @@ namespace mkFlowEquivalentForest
 
 -- All the "spanning trees" over the complete graph over V.
 -- We also cancel forest edges that would have 0 capacity in the end, because we can.
-abbrev Forest (M : PairMatrix V ℕ) := { g : SimpleGraph V // IsAcyclic g ∧ ∀ u v, (huv : u ≠ v) → g.Adj u v → 0 < M huv }
+abbrev Forest (M : PairMatrix V ℤ) := { g : SimpleGraph V // IsAcyclic g ∧ ∀ u v, (huv : u ≠ v) → g.Adj u v → 0 < M huv }
 
-instance {M : PairMatrix V ℕ} : Nonempty (Forest M) := by
+instance {M : PairMatrix V ℤ} : Nonempty (Forest M) := by
   simp only [nonempty_subtype]
   use emptyGraph V
   simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, IsEmpty.forall_iff, implies_true, forall_const, and_self]
 
 namespace Forest
-  variable {M : PairMatrix V ℕ}
+  variable {M : PairMatrix V ℤ}
 
   @[simp]
   def weight (F : Forest M) [DecidableRel F.val.Adj] := ∑ e in F.val.dartNonDiagFinset, M e.ne
 
-  lemma weight_bounded (M : PairMatrix V ℕ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
-    let M_max := Classical.choose M.bounded
+  lemma weight_bounded (M : PairMatrix V ℤ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
+    let M_max := max 0 $ Classical.choose M.bounded
     use Fintype.card V * Fintype.card V * M_max
     intro F
     calc
       F.weight = ∑ e in F.val.dartNonDiagFinset, M (e.ne) := by rfl
-      _        ≤ ∑ _e in F.val.dartNonDiagFinset, M_max   := by simp_all only [Finset.sum_le_sum, Classical.choose_spec M.bounded, ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp]
-      _        = (F.val.dartNonDiagFinset).card * M_max   := by simp_all only [ne_eq, Finset.filter_congr_decidable, Finset.mem_univ, forall_true_left, Prod.forall, Finset.mem_filter, true_and, implies_true, forall_const, Subtype.forall, and_imp, Finset.univ_eq_attach, Finset.sum_const, Finset.card_attach, smul_eq_mul]
+      _        ≤ ∑ _e in F.val.dartNonDiagFinset, M_max   := by
+                                                              apply Finset.sum_le_sum
+                                                              intros
+                                                              simp only [ne_eq, le_max_iff, Classical.choose_spec M.bounded, or_true, M_max]
+      _        = (F.val.dartNonDiagFinset).card * M_max   := by simp_all only [ne_eq, Finset.sum_const, nsmul_eq_mul, M_max]
       _        ≤ Fintype.card V * Fintype.card V * M_max  := by
-                                                              apply Nat.mul_le_mul_right M_max
-                                                              rw[←Fintype.card_prod, ←Finset.card_univ]
-                                                              apply le_trans $ Finset.card_le_of_subset $ Finset.subset_univ F.val.dartNonDiagFinset
-                                                              repeat rw[Finset.card_univ]
-                                                              exact NonDiag.card_le
+                                                              apply mul_le_mul_of_nonneg_right
+                                                              · rw[←Int.natCast_mul, ←Fintype.card_prod, Int.ofNat_le]
+                                                                refine le_trans ?_ NonDiag.card_le
+                                                                rw[dartNonDiagFinset]
+                                                                exact Finset.card_le_univ _
+                                                              · simp only [ne_eq, le_max_iff, le_refl, true_or, M_max]
 
   @[simp]
   lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne + M h_Adj.ne.symm ≤ g.weight := by
     unfold weight
     let e₁ := NonDiag.mk (u, v) h_Adj.ne
     let e₂ := NonDiag.mk (v, u) h_Adj.ne.symm
-    refine Finset.add_le_sum (N := ℕ) (f := λ e => M e.ne) (i := e₁) (j := e₂) ?_ ?_ ?_ ?_
-    · intro _ _
-      exact zero_le _
+    refine Finset.add_le_sum (N := ℤ) (f := λ e => M e.ne) (i := e₁) (j := e₂) ?_ ?_ ?_ ?_
+    · intro e he
+      have := (g.val.mem_dartNonDiagFinset_iff _).mp he
+      exact le_of_lt <| g.prop.right _ _ this.ne this
     · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj, and_self]
     · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj.symm, and_self]
     · by_contra h
@@ -91,10 +96,10 @@ namespace Forest
           | Or.inl h => match h with
             | Or.inl ⟨ha, hb⟩ =>
               subst ha hb
-              exact lt_of_lt_of_le h_M (Nat.min_le_left _ _)
+              exact lt_of_lt_of_le h_M (min_le_left _ _)
             | Or.inr ⟨ha, hb⟩ =>
               subst ha hb
-              exact lt_of_lt_of_le h_M (Nat.min_le_right _ _)
+              exact lt_of_lt_of_le h_M (min_le_right _ _)
           | Or.inr h => contradiction
 
   lemma weight_eq_add_of_dartNonDiagFinset_eq_union
@@ -142,12 +147,7 @@ namespace Forest
   lemma remove_edge.weight_eq_sub (g : Forest M) (h_Adj : g.val.Adj u v) :
       (g.remove_edge u v).weight = g.weight - M h_Adj.ne - M h_Adj.ne.symm := by
     let g' := g.remove_edge u v
-    suffices g.weight = (g.remove_edge u v).weight + M h_Adj.ne + M h_Adj.ne.symm by
-      rw[this]
-      rw[Nat.add_assoc]
-      conv => right; left; left; right; rw[Nat.add_comm] -- why do I have to do this? :(
-      rw[←Nat.add_assoc]
-      simp
+    suffices g.weight = (g.remove_edge u v).weight + M h_Adj.ne + M h_Adj.ne.symm by linarith
     let e₁ := NonDiag.mk' h_Adj.ne
     let e₂ := NonDiag.mk' h_Adj.ne.symm
     have h₁ : g.val.dartNonDiagFinset = g'.val.dartNonDiagFinset ∪ {e₁, e₂} := by
@@ -165,19 +165,24 @@ namespace Forest
 
 end Forest
 
-abbrev MaximalForest (M : PairMatrix V ℕ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
+abbrev MaximalForest (M : PairMatrix V ℤ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
 
-instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
+instance {M : PairMatrix V ℤ} : Nonempty (MaximalForest M) := by
   obtain ⟨b, hb⟩ := Forest.weight_bounded M
-  obtain ⟨F : Forest M, hF⟩ := max_from_Nonempty_bounded_wrt (@Set.univ (Forest M)) (Set.univ_nonempty) (fun F _ => hb F)
+  obtain ⟨F : Forest M, hF⟩ := Int.exists_greatest_of_bdd_wrt (@Set.univ (Forest M)) (Set.univ_nonempty) (fun F _ => hb F)
   use F
   intro F'
   simp_all only [Set.mem_univ, forall_true_left, Subtype.forall, ne_eq, true_and]
 
-variable (M : PairMatrix V ℕ)
+variable (M : PairMatrix V ℤ)
 
 def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : UndirectedNetwork V where
   cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
+  nonneg u v := by
+    wlog huv : g.val.Adj u v
+    · simp only [ne_eq, huv, ↓reduceDite, le_refl]
+    simp only [ne_eq, huv, ↓reduceDite]
+    exact le_of_lt <| g.prop.right _ _ huv.ne huv
   loopless v := by simp only [SimpleGraph.irrefl, dite_false]
   symm u v := by
     if huv : g.val.Adj u v then
@@ -214,10 +219,10 @@ lemma mkFrom_M_le_maxFlowValue
     {u v : V}
     (huv : u ≠ v) :
     M huv ≤ (mkFrom M hsymm g).maxFlowValue u v := by
-  wlog h_nonzero : 0 < M huv
-  · linarith
-
   let N := mkFrom M hsymm g
+
+  wlog h_pos : 0 < M huv
+  · linarith[N.maxFlowValue_nonneg u v]
 
   have h_uv_pos_weight : 0 < min (M huv) (M huv.symm) := (by simp only [lt_min_iff]; exact ⟨by linarith, by rw[hsymm]; linarith⟩)
   have h_Reachable : N.asSimpleGraph.Reachable u v := by
@@ -226,16 +231,15 @@ lemma mkFrom_M_le_maxFlowValue
     -- weight - this contradicts that g is actually a maximal forest.
     by_contra h
     let g' := g.val.add_edge huv h_uv_pos_weight (by rwa[mkFrom_asSimpleGraph_eq] at h)
-    have : g.val.weight < g'.weight := by rw[Forest.add_edge.weight_eq_add]; linarith
+    have : g.val.weight < g'.weight := by rw[Forest.add_edge.weight_eq_add]; linarith[h_pos, hsymm huv]
     exact not_le_of_lt this $ g.prop g'
 
   let Pr : FlowProblem N.toNetwork := {s := u, t := v}
   suffices h : ∃ F : Flow Pr, M huv ≤ F.value by
     obtain ⟨F, hF⟩ := h
-    simp only [Network.maxFlowValue, FlowProblem.maxFlow, ge_iff_le]
     apply le_trans hF
-    apply Finset.le_max'
-    simp_all only [mkFrom_asSimpleGraph_eq, ne_eq, Finset.mem_image, Finset.mem_univ, true_and, exists_apply_eq_apply]
+    simp only [Network.maxFlowValue, FlowProblem.maxFlow]
+    exact le_top (a := F)
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
@@ -270,16 +274,14 @@ lemma mkFrom_M_le_maxFlowValue
     let old := e.is_adj.ne
     let new := huv
     have : g.val.weight < g''.weight := by calc
-      g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [ne_eq, ge_iff_le, lt_add_iff_pos_right, gt_iff_lt, zero_lt_two, zero_lt_mul_left, tsub_pos_iff_lt]
-      _            = g.val.weight + 2 * M new - 2 * M old                   := by rw[Nat.mul_sub_left_distrib, Nat.add_sub_assoc (Nat.mul_le_mul_left 2 (Nat.le_of_lt hlt))]
-      _            = g.val.weight - 2 * M old + 2 * M new                   := Nat.sub_add_comm (by rw[two_mul]; nth_rw 2 [hsymm]; exact Forest.le_weight e.is_adj)
-      _            = g.val.weight - M old - M old.symm + M new + M new.symm := by rw[two_mul, two_mul]; nth_rw 2 [hsymm old, hsymm new]; rw[Nat.sub_add_eq, Nat.add_assoc]
+      g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [ne_eq, Forest.weight, lt_add_iff_pos_right, gt_iff_lt, Nat.ofNat_pos, mul_pos_iff_of_pos_left, sub_pos]
+      _            = g.val.weight - M old - M old.symm + M new + M new.symm := by linarith[hsymm old, hsymm new]
       _            = g''.weight                                             := by simp only [g', g'', Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub, e.is_adj]
     exact not_le_of_lt this $ g.prop g''
 
   -- Now that we know that the capacity along the path is big enough, we
   -- construct the flow.
-  use Flow.fromPath P (N.bottleneck P) (le_refl _)
+  use Flow.fromPath P (N.bottleneck P) (N.bottleneck_nonneg P) (le_refl _)
   rw[Flow.fromPath_value]
   simp only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro d hd
@@ -291,13 +293,14 @@ lemma mkFrom_M_le_maxFlowValue
 lemma mkFrom_maxFlowValue_le_M
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
+    (hnonneg : M.Nonneg)
     (g : MaximalForest M)
     {u v : V}
     (huv : u ≠ v) :
     (mkFrom M hsymm g).maxFlowValue u v ≤ M huv := by
   let N := mkFrom M hsymm g
   wlog h_Reachable : N.asSimpleGraph.Reachable u v
-  · linarith[N.maxFlow_eq_zero_of_not_reachable h_Reachable]
+  · linarith[N.maxFlow_eq_zero_of_not_reachable h_Reachable, hnonneg huv]
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
@@ -323,26 +326,28 @@ lemma mkFrom_maxFlowValue_le_M
 theorem mkFrom_hasMatrixM
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
+    (hnonneg : M.Nonneg)
     (g : MaximalForest M) :
     @M = (mkFrom M hsymm g).matrix := by
   funext u v huv
-  exact Nat.le_antisymm (mkFrom_M_le_maxFlowValue M hsymm g huv) (mkFrom_maxFlowValue_le_M M hsymm htri g huv)
+  exact le_antisymm (mkFrom_M_le_maxFlowValue M hsymm g huv) (mkFrom_maxFlowValue_le_M M hsymm htri hnonneg g huv)
 
 end mkFlowEquivalentForest
 end
 
 theorem flowEquivalentForest
-    (M : PairMatrix V ℕ)
+    (M : PairMatrix V ℤ)
     (hsymm : M.Symmetrical)
-    (htri : M.TriangleInequality) :
+    (htri : M.TriangleInequality)
+    (hnonneg : M.Nonneg) :
     ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
   open mkFlowEquivalentForest in
   have g : MaximalForest M := Classical.choice inferInstance
   ⟨
     mkFrom M hsymm g,
-    mkFrom_hasMatrixM M hsymm htri g,
+    mkFrom_hasMatrixM M hsymm htri hnonneg g,
     mkFrom_IsAcyclic M hsymm g
   ⟩
 
--- theorem flowMatrixCharacterization (M : PairMatrix V ℕ) :
+-- theorem flowMatrixCharacterization (M : PairMatrix V ℤ) :
 --     (∃ G : UndirectedNetwork V, @M = G.matrix) ↔ (M.Symmetrical ∧ M.TriangleInequality) := excuse_me

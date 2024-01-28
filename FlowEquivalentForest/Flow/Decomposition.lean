@@ -7,7 +7,7 @@ import FlowEquivalentForest.Flow.Circulation
 open BigOperators
 open ContainsEdge
 
-variable {V : Type*} [Fintype V] [Nonempty V] [DecidableEq V]
+variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 variable {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork}
 
 def SimpleGraph.Walk.dart_counts {G : SimpleGraph V} (p : G.Walk u v) : Multiset (G.Dart) := Multiset.ofList p.darts
@@ -44,11 +44,11 @@ abbrev Flow.Walk (F : Flow Pr) (u v : V) :=
 
 def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
   val := SimpleGraph.Walk.nil
-  property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]
+  property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]; apply F.nonneg
 
 def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.val.support) : F.Walk v u where
   val := p.val.takeUntil u hu
-  property d := le_trans (Multiset.le_iff_count.mp (p.val.dart_counts_takeUntil_le hu) d) $ p.prop d
+  property d := le_trans (Int.ofNat_le.mpr <| (Multiset.le_iff_count.mp (p.val.dart_counts_takeUntil_le hu) d)) (p.prop d)
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
 
@@ -66,8 +66,9 @@ lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
     N.asSimpleGraph.Adj u v := by
   by_contra h'
   simp [asSimpleGraph] at h'
-  have := h' ▸ F.capacity u v
-  simp_all only [ne_eq, nonpos_iff_eq_zero]
+  have := le_antisymm h' <| N.nonneg u v
+  have := this ▸ F.capacity u v
+  exact h <| le_antisymm this <| F.nonneg ..
 
 def Flow.Walk.cons
     {F : Flow Pr}
@@ -87,8 +88,9 @@ def Flow.Walk.cons
         exact h' ⟨(UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h), hd ▸ hd'⟩
       rw[←hd, hdp]
       by_contra h''
-      simp only [zero_add, not_le, Nat.lt_one_iff] at h''
-      exact h h''
+      simp only [zero_add, not_le] at h''
+      have := le_antisymm (Int.le_of_lt_add_one (b := 0) h'') (F.nonneg ..)
+      exact h this
     else
       simp only [hd, ite_false, add_zero]
       exact p.prop d
@@ -137,14 +139,17 @@ theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : 
     simp only [huv, ite_true]
     obtain ⟨_, hd⟩ := huv
     have : 1 ≤ c.val.val.dart_counts.count _ := Multiset.one_le_count_iff_mem.mpr hd
-    exact le_trans this (c.val.prop _)
+    exact le_trans
+      (Int.toNat_le.mp this)
+      (c.val.prop _)
   else
-    simp only [huv, ite_false, zero_le]
+    simp only [huv, ite_false, zero_le, F.nonneg]
 
 def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
 
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
-  rw[remove_circulation, Flow.sub_value c.toFlow_subset (Flow.UnitCirculation_not_backward c.circulation), Circulation.toFlow, Flow.UnitCirculation_value_zero, Nat.sub_zero]
+  rw[remove_circulation, Flow.sub_value c.toFlow_subset, Circulation.toFlow, Flow.UnitCirculation_value_zero]
+  ring
 
 theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := by
   rw[remove_circulation]
@@ -217,9 +222,9 @@ def Flow.Path.transfer {F F' : Flow Pr} (p : F.Path s t) (h : F ⊆ F') : F'.Pat
   val := p.val.transfer h
   property := Flow.Walk.transfer.val p.val h ▸ p.property
 
-theorem Flow.exists_path_of_value_nonzero_of_circulationFree
+theorem Flow.exists_path_of_value_pos_of_circulationFree
     (F : Flow Pr)
-    (hF : F.value ≠ 0)
+    (hF : 0 < F.value)
     (hC : F.CirculationFree) :
     F.Path Pr.s Pr.t :=
   build_path (Flow.Path.nil F)
@@ -235,17 +240,16 @@ where
       have : Nonempty valid_us := by
         by_contra h
         simp only [valid_us, nonempty_subtype, not_exists, not_not] at h
-        have hin : flowIn F.f v = 0 := Finset.sum_eq_zero (λ u _ => h u)
+        have hin : flowIn F.f v = 0 := Fintype.sum_eq_zero _ h
         if hvt : v = Pr.t then
           subst hvt
-          have : flowIn F.f Pr.t - flowOut F.f Pr.t = 0 := by rw[hin, Nat.zero_sub]
-          have : flowOut F.f Pr.s - flowIn F.f Pr.s = 0 := F.excess_s_eq_neg_excess_t ▸ this
-          exact hF this
+          have : excess F.f Pr.t ≤ 0 := by simp[excess, F.flowOut_nonneg, hin]
+          have : F.value ≤ 0 := F.value_eq_excess_t ▸ this
+          omega
         else
-          absurd hin
           have h_not_nil : ¬path_so_far.val.val.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
           let w := path_so_far.val.val.sndOfNotNil h_not_nil
-          have : F.f v w ≠ 0 := by
+          have hw : F.f v w ≠ 0 := by
             intro h
             let d := path_so_far.val.val.firstDart h_not_nil
             have := path_so_far.val.prop d
@@ -253,9 +257,10 @@ where
             exact this $ path_so_far.val.val.firstDart_mem_darts h_not_nil
           have : flowOut F.f v ≠ 0 := by
             intro h
-            rw[flowOut, Finset.sum_eq_zero_iff] at h
-            exact this $ h w (Finset.mem_univ w)
-          exact F.conservation v ⟨hvs, hvt⟩ ▸ this
+            rw[flowOut] at h
+            have : ∀ w, F.f v w = 0 := by simp[(Fintype.sum_eq_zero_iff_of_nonneg (F.nonneg v)).mp h]
+            exact hw <| this w
+          exact (F.conservation v ⟨hvs, hvt⟩ ▸ this) hin
 
       let u := Classical.choice this
       have : u.val ∉ path_so_far.val.val.support := by
@@ -273,48 +278,43 @@ where
       build_path path_with_u
 termination_by Fintype.card V - path_so_far.val.val.length
 
-theorem Flow.exists_path_of_value_nonzero (F : Flow Pr) (hF : F.value ≠ 0) : F.Path Pr.s Pr.t :=
-  let p := Flow.exists_path_of_value_nonzero_of_circulationFree
+theorem Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path Pr.s Pr.t :=
+  let p := Flow.exists_path_of_value_pos_of_circulationFree
     F.remove_all_circulations
     (remove_all_circulations.value F ▸ hF)
     (remove_all_circulations.CirculationFree F)
   p.transfer $ remove_all_circulations.subset _
 
 lemma Flow.from_flowPath_subseteq (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hPr : Pr.s ≠ Pr.t) :
-    let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
-    let F' := Flow.fromPath pne 1 (N.bottleneck_pos pne)
+    let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hPr }
+    let F' := Flow.fromPath pne 1 (by trivial) (N.bottleneck_pos pne)
     F' ⊆ F := by
   intro pne F' u v
   wlog huv : contains_edge p.path u v
-  · simp only [F', fromPath, ite_false, huv, zero_le]
+  · simp only [F', fromPath, ite_false, huv, zero_le, F.nonneg]
   simp only [F', fromPath, ite_true, huv]
 
   obtain ⟨h_adj, hd⟩ := huv
   let d := SimpleGraph.Dart.mk (u, v) h_adj
   have : 1 ≤ p.val.val.dart_counts.count d := Multiset.one_le_count_iff_mem.mpr hd
-  exact le_trans this (p.val.prop _)
+  exact le_trans (Int.ofNat_le.mpr this) (p.val.prop _)
 
 def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
   if hst : Pr.s = Pr.t then
     F
   else
     let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
-    let F' := Flow.fromPath pne 1 (N.bottleneck_pos pne)
+    let F' := Flow.fromPath pne 1 (by trivial) (N.bottleneck_pos pne)
     have hle : F' ⊆ F := Flow.from_flowPath_subseteq F p hst
 
     Flow.sub hle
 
-theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) : (F.remove_path p).value = F.value - 1 := by
-  if hst : Pr.s = Pr.t then
-    simp only [remove_path, dite_true, hst, F.value_eq_zero_of_s_eq_t hst]
-  else
-    simp only [remove_path, dite_false, hst]
-
-    let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
-    have := Flow.fromPath_value pne 1 (N.bottleneck_pos pne)
-    conv => right; rw[←this]
-    have := Flow.sub_value (Flow.from_flowPath_subseteq F p hst) (Flow.fromPath_not_backward pne 1 (N.bottleneck_pos pne))
-    exact this
+theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - 1 := by
+  simp only [remove_path, dite_false, hst]
+  let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
+  have := Flow.fromPath_value pne 1 (by trivial) (N.bottleneck_pos pne)
+  conv => right; rw[←this]
+  exact Flow.sub_value (F.from_flowPath_subseteq p hst)
 
 lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
     (N : UndirectedNetwork V)
@@ -323,9 +323,9 @@ lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
     N.maxFlowValue u v = 0 := by
   let Pr : FlowProblem N.toNetwork := { s := u, t := v }
   by_contra hN
-  obtain ⟨F, hF⟩ := Pr.maxFlow_exists
-  have : F.value ≠ 0 := λ h_zero => hN $ h_zero ▸ hF.symm
-  exact h $ (F.exists_path_of_value_nonzero this).path.val.reachable
+  let F := (⊤ : Flow Pr)
+  have : 0 < F.value := Ne.lt_of_le' hN Pr.maxFlow_nonneg
+  exact h $ (F.exists_path_of_value_pos this).path.val.reachable
 
 -- Not needed for our theorem, but maybe fun
 -- def Flow.path_decomposition (F : Flow Pr) : Multiset (F.Path Pr.s Pr.t) := excuse_me

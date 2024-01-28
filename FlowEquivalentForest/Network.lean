@@ -11,12 +11,12 @@ section
 variable (V : Type*) [Fintype V] [DecidableEq V] [Nonempty V]
 
 structure Network where
-  cap : V → V → ℕ
-  loopless : ∀ v, cap v v = 0
+  cap : V → V → ℤ
+  nonneg : ∀ u v, 0 ≤ cap u v
+  loopless: ∀ v, cap v v = 0
 
 structure UndirectedNetwork extends Network V where
   symm : ∀ u v, cap u v = cap v u
-
 
 end
 
@@ -24,11 +24,11 @@ section
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
 
-def Network.capRange (N : Network V): Finset ℕ := Finset.image (λ t ↦ N.cap t.1 t.2) (@Finset.univ (V × V) _) -- (Finset.product Finset.univ Finset.univ)
+def Network.capRange (N : Network V): Finset ℤ := Finset.image (λ t ↦ N.cap t.1 t.2) (@Finset.univ (V × V) _) -- (Finset.product Finset.univ Finset.univ)
 
 lemma Network.capRange_NonEmpty {N: Network V} : Finset.Nonempty (Network.capRange N) := by simp only [capRange, Finset.Nonempty.image_iff, Finset.univ_nonempty]
 
-def Network.capMax (N : Network V) : ℕ := Finset.max' (Network.capRange N) Network.capRange_NonEmpty
+def Network.capMax (N : Network V) : ℤ := Finset.max' (Network.capRange N) Network.capRange_NonEmpty
 
 lemma Network.capMax_max {N : Network V} : ∀ {u v}, N.cap u v ≤ N.capMax := (by
   have h0: ∀ t : V × V, N.cap t.1 t.2 ∈ N.capRange := by
@@ -56,7 +56,7 @@ def UndirectedNetwork.asSimpleGraph (N : UndirectedNetwork V) : SimpleGraph V wh
 @[simp]
 def UndirectedNetwork.bottleneck
     {N : UndirectedNetwork V}
-    (P : N.asSimpleGraph.NonemptyPath s t) : ℕ
+    (P : N.asSimpleGraph.NonemptyPath s t) : ℤ
   := (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)).min' (by
     apply (Finset.Nonempty.image_iff _).mpr
     exact Walk_darts_Nonempty_from_ne P.ne P.path.val
@@ -108,8 +108,14 @@ lemma UndirectedNetwork.bottleneck_pos
   by_contra h
   simp only [bottleneck, Finset.lt_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, not_forall, not_lt, nonpos_iff_eq_zero, exists_prop] at h
   obtain ⟨d, _, hd₂⟩ := h
+  absurd hd₂
   have : N.asSimpleGraph.Adj d.fst d.snd := d.is_adj
   simp only [UndirectedNetwork.asSimpleGraph, hd₂, d.is_adj] at this
-  contradiction
+  exact not_le.mpr this
+
+lemma UndirectedNetwork.bottleneck_nonneg
+    {N : UndirectedNetwork V}
+    (P : N.asSimpleGraph.NonemptyPath s t) :
+    0 ≤ N.bottleneck P := le_of_lt <| UndirectedNetwork.bottleneck_pos P
 
 end
