@@ -28,31 +28,30 @@ theorem deleteEdges_isAcyclic (G : SimpleGraph V) (hG : G.IsAcyclic) (s : Set (S
   refine hne $ Walk.map_injective_of_injective ?_ a b $ heq
   exact (Setoid.injective_iff_ker_bot ⇑(Hom.mapSpanningSubgraphs hle)).mpr rfl
 
+lemma deleteEdges_not_mem_edgeSet_of_mem (G : SimpleGraph V) (s : Set (Sym2 V)) (h : ⟦(u, v)⟧ ∈ s) :
+    ⟦(u, v)⟧ ∉ (G.deleteEdges s).edgeSet := by aesop
+
 theorem deleteEdges_not_reachable_of_mem_edges
     (G : SimpleGraph V)
     (hG : G.IsAcyclic)
     (p : G.Path s t)
     (huv : ⟦(u, v)⟧ ∈ p.val.edges) :
-    ¬Reachable (G.deleteEdges {⟦(u, v)⟧}) s t := by
-  by_contra h
+    ¬(G.deleteEdges {⟦(u, v)⟧}).Reachable s t := by
+  intro h
   have p' := (Classical.choice h).toPath
+
+  have hp' : ⟦(u, v)⟧ ∉ p'.val.edges :=
+    G.deleteEdges_not_mem_edgeSet_of_mem _ rfl ∘ p'.val.edges_subset_edgeSet (e := ⟦(u, v)⟧)
+
   let p'' := p'.transfer G (by
     intro e he
     have := p'.val.edges_subset_edgeSet he
-    rw[edgeSet_deleteEdges] at this
-    simp_all only [mem_edgeSet, Set.mem_diff]
+    simp_all only [edgeSet_deleteEdges, mem_edgeSet, Set.mem_diff]
   )
 
-  suffices p ≠ p'' from this (hG.path_unique p p'')
-  suffices ⟦(u, v)⟧ ∉ p''.val.edges by
-    by_contra heq
-    subst heq
-    contradiction
-  simp only [Path.transfer, Walk.edges_transfer]
-  by_contra hmem
-  have := p'.val.edges_subset_edgeSet hmem
-  rw[edgeSet_deleteEdges] at this
-  simp_all only [Set.mem_diff, Set.mem_singleton_iff, not_true_eq_false]
+  have hp'' : ⟦(u, v)⟧ ∉ p''.val.edges := (Walk.edges_transfer ..).symm ▸ hp'
+  rw[hG.path_unique p'' p] at hp''
+  contradiction
 
 theorem addEdges_isAcyclic_of_not_reachable
     (G : SimpleGraph V)
