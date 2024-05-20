@@ -159,7 +159,7 @@ noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     (F.remove_circulation c).remove_all_circulations
-termination_by Flow.remove_all_circulations F => F.range_sum
+termination_by F.range_sum
 decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
 theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_all_circulations.CirculationFree := by
@@ -171,7 +171,7 @@ theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_al
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_true, hF]
     exact Flow.remove_all_circulations.CirculationFree ((F.remove_circulation c))
-termination_by Flow.remove_all_circulations.CirculationFree F => F.range_sum
+termination_by F.range_sum
 decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
 theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulations.value = F.value := by
@@ -185,7 +185,7 @@ theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulat
     have h1: (remove_all_circulations (remove_circulation F c)).value =  (remove_circulation F c).value := by exact Flow.remove_all_circulations.value ( remove_circulation F c)
     have h2 : (remove_circulation F c).value = F.value := by exact Flow.remove_circulation_value F c
     apply Eq.trans h1 h2
-termination_by Flow.remove_all_circulations.value F => F.range_sum
+termination_by F.range_sum
 decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
 theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circulations ⊆ F := by
@@ -200,7 +200,7 @@ theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circula
     have h1: remove_all_circulations (remove_circulation F c) ⊆  remove_circulation F c := by exact Flow.remove_all_circulations.subset (remove_circulation F c)
     have h2 : remove_circulation F c ⊆ F := subset_of_ssubset (Flow.remove_circulation.ssubset F c)
     exact subset_trans h1 h2
-termination_by Flow.remove_all_circulations.subset F => F.range_sum
+termination_by F.range_sum
 decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t where
@@ -234,7 +234,7 @@ where
       let valid_us := {u : V // F.f u v ≠ 0}
       have : Nonempty valid_us := by
         by_contra h
-        simp only [nonempty_subtype, not_exists, not_not] at h
+        simp only [valid_us, nonempty_subtype, not_exists, not_not] at h
         have hin : flowIn F.f v = 0 := Finset.sum_eq_zero (λ u _ => h u)
         if hvt : v = Pr.t then
           subst hvt
@@ -249,7 +249,7 @@ where
             intro h
             let d := path_so_far.val.val.firstDart h_not_nil
             have := path_so_far.val.prop d
-            simp [SimpleGraph.Walk.firstDart_toProd, h, SimpleGraph.Walk.dart_counts, List.count_eq_zero] at this
+            simp [d, SimpleGraph.Walk.firstDart_toProd, h, SimpleGraph.Walk.dart_counts, List.count_eq_zero] at this
             exact this $ path_so_far.val.val.firstDart_mem_darts h_not_nil
           have : flowOut F.f v ≠ 0 := by
             intro h
@@ -271,7 +271,7 @@ where
         exact Nat.sub_lt_sub_left path_so_far.prop.length_lt (Nat.lt.base _)
 
       build_path path_with_u
-termination_by build_path p => Fintype.card V - p.val.val.length
+termination_by Fintype.card V - path_so_far.val.val.length
 
 theorem Flow.exists_path_of_value_nonzero (F : Flow Pr) (hF : F.value ≠ 0) : F.Path Pr.s Pr.t :=
   let p := Flow.exists_path_of_value_nonzero_of_circulationFree
@@ -286,14 +286,13 @@ lemma Flow.from_flowPath_subseteq (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hPr : Pr
     F' ⊆ F := by
   intro pne F' u v
   wlog huv : contains_edge p.path u v
-  · simp only [fromPath, ite_false, huv, zero_le]
-  simp only [fromPath, ite_true, huv]
+  · simp only [F', fromPath, ite_false, huv, zero_le]
+  simp only [F', fromPath, ite_true, huv]
 
   obtain ⟨h_adj, hd⟩ := huv
   let d := SimpleGraph.Dart.mk (u, v) h_adj
   have : 1 ≤ p.val.val.dart_counts.count d := Multiset.one_le_count_iff_mem.mpr hd
   exact le_trans this (p.val.prop _)
-
 
 def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
   if hst : Pr.s = Pr.t then

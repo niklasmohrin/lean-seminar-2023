@@ -21,14 +21,13 @@ lemma addEdges_singleton_dartNonDiagFinset
     (G : SimpleGraph V)
     {u v : V}
     (huv : u ≠ v) :
-    (G.addEdges {⟦(u, v)⟧}).dartNonDiagFinset = G.dartNonDiagFinset ∪ {NonDiag.mk' huv, NonDiag.mk' huv.symm} := by
+    (G.addEdges {s(u, v)}).dartNonDiagFinset = G.dartNonDiagFinset ∪ {NonDiag.mk' huv, NonDiag.mk' huv.symm} := by
   ext e
   simp only [mem_dartNonDiagFinset_iff, Finset.mem_union, addEdges, fromEdgeSet_adj, Set.mem_union, mem_edgeSet]
   rw[and_iff_left e.ne]
   apply or_congr
   · rfl
-  · simp only [Set.mem_singleton_iff, Finset.mem_singleton, Finset.mem_insert, NonDiag.mk', Sym2.eq_iff]
-    aesop
+  · aesop
 
 lemma dartNonDiagFinset_disjoint_of_not_adj
     (G : SimpleGraph V)
@@ -46,7 +45,7 @@ lemma deleteEdges_singleton_dartNonDiagFinset
     (G : SimpleGraph V)
     {u v : V}
     (huv : u ≠ v) :
-    (G.deleteEdges {⟦(u, v)⟧}).dartNonDiagFinset = G.dartNonDiagFinset \ {NonDiag.mk' huv, NonDiag.mk' huv.symm} := by
+    (G.deleteEdges {s(u, v)}).dartNonDiagFinset = G.dartNonDiagFinset \ {NonDiag.mk' huv, NonDiag.mk' huv.symm} := by
   ext e
   simp only [mem_dartNonDiagFinset_iff, deleteEdges_adj, Finset.mem_sdiff]
   apply and_congr

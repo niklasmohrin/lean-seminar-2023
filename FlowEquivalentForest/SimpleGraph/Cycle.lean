@@ -57,7 +57,7 @@ theorem snd_eq_succ_start (c : G.Cycle u) (h : contains_edge c u v) : c.snd = v 
   (c.succ_exists c.val.start_mem_support).unique c.snd_is_succ_start h
 
 theorem edges_eq_firstEdge_cons {G : SimpleGraph V} (c : G.Cycle v₀) :
-    c.val.edges = ⟦(v₀, c.val.sndOfNotNil c.prop.not_nil)⟧ :: (c.val.tail c.prop.not_nil).edges := by
+    c.val.edges = s(v₀, c.val.sndOfNotNil c.prop.not_nil) :: (c.val.tail c.prop.not_nil).edges := by
   obtain ⟨u', hadj, p', hp'⟩ := Walk.not_nil_iff.mp c.prop.not_nil
   simp only [hp', Walk.edges_cons, List.cons_eq_cons]
   constructor

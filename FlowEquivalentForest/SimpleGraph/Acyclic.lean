@@ -28,20 +28,20 @@ theorem deleteEdges_isAcyclic (G : SimpleGraph V) (hG : G.IsAcyclic) (s : Set (S
   refine hne $ Walk.map_injective_of_injective ?_ a b $ heq
   exact (Setoid.injective_iff_ker_bot ⇑(Hom.mapSpanningSubgraphs hle)).mpr rfl
 
-lemma deleteEdges_not_mem_edgeSet_of_mem (G : SimpleGraph V) (s : Set (Sym2 V)) (h : ⟦(u, v)⟧ ∈ s) :
-    ⟦(u, v)⟧ ∉ (G.deleteEdges s).edgeSet := by aesop
+lemma deleteEdges_not_mem_edgeSet_of_mem (G : SimpleGraph V) (s : Set (Sym2 V)) (h : s(u, v) ∈ s) :
+    s(u, v) ∉ (G.deleteEdges s).edgeSet := by aesop
 
 theorem deleteEdges_not_reachable_of_mem_edges
     (G : SimpleGraph V)
     (hG : G.IsAcyclic)
     (p : G.Path s t)
-    (huv : ⟦(u, v)⟧ ∈ p.val.edges) :
-    ¬(G.deleteEdges {⟦(u, v)⟧}).Reachable s t := by
+    (huv : s(u, v) ∈ p.val.edges) :
+    ¬(G.deleteEdges {s(u, v)}).Reachable s t := by
   intro h
   have p' := (Classical.choice h).toPath
 
-  have hp' : ⟦(u, v)⟧ ∉ p'.val.edges :=
-    G.deleteEdges_not_mem_edgeSet_of_mem _ rfl ∘ p'.val.edges_subset_edgeSet (e := ⟦(u, v)⟧)
+  have hp' : s(u, v) ∉ p'.val.edges :=
+    G.deleteEdges_not_mem_edgeSet_of_mem _ rfl ∘ p'.val.edges_subset_edgeSet (e := s(u, v))
 
   let p'' := p'.transfer G (by
     intro e he
@@ -49,7 +49,7 @@ theorem deleteEdges_not_reachable_of_mem_edges
     simp_all only [edgeSet_deleteEdges, mem_edgeSet, Set.mem_diff]
   )
 
-  have hp'' : ⟦(u, v)⟧ ∉ p''.val.edges := (Walk.edges_transfer ..).symm ▸ hp'
+  have hp'' : s(u, v) ∉ p''.val.edges := (Walk.edges_transfer ..).symm ▸ hp'
   rw[hG.path_unique p'' p] at hp''
   contradiction
 
@@ -57,7 +57,7 @@ theorem addEdges_isAcyclic_of_not_reachable
     (G : SimpleGraph V)
     (hG : G.IsAcyclic)
     (huv : ¬G.Reachable u v) :
-    (G.addEdges {⟦(u, v)⟧}).IsAcyclic := by
+    (G.addEdges {s(u, v)}).IsAcyclic := by
   wlog hne : u ≠ v
   · exact False.elim $ not_ne_iff.mp hne ▸ huv $ Reachable.refl v
 
@@ -86,10 +86,10 @@ theorem addEdges_isAcyclic_of_not_reachable
       exact this.left.resolve_left (by
         intro heq
         subst heq
-        have : c.val.edges = ⟦(u, v)⟧ :: p.edges := by
+        have : c.val.edges = s(u, v) :: p.edges := by
           rw[c.edges_eq_firstEdge_cons, List.cons_eq_cons]
           exact ⟨by aesop, by aesop⟩
-        have : List.Duplicate ⟦(u, v)⟧ c.val.edges := this ▸ List.Mem.duplicate_cons_self he
+        have : List.Duplicate s(u, v) c.val.edges := this ▸ List.Mem.duplicate_cons_self he
         exact this.not_nodup c.prop.edges_nodup
       )
     )

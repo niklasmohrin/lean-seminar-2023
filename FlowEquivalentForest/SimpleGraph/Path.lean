@@ -166,7 +166,7 @@ theorem SimpleGraph.Path.ind.{u₁}
         simp_all only [h_cons, Walk.support_cons, List.duplicate_cons_self_iff, Walk.length_cons, lt_add_iff_pos_right]
       exact this.not_nodup P.property.support_nodup
     ) this
-termination_by SimpleGraph.Path.ind P _ _ => P.val.length
+termination_by P.val.length
 
 @[ext]
 structure SimpleGraph.NonemptyPath {V : Type*} (G : SimpleGraph V) (u v : V) where
@@ -236,7 +236,7 @@ theorem SimpleGraph.NonemptyPath.ind.{u₁}
       rw[this]
 
       exact ind u b v tail_nonemptypath h_Adj hu hbv ih
-termination_by SimpleGraph.NonemptyPath.ind P _ _ => P.path.val.length
+termination_by P.path.val.length
 
 open SimpleGraph
 
@@ -352,7 +352,7 @@ lemma SimpleGraph.Path.succ_exists {P : G.Path s t} (hp : v ∈ P.val.support) (
     ∃! w, contains_edge P v w := by
   let Pr : G.Path t s := P.reverse
   have hpr : v ∈ Pr.val.support := by
-    simp_all only [List.elem_iff, ne_eq, SimpleGraph.Path.reverse_coe, SimpleGraph.Walk.support_reverse, List.mem_reverse]
+    simp_all only [ne_eq, reverse_coe, Walk.support_reverse, List.mem_reverse, Pr]
   obtain ⟨w, hw⟩ := SimpleGraph.Path.pred_exists hpr ht
   use w
   constructor
@@ -376,7 +376,7 @@ theorem SimpleGraph.Path.not_contains_edge_end_start (p : G.Path u v) :
   have := p.val.start_ne_snd_of_mem_darts_of_support_nodup hd p.prop.support_nodup
   simp_all only [ne_eq, not_true_eq_false]
 
-theorem SimpleGraph.Walk.mem_darts_of_mem_edges (p : G.Walk s t) (h : ⟦(u, v)⟧ ∈ p.edges) :
+theorem SimpleGraph.Walk.mem_darts_of_mem_edges (p : G.Walk s t) (h : s(u, v) ∈ p.edges) :
     let hadj := p.adj_of_mem_edges h
     Dart.mk (u, v) hadj ∈ p.darts ∨ Dart.mk (v, u) hadj.symm ∈ p.darts := by
   rw[edges, List.mem_map] at h

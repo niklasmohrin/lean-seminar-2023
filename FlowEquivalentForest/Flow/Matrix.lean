@@ -78,7 +78,7 @@ namespace Forest
       (h_M : 0 < min (M huv) (M huv.symm))
       (h_not_Reach : ¬g.val.Reachable u v) :
       Forest M where
-    val := g.val.addEdges {⟦(u,v)⟧}
+    val := g.val.addEdges {s(u,v)}
     property := by
       constructor
       · exact g.val.addEdges_isAcyclic_of_not_reachable g.prop.left h_not_Reach
@@ -86,7 +86,7 @@ namespace Forest
         if h_Adj' : g.val.Adj a b then
           exact g.prop.right a b hab h_Adj'
         else
-          simp only [addEdges, Set.union_singleton, fromEdgeSet_adj, Set.mem_insert_iff, Quotient.eq, Sym2.rel_iff] at h_Adj
+          simp only [addEdges, ne_eq, Set.union_singleton, fromEdgeSet_adj, Set.mem_insert_iff, Sym2.eq, Sym2.rel_iff', Prod.mk.injEq, Prod.swap_prod_mk, mem_edgeSet] at h_Adj
           match h_Adj.left with
           | Or.inl h => match h with
             | Or.inl ⟨ha, hb⟩ =>
@@ -129,7 +129,7 @@ namespace Forest
     exact weight_eq_add_of_dartNonDiagFinset_eq_union g g' huv h₁ h₂
 
   def remove_edge (g : Forest M) (u v : V) : Forest M where
-    val := g.val.deleteEdges {⟦(u, v)⟧}
+    val := g.val.deleteEdges {s(u, v)}
     property := by
       constructor
       · exact g.val.deleteEdges_isAcyclic g.prop.left _
@@ -154,7 +154,7 @@ namespace Forest
       conv =>
         right
         left
-        simp only [remove_edge, g.val.deleteEdges_singleton_dartNonDiagFinset h_Adj.ne]
+        simp only [g', remove_edge, g.val.deleteEdges_singleton_dartNonDiagFinset h_Adj.ne]
       rw[Finset.sdiff_union_self_eq_union]
       apply Eq.symm
       rw[Finset.union_eq_left]
@@ -173,7 +173,6 @@ instance {M : PairMatrix V ℕ} : Nonempty (MaximalForest M) := by
   use F
   intro F'
   simp_all only [Set.mem_univ, forall_true_left, Subtype.forall, ne_eq, true_and]
-  apply hF
 
 variable (M : PairMatrix V ℕ)
 
@@ -275,7 +274,7 @@ lemma mkFrom_M_le_maxFlowValue
       _            = g.val.weight + 2 * M new - 2 * M old                   := by rw[Nat.mul_sub_left_distrib, Nat.add_sub_assoc (Nat.mul_le_mul_left 2 (Nat.le_of_lt hlt))]
       _            = g.val.weight - 2 * M old + 2 * M new                   := Nat.sub_add_comm (by rw[two_mul]; nth_rw 2 [hsymm]; exact Forest.le_weight e.is_adj)
       _            = g.val.weight - M old - M old.symm + M new + M new.symm := by rw[two_mul, two_mul]; nth_rw 2 [hsymm old, hsymm new]; rw[Nat.sub_add_eq, Nat.add_assoc]
-      _            = g''.weight                                             := by simp only [Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub, e.is_adj]
+      _            = g''.weight                                             := by simp only [g', g'', Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub, e.is_adj]
     exact not_le_of_lt this $ g.prop g''
 
   -- Now that we know that the capacity along the path is big enough, we
@@ -285,9 +284,9 @@ lemma mkFrom_M_le_maxFlowValue
   simp only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro d hd
   apply le_trans $ M_huv_le d hd
-  simp only [mkFrom, ne_eq, Eq.ndrec, id_eq, eq_mpr_eq_cast, Finset.mem_filter, Finset.mem_univ, true_and, ge_iff_le]
+  simp only [mkFrom, ne_eq, Forest.weight, ge_iff_le, N]
   have := d.is_adj
-  simp_all only [mkFrom_asSimpleGraph_eq, dite_true, le_refl]
+  simp_all only [lt_min_iff, true_and, ne_eq, Forest.weight, mkFrom_asSimpleGraph_eq, ↓reduceDite, le_refl, N]
 
 lemma mkFrom_maxFlowValue_le_M
     (hsymm : M.Symmetrical)
@@ -308,7 +307,7 @@ lemma mkFrom_maxFlowValue_le_M
   have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
     | base u v h_Adj =>
-      simp only [mkFrom, UndirectedNetwork.bottleneck.single_edge]
+      simp only [N, mkFrom, UndirectedNetwork.bottleneck.single_edge]
       aesop
     | ind u v w P h_Adj hu hvw ih =>
       have huv : u ≠ v := h_Adj.ne
@@ -316,7 +315,7 @@ lemma mkFrom_maxFlowValue_le_M
       rw[UndirectedNetwork.bottleneck.cons]
       calc min (N.cap u v) (N.bottleneck P)
         _ ≤ min (N.cap u v) (M hvw) := min_le_min_left _ ih
-        _ = min (M huv) (M hvw)     := by have : N.cap u v = M huv := (by rw[mkFrom_asSimpleGraph_eq] at h_Adj; simp only [mkFrom, dite_true, h_Adj]); rw[this]
+        _ = min (M huv) (M hvw)     := by have : N.cap u v = M huv := (by rw[mkFrom_asSimpleGraph_eq] at h_Adj; simp only [N, mkFrom, dite_true, h_Adj]); rw[this]
         _ ≤ M huw                   := htri u v w huv hvw huw
 
   exact triangle_along_path P

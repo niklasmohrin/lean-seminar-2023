@@ -30,7 +30,7 @@ theorem Flow.value_le_f
     have hF' : F'.value = n := by rw[Flow.remove_path.value F p, hF]; rfl
     have hf : F'.f u v + 1 = F.f u v := by
       have hp : contains_edge p.path u v := ⟨d.is_adj, (hd p.path)⟩
-      simp only [remove_path, Flow.sub, dite_false, hst, fromPath]
+      simp only [F', remove_path, Flow.sub, dite_false, hst, fromPath]
       -- annoyingly, we cannot use hp directly because the function subtraction
       -- is not evaluated in the goal, so we need to do that first
       simp only [HSub.hSub, Sub.sub, hp, ite_true]

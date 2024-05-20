@@ -18,8 +18,7 @@ def Flow.fromPath
 
   let f u v : ℕ := if contains_edge u v then x else 0
 
-  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, not_exists, exists_false, ite_false, not_true_eq_false]
-
+  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, instPathContainsEdge, instContainsEdgeWalk, ne_eq, ite_eq_right_iff, not_forall, exists_prop, exists_and_right, not_true_eq_false, f, contains_edge]
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
     intro hv
     if hp : v ∈ P.path.val.support then
@@ -75,11 +74,11 @@ def Flow.fromPath
   have capacity u v : f u v ≤ N.cap u v := by
     if he : contains_edge u v then
       calc
-        f u v = x                := by simp only [he, ite_true]
+        f u v = x                := by simp only [f, he, ite_true]
         _     ≤ N.bottleneck P   := hx
         _     ≤ N.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
     else
-      have : f u v = 0 := by simp only [he, ite_false]
+      have : f u v = 0 := by simp only [f, he, ite_false]
       linarith
 
   { f, conservation, capacity }
@@ -109,16 +108,16 @@ lemma Flow.fromPath_value
   have h_in : flowIn F.f Pr.s = 0 := by
     simp only [flowIn, Finset.sum_eq_zero_iff, Finset.mem_univ, forall_true_left]
     intro u
-    suffices ¬contains_edge P.path u Pr.s by simp_all only [fromPath, contains_edge, ite_false]
+    suffices ¬contains_edge P.path u Pr.s by simp_all only [F, fromPath, contains_edge, ite_false]
     exact P.path.no_pred_first
 
   obtain ⟨v, hv⟩ := P.path.succ_exists (SimpleGraph.Walk.start_mem_support P.path.val) P.ne
-  have h_out_succ : F.f Pr.s v = x := by simp only [fromPath, hv.left, ite_true]
+  have h_out_succ : F.f Pr.s v = x := by simp only [F, fromPath, hv.left, ite_true]
   have h_out : flowOut F.f Pr.s = x := by
     rw[←h_out_succ]
     apply Finset.sum_eq_single
     · intro v' _ hne
-      suffices ¬contains_edge P.path Pr.s v' by simp only [fromPath, this, ite_false]
+      suffices ¬contains_edge P.path Pr.s v' by simp only [F, fromPath, this, ite_false]
       by_contra h
       exact hne $ hv.right v' h
     · have := Finset.mem_univ v; intro; contradiction

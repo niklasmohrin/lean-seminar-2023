@@ -82,7 +82,7 @@ lemma FlowProblem.maxFlow_exists : ∃ F : Flow Pr, F.value = Pr.maxFlow := by
   have : Pr.maxFlow ∈ values := by
     apply Finset.max'_mem
 
-  simp_all only [Finset.mem_image, Finset.mem_univ, true_and]
+  simp_all only [Finset.mem_image, Finset.mem_univ, Flow.value, flowOut, flowIn, true_and, values]
 
 def Network.maxFlowValue (N : Network V) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
 
@@ -226,15 +226,13 @@ theorem Flow.flowOut_st_eq_flowIn_st (F : Flow Pr) :
     rw[this] at hsum
     have := add_right_cancel hsum
     if hst : Pr.s = Pr.t then
-      rw[hst] at this
-      simp only [Finset.mem_singleton, Finset.insert_eq_of_mem, Finset.sum_singleton] at this
-      simp only [hst, this]
+      simp_all only [Finset.mem_singleton, Finset.insert_eq_of_mem, Finset.disjoint_singleton_left, Finset.mem_compl, not_true_eq_false, not_false_eq_true, flowOut, Finset.sum_singleton, flowIn, add_left_inj, st]
     else
       simp only [Finset.sum_pair hst] at this
       exact this
   apply Finset.sum_congr rfl
   intro v hv
-  simp at hv
+  rw[Finset.mem_compl, Finset.mem_insert, not_or, Finset.mem_singleton] at hv
   exact F.conservation v hv
 
 theorem Flow.excess_s_eq_neg_excess_t (F : Flow Pr) :
