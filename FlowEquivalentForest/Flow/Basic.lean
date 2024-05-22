@@ -11,7 +11,7 @@ import FlowEquivalentForest.SimpleGraph.Path
 
 open BigOperators
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
+variable {V : Type*} [Fintype V] [DecidableEq V]
 
 structure FlowProblem (N : Network V) where
   s : V
@@ -46,6 +46,8 @@ def Flow.Backward (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
 def Flow.value (flow : Flow Pr) := flowOut flow.f Pr.s - flowIn flow.f Pr.s
 
 def Flow.isMaximal (F : Flow Pr) := ∀ F' : Flow Pr, F'.value ≤ F.value
+
+variable [Nonempty V]
 
 @[simp]
 lemma Flow.le_capMax (F : Flow Pr) (u v : V) : F.f u v ≤ N.capMax := by

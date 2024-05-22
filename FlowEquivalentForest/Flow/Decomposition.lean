@@ -7,7 +7,7 @@ import FlowEquivalentForest.Flow.Circulation
 open BigOperators
 open ContainsEdge
 
-variable {V : Type*} [Fintype V] [Nonempty V] [DecidableEq V]
+variable {V : Type*} [Fintype V] [DecidableEq V]
 variable {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork}
 
 def SimpleGraph.Walk.dart_counts {G : SimpleGraph V} (p : G.Walk u v) : Multiset (G.Dart) := Multiset.ofList p.darts

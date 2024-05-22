@@ -6,7 +6,7 @@ open BigOperators
 open ContainsEdge
 
 variable
-  {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
+  {V : Type*} [Fintype V] [DecidableEq V]
   {N : UndirectedNetwork V}
   {Pr : FlowProblem N.toNetwork}
 
