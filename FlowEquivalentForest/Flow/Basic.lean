@@ -225,14 +225,24 @@ lemma Flow.value_eq_zero_of_s_eq_t (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value =
     (Finset.mem_univ _)
     (λ v _ hv => F.conservation v ⟨hv, (hPr ▸ hv)⟩)
 
-def Flow.range_sum (F : Flow Pr) : ℤ := ∑ u, ∑ v, F.f u v
+def Flow.range_sum (F : Flow Pr) : ℕ := (∑ u, ∑ v, F.f u v).toNat
 
 theorem Flow.range_sum_lt_of_ssubset {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := by
   simp only [range_sum, ←Fintype.sum_prod_type']
-  apply Fintype.sum_lt_sum
-  simp only [instHasSSubsetFlow, Pi.lt_def] at *
-  obtain ⟨h1, u, _, v, h₃⟩ := h
-  constructor
-  · intro ⟨a, b⟩
-    exact h1 a b
-  · use ⟨u, v⟩
+  rw[Int.toNat_lt_toNat]
+  · apply Fintype.sum_lt_sum
+    simp only [instHasSSubsetFlow, Pi.lt_def] at *
+    obtain ⟨h1, u, _, v, h₃⟩ := h
+    constructor
+    · intro ⟨a, b⟩
+      exact h1 a b
+    · use ⟨u, v⟩
+  · apply Fintype.sum_pos
+    simp only [instHasSSubsetFlow, Pi.lt_def] at h ⊢
+    obtain ⟨_, u, _, v, h₃⟩ := h
+    have : Nonempty V := Nonempty.intro u -- avoid using the `Nonempty V` instance from the `variable` above
+    constructor
+    · simp [Pi.le_def, F₂.nonneg]
+    · use ⟨u, v⟩
+      refine lt_of_le_of_lt ?_ h₃
+      simp[F₁.nonneg]

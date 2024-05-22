@@ -44,11 +44,11 @@ abbrev Flow.Walk (F : Flow Pr) (u v : V) :=
 
 def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
   val := SimpleGraph.Walk.nil
-  property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]
+  property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]; apply F.nonneg
 
 def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.val.support) : F.Walk v u where
   val := p.val.takeUntil u hu
-  property d := le_trans (Multiset.le_iff_count.mp (p.val.dart_counts_takeUntil_le hu) d) $ p.prop d
+  property d := le_trans (Int.ofNat_le.mpr <| (Multiset.le_iff_count.mp (p.val.dart_counts_takeUntil_le hu) d)) (p.prop d)
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
 
@@ -66,8 +66,9 @@ lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
     N.asSimpleGraph.Adj u v := by
   by_contra h'
   simp [asSimpleGraph] at h'
-  have := h' ▸ F.capacity u v
-  simp_all only [ne_eq, nonpos_iff_eq_zero]
+  have := le_antisymm h' <| N.nonneg u v
+  have := this ▸ F.capacity u v
+  exact h <| le_antisymm this <| F.nonneg ..
 
 def Flow.Walk.cons
     {F : Flow Pr}
@@ -87,8 +88,9 @@ def Flow.Walk.cons
         exact h' ⟨(UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h), hd ▸ hd'⟩
       rw[←hd, hdp]
       by_contra h''
-      simp only [zero_add, not_le, Nat.lt_one_iff] at h''
-      exact h h''
+      simp only [zero_add, not_le] at h''
+      have := le_antisymm (Int.le_of_lt_add_one (b := 0) h'') (F.nonneg ..)
+      exact h this
     else
       simp only [hd, ite_false, add_zero]
       exact p.prop d
@@ -137,14 +139,17 @@ theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : 
     simp only [huv, ite_true]
     obtain ⟨_, hd⟩ := huv
     have : 1 ≤ c.val.val.dart_counts.count _ := Multiset.one_le_count_iff_mem.mpr hd
-    exact le_trans this (c.val.prop _)
+    exact le_trans
+      (Int.toNat_le.mp this)
+      (c.val.prop _)
   else
-    simp only [huv, ite_false, zero_le]
+    simp only [huv, ite_false, zero_le, F.nonneg]
 
 def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
 
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
-  rw[remove_circulation, Flow.sub_value c.toFlow_subset (Flow.UnitCirculation_not_backward c.circulation), Circulation.toFlow, Flow.UnitCirculation_value_zero, Nat.sub_zero]
+  rw[remove_circulation, Flow.sub_value c.toFlow_subset, Circulation.toFlow, Flow.UnitCirculation_value_zero]
+  ring
 
 theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := by
   rw[remove_circulation]

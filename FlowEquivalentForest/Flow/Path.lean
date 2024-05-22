@@ -12,11 +12,13 @@ variable
 def Flow.fromPath
     (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℤ)
+    (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P) :
     Flow Pr :=
   let contains_edge := contains_edge P.path
 
   let f u v : ℤ := if contains_edge u v then x else 0
+  have nonneg u v : 0 ≤ f u v := by simp only [f]; omega
 
   have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, instPathContainsEdge, instContainsEdgeWalk, ne_eq, ite_eq_right_iff, not_forall, exists_prop, exists_and_right, not_true_eq_false, f, contains_edge]
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
@@ -79,35 +81,37 @@ def Flow.fromPath
         _     ≤ N.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
     else
       have : f u v = 0 := by simp only [f, he, ite_false]
-      linarith
+      linarith[N.nonneg u v]
 
-  { f, conservation, capacity }
+  { f, nonneg, conservation, capacity }
 
-lemma Flow.fromPath_not_backward
-    (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
-    (x : ℤ)
-    (hx : x ≤ N.bottleneck P) :
-    ¬(fromPath P x hx).Backward := by
-  unfold Backward
-  rw[not_lt]
-
-  suffices flowIn (fromPath P x hx).f Pr.s = 0 by linarith[this]
-  apply Finset.sum_eq_zero
-  intro u _
-  have : ¬contains_edge P.path u Pr.s := P.path.no_pred_first
-  simp only[fromPath, this, ite_false]
+-- lemma Flow.fromPath_not_backward
+--     (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+--     (x : ℤ)
+--     (hnonneg : 0 ≤ x)
+--     (hx : x ≤ N.bottleneck P) :
+--     ¬(fromPath P x hnonneg hx).Backward := by
+--   unfold Backward
+--   rw[not_lt]
+--
+--   suffices flowIn (fromPath P x hx).f Pr.s = 0 by linarith[this]
+--   apply Finset.sum_eq_zero
+--   intro u _
+--   have : ¬contains_edge P.path u Pr.s := P.path.no_pred_first
+--   simp only[fromPath, this, ite_false]
 
 @[simp]
 lemma Flow.fromPath_value
     (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
     (x : ℤ)
+    (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P) :
-    (Flow.fromPath P x hx).value = x := by
-  let F := Flow.fromPath P x hx
-
+    let F := Flow.fromPath P x hnonneg hx
+    F.value = x := by
+  intro F
   have h_in : flowIn F.f Pr.s = 0 := by
-    simp only [flowIn, Finset.sum_eq_zero_iff, Finset.mem_univ, forall_true_left]
-    intro u
+    rw[flowIn, Finset.sum_eq_zero]
+    intro u _
     suffices ¬contains_edge P.path u Pr.s by simp_all only [F, fromPath, contains_edge, ite_false]
     exact P.path.no_pred_first
 
@@ -122,5 +126,5 @@ lemma Flow.fromPath_value
       exact hne $ hv.right v' h
     · have := Finset.mem_univ v; intro; contradiction
 
-  rw[Flow.value, h_in, h_out, Nat.sub_zero]
-
+  rw[Flow.value, h_in, h_out]
+  ring
