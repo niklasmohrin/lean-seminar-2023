@@ -21,6 +21,7 @@ variable {N : Network V}
 
 def flowIn (f : V → V → ℤ) (v : V) := ∑ u, f u v
 def flowOut (f : V → V → ℤ) (v : V) := ∑ w, f v w
+def excess (f : V → V → ℤ) (v : V) := flowIn f v - flowOut f v
 
 @[ext]
 structure Flow (Pr : FlowProblem N) where
@@ -47,6 +48,9 @@ def Flow.value (flow : Flow Pr) := flowOut flow.f Pr.s - flowIn flow.f Pr.s
 
 def Flow.isMaximal (F : Flow Pr) := ∀ F' : Flow Pr, F'.value ≤ F.value
 
+theorem FlowProblem.nullFlow_value (Pr : FlowProblem N) : Pr.nullFlow.value = 0 := by
+  simp only [Flow.value, flowOut, nullFlow, Finset.sum_const_zero, flowIn, sub_self]
+
 variable [Nonempty V]
 
 @[simp]
@@ -67,6 +71,8 @@ lemma Flow.value_le_capMax (F : Flow Pr) : F.value ≤ Fintype.card V * N.capMax
     F.value = flowOut F.f Pr.s - flowIn F.f Pr.s := rfl
     _       ≤ flowOut F.f Pr.s                   := by linarith[F.flowIn_nonneg Pr.s]
     _       ≤ Fintype.card V * N.capMax          := F.flowOut_le_capMax Pr.s
+
+lemma Flow.flowOut_nonneg (F : Flow Pr) (v : V) : 0 ≤ flowOut F.f v := sorry
 
 @[simp]
 instance : HasSubset (Flow Pr) where
@@ -126,6 +132,11 @@ noncomputable instance : OrderTop (Flow Pr) where
 noncomputable def FlowProblem.maxFlow (Pr : FlowProblem N) : ℤ := (⊤ : Flow Pr).value
 
 noncomputable def Network.maxFlowValue (N : Network V) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
+
+lemma FlowProblem.maxFlow_nonneg (Pr : FlowProblem N) : 0 ≤ Pr.maxFlow := by
+  have := le_top (a := Pr.nullFlow)
+  simp only [instPreorderFlow, Preorder.lift, nullFlow_value] at this
+  exact this
 
 @[simp]
 lemma flow_pos_of_le_pos {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
@@ -226,6 +237,8 @@ lemma Flow.value_eq_zero_of_s_eq_t (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value =
     F.sum_flowOut_eq_sum_flowIn
     (Finset.mem_univ _)
     (λ v _ hv => F.conservation v ⟨hv, (hPr ▸ hv)⟩)
+
+lemma Flow.value_eq_excess_t (F : Flow Pr) : F.value = excess F.f Pr.t := by simp only [value, excess, F.excess_s_eq_neg_excess_t]
 
 def Flow.range_sum (F : Flow Pr) : ℕ := (∑ u, ∑ v, F.f u v).toNat
 
