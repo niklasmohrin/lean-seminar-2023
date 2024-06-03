@@ -113,4 +113,9 @@ lemma UndirectedNetwork.bottleneck_pos
   simp only [UndirectedNetwork.asSimpleGraph, hd₂, d.is_adj] at this
   exact not_le.mpr this
 
+lemma UndirectedNetwork.bottleneck_nonneg
+    {N : UndirectedNetwork V}
+    (P : N.asSimpleGraph.NonemptyPath s t) :
+    0 ≤ N.bottleneck P := le_of_lt <| UndirectedNetwork.bottleneck_pos P
+
 end

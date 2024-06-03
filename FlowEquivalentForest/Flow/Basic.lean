@@ -72,7 +72,7 @@ lemma Flow.value_le_capMax (F : Flow Pr) : F.value ≤ Fintype.card V * N.capMax
     _       ≤ flowOut F.f Pr.s                   := by linarith[F.flowIn_nonneg Pr.s]
     _       ≤ Fintype.card V * N.capMax          := F.flowOut_le_capMax Pr.s
 
-lemma Flow.flowOut_nonneg (F : Flow Pr) (v : V) : 0 ≤ flowOut F.f v := sorry
+lemma Flow.flowOut_nonneg (F : Flow Pr) (v : V) : 0 ≤ flowOut F.f v := Fintype.sum_nonneg (F.nonneg v)
 
 @[simp]
 instance : HasSubset (Flow Pr) where
@@ -137,6 +137,8 @@ lemma FlowProblem.maxFlow_nonneg (Pr : FlowProblem N) : 0 ≤ Pr.maxFlow := by
   have := le_top (a := Pr.nullFlow)
   simp only [instPreorderFlow, Preorder.lift, nullFlow_value] at this
   exact this
+
+lemma Network.maxFlowValue_nonneg (N : Network V) (u v : V) : 0 ≤ N.maxFlowValue u v := { s := u, t := v : FlowProblem N}.maxFlow_nonneg
 
 @[simp]
 lemma flow_pos_of_le_pos {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
