@@ -7,8 +7,8 @@ import FlowEquivalentForest.Flow.Circulation
 open BigOperators
 open ContainsEdge
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-variable {N : UndirectedNetwork V} {Pr : FlowProblem N.toNetwork}
+variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type*} [LinearOrderedCommRing R]
+variable {N : UndirectedNetwork V R} {Pr : FlowProblem N.toNetwork}
 
 def SimpleGraph.Walk.dart_counts {G : SimpleGraph V} (p : G.Walk u v) : Multiset (G.Dart) := Multiset.ofList p.darts
 
@@ -31,33 +31,38 @@ theorem SimpleGraph.Walk.dart_counts_takeUntil_le
   rw[List.subperm_append_left]
   exact List.nil_subperm
 
--- A FlowWalk can only visit each dart of the network as many times as the flow
--- value on this dart.
-def IsFlowWalk (F : Flow Pr) (p : N.asSimpleGraph.Walk u v) :=
-  ∀ d, p.dart_counts.count d ≤ F.f d.fst d.snd
-
 -- Could be untied from N and be a Walk in the clique instead to loose the
 -- UndirectedNetwork requirement. For us, it might be nicer to not involve
 -- another graph here since we are working on an undirected network anyways.
-abbrev Flow.Walk (F : Flow Pr) (u v : V) :=
-  {p : N.asSimpleGraph.Walk u v // IsFlowWalk F p}
+structure Flow.Walk (F : Flow Pr) (u v : V) where
+  walk : N.asSimpleGraph.Walk u v
+  val : R
+  pos : 0 < val
+  cap : ∀ d, walk.dart_counts.count d * val ≤ F.f d.fst d.snd
 
-def Flow.Walk.nil {F : Flow Pr} : F.Walk v v where
-  val := SimpleGraph.Walk.nil
-  property d := by simp only [SimpleGraph.Walk.dart_counts, SimpleGraph.Walk.darts_nil, Multiset.coe_nil, Multiset.not_mem_zero, not_false_eq_true, Multiset.count_eq_zero_of_not_mem, zero_le]; apply F.nonneg
+def Flow.Walk.nil {F : Flow Pr} (val : R) (hpos : 0 < val) : F.Walk v v where
+  walk := SimpleGraph.Walk.nil
+  val := val
+  pos := hpos
+  cap d := by simp [SimpleGraph.Walk.dart_counts]; exact F.nonneg ..
 
-def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.val.support) : F.Walk v u where
-  val := p.val.takeUntil u hu
-  property d := le_trans (Int.ofNat_le.mpr <| (Multiset.le_iff_count.mp (p.val.dart_counts_takeUntil_le hu) d)) (p.prop d)
+def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.walk.support) : F.Walk v u where
+  walk := p.walk.takeUntil u hu
+  val := p.val
+  pos := p.pos
+  cap d := by
+    refine le_trans ?_ (p.cap d)
+    apply (mul_le_mul_right p.pos).mpr
+    exact Nat.cast_le.mpr <| Multiset.le_iff_count.mp (p.walk.dart_counts_takeUntil_le hu) d
 
-abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.val.IsPath}
+abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.walk.IsPath}
 
 def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
-  val := p.val.val
+  val := p.val.walk
   property := p.prop
 
-def Flow.Path.nil (F : Flow Pr) : F.Path v v where
-  val := Flow.Walk.nil
+def Flow.Path.nil (F : Flow Pr) (val : R) (hpos : 0 < val) : F.Path v v where
+  val := Flow.Walk.nil val hpos
   property := SimpleGraph.Walk.IsPath.nil
 
 lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
@@ -72,90 +77,112 @@ lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
 
 def Flow.Walk.cons
     {F : Flow Pr}
-    (h : F.f u v ≠ 0)
     (p : F.Walk v w)
-    (h' : ¬contains_edge p.val u v) : -- h' could be relaxed, but this suffices for our purposes
+    (h : p.val ≤ F.f u v)
+    (h' : ¬contains_edge p.walk u v) : -- h' could be relaxed, but this suffices for our purposes
     F.Walk u w where
-  val := SimpleGraph.Walk.cons (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) p.val
-  property := by
-    intro d
+  walk := SimpleGraph.Walk.cons
+    (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero (ne_of_lt (lt_of_lt_of_le p.pos h)).symm)
+    p.walk
+  val := p.val
+  pos := p.pos
+  cap d := by
+    have hnonzero := (ne_of_lt (lt_of_lt_of_le p.pos h)).symm
     rw[SimpleGraph.Walk.dart_counts_cons, Multiset.count_cons]
-    if hd : d = SimpleGraph.Dart.mk (u, v) (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h) then
+    if hd : d = SimpleGraph.Dart.mk (u, v) (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero hnonzero) then
       simp only [hd, ite_true]
-      have hdp : p.val.dart_counts.count d = 0 := by
+      have hdp : p.walk.dart_counts.count d = 0 := by
         rw[Multiset.count_eq_zero, SimpleGraph.Walk.dart_counts, Multiset.mem_coe]
         intro hd'
-        exact h' ⟨(UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h), hd ▸ hd'⟩
+        exact h' ⟨(UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero hnonzero), hd ▸ hd'⟩
       rw[←hd, hdp]
-      by_contra h''
-      simp only [zero_add, not_le] at h''
-      have := le_antisymm (Int.le_of_lt_add_one (b := 0) h'') (F.nonneg ..)
-      exact h this
+      ring_nf
+      exact h
     else
       simp only [hd, ite_false, add_zero]
-      exact p.prop d
+      exact p.cap d
 
 def Flow.Path.cons
     {F : Flow Pr}
     {p : F.Path v w}
-    (h : F.f u v ≠ 0)
-    (h' : u ∉ p.val.val.support) :
+    (h : p.val.val ≤ F.f u v)
+    (h' : u ∉ p.val.walk.support) :
     F.Path u w where
-  val := Flow.Walk.cons h p (h' ∘ p.val.val.mem_support_of_contains_edge_fst)
+  val := p.val.cons h (h' ∘ p.val.walk.mem_support_of_contains_edge_fst)
   property := p.prop.cons h'
 
 def Flow.Path.takeUntil
     {F : Flow Pr}
     (p : F.Path v w)
     (u : V)
-    (hu : u ∈ p.val.val.support) :
+    (hu : u ∈ p.val.walk.support) :
     F.Path v u where
   val := p.val.takeUntil u hu
   property := p.prop.takeUntil hu
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
-abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.val.IsCirculation}
+abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.walk.IsCirculation}
 def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
-  val := c.val.val
+  val := c.val.walk
   property := c.prop
 
 def Flow.Circulation.from_dart_and_path
     {F : Flow Pr}
-    (h : F.f u v ≠ 0)
-    (p : F.Path v u) :
+    (p : F.Path v u)
+    (h : p.val.val ≤ F.f u v) :
     F.Circulation u where
-  val := Flow.Walk.cons h p.val p.path.not_contains_edge_end_start
-  property := p.path.cons_isCirculation (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero h)
+  val := p.val.cons h p.path.not_contains_edge_end_start
+  property := p.path.cons_isCirculation (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero (ne_of_lt (lt_of_lt_of_le p.val.pos h)).symm)
 
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
-def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr := Flow.UnitCirculation c.circulation
+@[simp]
+def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr :=
+  Flow.fromCirculation
+    c.circulation
+    c.val.val
+    (le_of_lt c.val.pos)
+    (by
+      intro d hd
+      calc
+        c.val.val = 1                              * c.val.val := (one_mul _).symm
+        _         ≤ c.val.walk.dart_counts.count d * c.val.val := (mul_le_mul_right c.val.pos).mpr (Nat.one_le_cast.mpr (Multiset.one_le_count_iff_mem.mpr hd))
+        _         ≤ F.f d.fst d.snd                            := c.val.cap ..
+        _         ≤ N.cap d.fst d.snd                          := F.capacity ..
+    )
 
 theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ⊆ F := by
-  simp [toFlow, UnitCirculation]
+  simp [toFlow, fromCirculation]
   intro u v
-  unfold Flow.UnitCirculation_f
+  unfold Flow.fromCirculation_f
   if huv : contains_edge c.circulation u v then
     simp only [huv, ite_true]
-    obtain ⟨_, hd⟩ := huv
-    have : 1 ≤ c.val.val.dart_counts.count _ := Multiset.one_le_count_iff_mem.mpr hd
-    exact le_trans
-      (Int.toNat_le.mp this)
-      (c.val.prop _)
+    obtain ⟨hAdj, hd⟩ := huv
+    let d := SimpleGraph.Dart.mk (u, v) hAdj
+    calc
+      c.val.val = 1 * c.val.val                              := (one_mul _).symm
+      _         ≤ c.val.walk.dart_counts.count d * c.val.val := (mul_le_mul_right c.val.pos).mpr (Nat.one_le_cast.mpr (Multiset.one_le_count_iff_mem.mpr hd))
+      _         ≤ F.f u v                                    := c.val.cap ..
   else
     simp only [huv, ite_false, zero_le, F.nonneg]
 
 def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
 
+@[simp]
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
-  rw[remove_circulation, Flow.sub_value c.toFlow_subset, Circulation.toFlow, Flow.UnitCirculation_value_zero]
+  rw[remove_circulation, Flow.sub_value c.toFlow_subset, Circulation.toFlow, Flow.fromCirculation_value_zero]
   ring
+
+-- TODO: Here we need to develop some new theory
+--
+-- Instead of picking any circulation to remove, we need to pick one that saturates an edge.
+-- This way, the `activeArcs` metric will decrease, giving us a well founded recursion.
 
 theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := by
   rw[remove_circulation]
   apply Flow.sub_ssubset_of_nonzero
   rw[Circulation.toFlow]
-  exact Flow.UnitCirculation_nonzero _
+  exact Flow.fromCirculation_nonzero ..
 
 noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
   have : Decidable (F.CirculationFree) := Classical.dec _
