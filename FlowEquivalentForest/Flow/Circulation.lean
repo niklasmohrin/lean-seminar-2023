@@ -7,62 +7,59 @@ open ContainsEdge
 
 variable
   {V : Type*} [Fintype V] [DecidableEq V]
-  {N : UndirectedNetwork V}
+  {R : Type*} [LinearOrderedCommRing R]
+  {N : UndirectedNetwork V R}
   {Pr : FlowProblem N.toNetwork}
 
 @[simp]
-abbrev Flow.UnitCirculation_f (c : N.asSimpleGraph.Circulation v₀) (u v : V) : ℤ := if contains_edge c u v then 1 else 0
+abbrev Flow.fromCirculation_f (c : N.asSimpleGraph.Circulation v₀) (x : R) (u v : V) : R := if contains_edge c u v then x else 0
 
-lemma Flow.UnitCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation v₀) (v : V) : flowOut (Flow.UnitCirculation_f c) v = flowIn (Flow.UnitCirculation_f c) v := by
-  simp only [flowOut, flowIn, UnitCirculation_f]
+lemma Flow.fromCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation v₀) (x : R) (v : V) :
+    flowOut (Flow.fromCirculation_f c x) v = flowIn (Flow.fromCirculation_f c x) v := by
+  simp only [flowOut, flowIn, fromCirculation_f]
   if h_sup : v ∈ c.val.support then
     obtain ⟨u, hu_pred, hu_uniq⟩ := c.pred_exists h_sup
     obtain ⟨w, hw_succ, hw_uniq⟩ := c.succ_exists h_sup
     rw[Finset.sum_eq_single w, Finset.sum_eq_single u]
     · simp only [hu_pred, hw_succ]
-    · intro u' _ hu'; simp; by_contra h; exact hu' <| hu_uniq u' h
+    · intro u' _ hu'; by_contra h; simp at h; exact hu' <| hu_uniq u' h.left
     · intro h; exact False.elim <| h <| Finset.mem_univ u
-    · intro w' _ hw'; simp; by_contra h; exact hw' <| hw_uniq w' h
+    · intro w' _ hw'; by_contra h; simp at h; exact hw' <| hw_uniq w' h.left
     · intro h; exact False.elim <| h <| Finset.mem_univ w
   else
     rw[Finset.sum_eq_zero, Finset.sum_eq_zero]
-    · simp; intro u hu; exact h_sup <| c.val.dart_snd_mem_support_of_mem_darts hu.snd
-    · simp; intro w hw; exact h_sup <| c.val.dart_fst_mem_support_of_mem_darts hw.snd
+    · simp; intro u hu; absurd h_sup; exact c.val.dart_snd_mem_support_of_mem_darts hu.snd
+    · simp; intro w hw; absurd h_sup; exact c.val.dart_fst_mem_support_of_mem_darts hw.snd
 
-def Flow.UnitCirculation (c : N.asSimpleGraph.Circulation v0) : Flow Pr where
-  f := Flow.UnitCirculation_f c
-  nonneg u v := by unfold UnitCirculation_f; omega
-  conservation v _ := UnitCirculation_f_flowOut_eq_flowIn c v
+def Flow.fromCirculation (c : N.asSimpleGraph.Circulation v0) (x : R) (hnonneg : 0 ≤ x) (hcap : ∀ d ∈ c.val.darts, x ≤ N.cap d.fst d.snd) : Flow Pr where
+  f := Flow.fromCirculation_f c x
+  nonneg u v := by unfold fromCirculation_f; exact ite_nonneg hnonneg le_rfl
+  conservation v _ := fromCirculation_f_flowOut_eq_flowIn c x v
   capacity := by
     intro u v
     simp
     if h : contains_edge c u v then
       simp [h]
-      obtain ⟨hAdj, _⟩ := h
-      unfold UndirectedNetwork.asSimpleGraph at hAdj
-      simp at hAdj
-      exact hAdj
+      obtain ⟨_, hd⟩ := h
+      exact hcap _ hd
     else
       simp [h, N.nonneg]
 
+variable {v₀ : V} (c : N.asSimpleGraph.Circulation v₀) (x : R) (hnonneg : 0 ≤ x) (hcap : ∀ d ∈ c.val.darts, x ≤ N.cap d.fst d.snd)
 
-theorem Flow.UnitCirculation_value_zero (c : N.asSimpleGraph.Circulation v₀) :
-    (Flow.UnitCirculation (Pr := Pr) c).value = 0 := by
-  rw [value, UnitCirculation, Flow.UnitCirculation_f_flowOut_eq_flowIn c Pr.s]
+@[simp]
+theorem Flow.fromCirculation_value_zero : (Flow.fromCirculation (Pr := Pr) c x hnonneg hcap).value = 0 := by
+  rw [value, fromCirculation, Flow.fromCirculation_f_flowOut_eq_flowIn c x Pr.s]
   linarith
 
-theorem Flow.UnitCirculation_nonzero (c : N.asSimpleGraph.Circulation v₀) :
-    (Flow.UnitCirculation (Pr := Pr) c) ≠ 0 := by
+theorem Flow.fromCirculation_nonzero (hx : x ≠ 0) : (Flow.fromCirculation (Pr := Pr) c x hnonneg hcap) ≠ 0 := by
   let d := c.val.firstDart c.prop.not_nil
-  suffices UnitCirculation_f c d.fst d.snd = 1 by
+  suffices fromCirculation_f c x d.fst d.snd = x by
     intro h
     injection h with f_eq
     rw[f_eq] at this
     simp only [f_eq, zero_ne_one] at this
-  suffices contains_edge c d.fst d.snd by simp_all only [SimpleGraph.Walk.firstDart_toProd, UnitCirculation_f, ite_true]
+    exact hx this.symm
+  suffices contains_edge c d.fst d.snd by simp_all only [ne_eq, SimpleGraph.Walk.firstDart_toProd, fromCirculation_f, ↓reduceIte, d]
   use d.is_adj
   exact c.val.firstDart_mem_darts c.prop.not_nil
-
-theorem Flow.UnitCirculation_not_backward (c : N.asSimpleGraph.Circulation v₀) :
-    ¬(Flow.UnitCirculation (Pr := Pr) c).Backward := by
-  rw [Backward, UnitCirculation, not_lt, Flow.UnitCirculation_f_flowOut_eq_flowIn c Pr.s]
