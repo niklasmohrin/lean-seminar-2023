@@ -6,19 +6,20 @@ open ContainsEdge
 
 variable
   {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-  {N : UndirectedNetwork V}
+  {R : Type*} [LinearOrderedCommRing R]
+  {N : UndirectedNetwork V R}
   {Pr : FlowProblem N.toNetwork}
 
 def Flow.fromPath
     (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
-    (x : ℤ)
+    (x : R)
     (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P) :
     Flow Pr :=
   let contains_edge := contains_edge P.path
 
-  let f u v : ℤ := if contains_edge u v then x else 0
-  have nonneg u v : 0 ≤ f u v := by simp only [f]; omega
+  let f u v : R := if contains_edge u v then x else 0
+  have nonneg u v : 0 ≤ f u v := by simp only [f]; exact ite_nonneg hnonneg le_rfl
 
   have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, instPathContainsEdge, instContainsEdgeWalk, ne_eq, ite_eq_right_iff, not_forall, exists_prop, exists_and_right, not_true_eq_false, f, contains_edge]
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
@@ -88,7 +89,7 @@ def Flow.fromPath
 @[simp]
 lemma Flow.fromPath_value
     (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
-    (x : ℤ)
+    (x : R)
     (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P) :
     let F := Flow.fromPath P x hnonneg hx
