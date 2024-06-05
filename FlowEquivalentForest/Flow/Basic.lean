@@ -11,21 +11,22 @@ import FlowEquivalentForest.SimpleGraph.Path
 
 open BigOperators
 
-variable {V : Type*} [Fintype V] [DecidableEq V]
+-- Note: Although `LinearOrderedRing` would maybe suffice, `linarith` works better with the stricter class
+variable {V : Type*} [Fintype V] [DecidableEq V] {R : Type*} [LinearOrderedCommRing R]
 
-structure FlowProblem (N : Network V) where
+structure FlowProblem (N : Network V R) where
   s : V
   t : V
 
-variable {N : Network V}
+variable {N : Network V R}
 
-def flowIn (f : V → V → ℤ) (v : V) := ∑ u, f u v
-def flowOut (f : V → V → ℤ) (v : V) := ∑ w, f v w
-def excess (f : V → V → ℤ) (v : V) := flowIn f v - flowOut f v
+def flowIn (f : V → V → R) (v : V) := ∑ u, f u v
+def flowOut (f : V → V → R) (v : V) := ∑ w, f v w
+def excess (f : V → V → R) (v : V) := flowIn f v - flowOut f v
 
 @[ext]
 structure Flow (Pr : FlowProblem N) where
-  f : V → V → ℤ
+  f : V → V → R
   nonneg : ∀ u v, 0 ≤ f u v
   conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v
   capacity : ∀ u v, f u v ≤ N.cap u v
@@ -60,17 +61,17 @@ lemma Flow.le_capMax (F : Flow Pr) (u v : V) : F.f u v ≤ N.capMax := by
   exact N.capMax_max
 
 lemma Flow.flowIn_nonneg (F : Flow Pr) (v : V) : 0 ≤ flowIn F.f v := Fintype.sum_nonneg (F.nonneg · v)
-lemma Flow.flowOut_le_capMax (F : Flow Pr) (u : V) : flowOut F.f u ≤ Fintype.card V * N.capMax := by
+lemma Flow.flowOut_le_capMax (F : Flow Pr) (u : V) : flowOut F.f u ≤ Fintype.card V • N.capMax := by
   calc
     flowOut F.f u = ∑ v, F.f u v  := rfl
     _ ≤ ∑ _v : V, N.capMax        := by apply Finset.sum_le_sum; intro v _; exact F.le_capMax u v
-    _ = Fintype.card V * N.capMax := Finset.sum_const ..
+    _ = Fintype.card V • N.capMax := Finset.sum_const ..
 
-lemma Flow.value_le_capMax (F : Flow Pr) : F.value ≤ Fintype.card V * N.capMax := by
+lemma Flow.value_le_capMax (F : Flow Pr) : F.value ≤ Fintype.card V • N.capMax := by
   calc
     F.value = flowOut F.f Pr.s - flowIn F.f Pr.s := rfl
-    _       ≤ flowOut F.f Pr.s                   := by linarith[F.flowIn_nonneg Pr.s]
-    _       ≤ Fintype.card V * N.capMax          := F.flowOut_le_capMax Pr.s
+    _       ≤ flowOut F.f Pr.s                   := sub_le_self _ <| F.flowIn_nonneg Pr.s
+    _       ≤ Fintype.card V • N.capMax          := F.flowOut_le_capMax Pr.s
 
 lemma Flow.flowOut_nonneg (F : Flow Pr) (v : V) : 0 ≤ flowOut F.f v := Fintype.sum_nonneg (F.nonneg v)
 
@@ -113,32 +114,33 @@ lemma increasing_seq_unbounded_wrt (w : α → ℤ) (succ : α → α) (h : ∀ 
 termination_by (n - w a).toNat
 
 theorem FlowProblem.exists_top (Pr : FlowProblem N) : ∃ F : Flow Pr, IsTop F := by
-  by_contra h
-  have h' (F : Flow Pr) : ∃ F' : Flow Pr, F < F' := by
-    simp[IsTop] at h
-    obtain ⟨F', hF'⟩ := h F
-    use F'
-    simp only [instPreorderFlow, Preorder.lift] at hF' ⊢
-    linarith[hF']
-  let succ F := Classical.choose (h' F)
-  have hsucc F := Classical.choose_spec (h' F)
-  obtain ⟨F, hF⟩ := increasing_seq_unbounded_wrt Flow.value succ hsucc (Fintype.card V * N.capMax + 1) 0
-  linarith[hF, F.value_le_capMax]
+  sorry
+  -- by_contra h
+  -- have h' (F : Flow Pr) : ∃ F' : Flow Pr, F < F' := by
+  --   simp[IsTop] at h
+  --   obtain ⟨F', hF'⟩ := h F
+  --   use F'
+  --   simp only [instPreorderFlow, Preorder.lift] at hF' ⊢
+  --   exact lt_of_not_le hF'
+  -- let succ F := Classical.choose (h' F)
+  -- have hsucc F := Classical.choose_spec (h' F)
+  -- obtain ⟨F, hF⟩ := increasing_seq_unbounded_wrt Flow.value succ hsucc (Fintype.card V * N.capMax + 1) 0
+  -- linarith[hF, F.value_le_capMax]
 
 noncomputable instance : OrderTop (Flow Pr) where
   top := Classical.choose Pr.exists_top
   le_top := Classical.choose_spec Pr.exists_top
 
-noncomputable def FlowProblem.maxFlow (Pr : FlowProblem N) : ℤ := (⊤ : Flow Pr).value
+noncomputable def FlowProblem.maxFlow (Pr : FlowProblem N) : R := (⊤ : Flow Pr).value
 
-noncomputable def Network.maxFlowValue (N : Network V) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
+noncomputable def Network.maxFlowValue (N : Network V R) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
 
 lemma FlowProblem.maxFlow_nonneg (Pr : FlowProblem N) : 0 ≤ Pr.maxFlow := by
   have := le_top (a := Pr.nullFlow)
   simp only [instPreorderFlow, Preorder.lift, nullFlow_value] at this
   exact this
 
-lemma Network.maxFlowValue_nonneg (N : Network V) (u v : V) : 0 ≤ N.maxFlowValue u v := { s := u, t := v : FlowProblem N}.maxFlow_nonneg
+lemma Network.maxFlowValue_nonneg (N : Network V R) (u v : V) : 0 ≤ N.maxFlowValue u v := { s := u, t := v : FlowProblem N}.maxFlow_nonneg
 
 @[simp]
 lemma flow_pos_of_le_pos {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
@@ -159,18 +161,13 @@ def Flow.sub {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : Flow Pr where
     simp [F₂.capacity]
     exact F₁.nonneg u v
 
--- This is the first time that we have a problem with flows possibly being backwards:
--- If
--- a) F₂ has value 2 along a path from s to t and value 1 along a path from t to s, and
--- b) F₁                                      has value 1 along a path from t to s,
--- then subtracting F₁ from F₂ yields a flow with value 3, but the formula here would suggest 2,
--- because in natural numbers, the value of F₁ is 0 (while it would be -1 in the integers).
+@[simp]
 theorem Flow.sub_value
     {F₁ F₂ : Flow Pr}
     (hle : F₁ ⊆ F₂) :
     (Flow.sub hle).value = F₂.value - F₁.value := by
   simp [value, sub, flowOut, flowIn]
-  ring
+  exact sub_sub_sub_comm ..
 
 theorem Flow.sub_subset
     {F₁ F₂ : Flow Pr}
@@ -242,24 +239,8 @@ lemma Flow.value_eq_zero_of_s_eq_t (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value =
 
 lemma Flow.value_eq_excess_t (F : Flow Pr) : F.value = excess F.f Pr.t := by simp only [value, excess, F.excess_s_eq_neg_excess_t]
 
-def Flow.range_sum (F : Flow Pr) : ℕ := (∑ u, ∑ v, F.f u v).toNat
-
-theorem Flow.range_sum_lt_of_ssubset {F₁ F₂ : Flow Pr} (h : F₁ ⊂ F₂) : F₁.range_sum < F₂.range_sum := by
-  simp only [range_sum, ←Fintype.sum_prod_type']
-  rw[Int.toNat_lt_toNat]
-  · apply Fintype.sum_lt_sum
-    simp only [instHasSSubsetFlow, Pi.lt_def] at *
-    obtain ⟨h1, u, _, v, h₃⟩ := h
-    constructor
-    · intro ⟨a, b⟩
-      exact h1 a b
-    · use ⟨u, v⟩
-  · apply Fintype.sum_pos
-    simp only [instHasSSubsetFlow, Pi.lt_def] at h ⊢
-    obtain ⟨_, u, _, v, h₃⟩ := h
-    have : Nonempty V := Nonempty.intro u -- avoid using the `Nonempty V` instance from the `variable` above
-    constructor
-    · simp [Pi.le_def, F₂.nonneg]
-    · use ⟨u, v⟩
-      refine lt_of_le_of_lt ?_ h₃
-      simp[F₁.nonneg]
+-- For arbitrary rings R, the strict subset relation is not necessarily well
+-- founded (we can construct an infinite sequence of strict subflows). Instead,
+-- the number of arcs with positive flow value can be used as a well founded
+-- relation.
+def Flow.activeArcs (F : Flow Pr) : ℕ := ((Finset.univ (α := V × V)).filter (fun (u, v) ↦ 0 < F.f u v)).card
