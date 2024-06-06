@@ -35,6 +35,25 @@ theorem Path.cons_isCirculation (p : G.Path v u) (h : G.Adj u v) :
 
 lemma Walk.IsCirculation.not_nil {p : G.Walk v v} (hc : p.IsCirculation) : ¬p.Nil := p.not_nil_of_ne_nil hc.ne_nil
 
+theorem Walk.IsCirculation_iff (p : G.Walk u u) : p.IsCirculation ↔ ∃ (v : V) (h : G.Adj u v) (p' : G.Path v u), p = Walk.cons h p'.val := by
+  constructor
+  · intro hp
+    let d := p.firstDart hp.not_nil
+    use d.snd
+    use d.is_adj
+    have hp' := (p.cons_tail_eq hp.not_nil).symm
+    use {
+      val := p.tail hp.not_nil,
+      property := IsPath.mk' (by
+        have := hp' ▸ hp.support_nodup
+        rwa[support_cons, List.tail_cons] at this
+      )
+    }
+  · intro h
+    obtain ⟨_, huv, p', hp'⟩ := h
+    exact hp' ▸ p'.cons_isCirculation huv
+
+
 theorem Walk.IsCirculation.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCirculation) : p.reverse.IsCirculation where
   ne_nil := SimpleGraph.Walk.reverse_ne_nil h.ne_nil
   support_nodup := by
@@ -45,6 +64,18 @@ theorem Walk.IsCirculation.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.I
       rwa[support_eq_cons p, support_eq_cons p.reverse, List.perm_cons] at this
 
     exact Walk.support_reverse _ ▸ (List.reverse_perm p.support).symm
+
+lemma Walk.IsCirculation.darts_nodup {p : G.Walk u u} (h : p.IsCirculation) : p.darts.Nodup := by
+  obtain ⟨v, huv, p', hp'⟩ := (Walk.IsCirculation_iff p).mp h
+  subst hp'
+  rw[darts_cons]
+  apply List.Nodup.cons
+  · intro hd; exact p'.val.end_ne_fst_of_mem_darts_of_support_nodup hd p'.nodup_support rfl
+  · exact darts_nodup_of_support_nodup p'.nodup_support
+
+lemma Walk.IsCirculation.dart_counts_nodup {p : G.Walk v v} (h : p.IsCirculation) : p.dart_counts.Nodup := by
+  apply Multiset.coe_nodup.mpr
+  exact h.darts_nodup
 
 namespace Circulation
 

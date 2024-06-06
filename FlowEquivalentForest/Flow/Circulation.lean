@@ -52,14 +52,14 @@ theorem Flow.fromCirculation_value_zero : (Flow.fromCirculation (Pr := Pr) c x h
   rw [value, fromCirculation, Flow.fromCirculation_f_flowOut_eq_flowIn c x Pr.s]
   linarith
 
-theorem Flow.fromCirculation_nonzero (hx : x ≠ 0) : (Flow.fromCirculation (Pr := Pr) c x hnonneg hcap) ≠ 0 := by
+theorem Flow.fromCirculation_nonzero (hpos : 0 < x) : (Flow.fromCirculation (Pr := Pr) c x (le_of_lt hpos) hcap) ≠ 0 := by
   let d := c.val.firstDart c.prop.not_nil
   suffices fromCirculation_f c x d.fst d.snd = x by
     intro h
     injection h with f_eq
     rw[f_eq] at this
     simp only [f_eq, zero_ne_one] at this
-    exact hx this.symm
+    exact (ne_of_lt hpos) this
   suffices contains_edge c d.fst d.snd by simp_all only [ne_eq, SimpleGraph.Walk.firstDart_toProd, fromCirculation_f, ↓reduceIte, d]
   use d.is_adj
   exact c.val.firstDart_mem_darts c.prop.not_nil

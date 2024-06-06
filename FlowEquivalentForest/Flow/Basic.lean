@@ -243,4 +243,20 @@ lemma Flow.value_eq_excess_t (F : Flow Pr) : F.value = excess F.f Pr.t := by sim
 -- founded (we can construct an infinite sequence of strict subflows). Instead,
 -- the number of arcs with positive flow value can be used as a well founded
 -- relation.
-def Flow.activeArcs (F : Flow Pr) : ℕ := ((Finset.univ (α := V × V)).filter (fun (u, v) ↦ 0 < F.f u v)).card
+def Flow.activeArcs (F : Flow Pr) : Finset (V × V) := Finset.univ.filter (fun (u, v) ↦ 0 < F.f u v)
+
+theorem Flow.activeArcs_subset_of_subset {F₁ F₂ : Flow Pr} (hle : F₁ ⊆ F₂) : F₁.activeArcs ⊆ F₂.activeArcs := by
+  unfold activeArcs
+  apply Finset.monotone_filter_right
+  intro (u, v) h
+  exact lt_of_lt_of_le h (hle u v)
+
+theorem Flow.sub_activeArcs_ssubset {F₁ F₂ : Flow Pr} (hle : F₁ ⊆ F₂) {u v : V} (huv : 0 < F₂.f u v ∧ F₁.f u v = F₂.f u v) :
+    (Flow.sub hle).activeArcs ⊂ F₂.activeArcs := by
+  constructor
+  · exact Flow.activeArcs_subset_of_subset (Flow.sub_subset hle)
+  · rw[Finset.not_subset]
+    use (u, v)
+    constructor
+    · exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, huv.left⟩
+    · simp[sub, activeArcs, huv.right]

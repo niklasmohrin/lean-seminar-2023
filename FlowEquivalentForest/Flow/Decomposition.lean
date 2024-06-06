@@ -1,3 +1,5 @@
+import Mathlib.Algebra.Order.Field.Basic
+
 import FlowEquivalentForest.SimpleGraph.Path
 import FlowEquivalentForest.SimpleGraph.Circulation
 import FlowEquivalentForest.Flow.Basic
@@ -7,29 +9,8 @@ import FlowEquivalentForest.Flow.Circulation
 open BigOperators
 open ContainsEdge
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type*} [LinearOrderedCommRing R]
+variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type*} [LinearOrderedField R]
 variable {N : UndirectedNetwork V R} {Pr : FlowProblem N.toNetwork}
-
-def SimpleGraph.Walk.dart_counts {G : SimpleGraph V} (p : G.Walk u v) : Multiset (G.Dart) := Multiset.ofList p.darts
-
-theorem SimpleGraph.Walk.dart_counts_cons
-    {G : SimpleGraph V}
-    (h : G.Adj u v)
-    (p : G.Walk v w) :
-    (Walk.cons h p).dart_counts = (SimpleGraph.Dart.mk (u, v) h) ::ₘ p.dart_counts := by
-  simp only [dart_counts, darts_cons, Multiset.cons_coe]
-
-theorem SimpleGraph.Walk.dart_counts_takeUntil_le
-    {G : SimpleGraph V}
-    (p : G.Walk s t)
-    {x : V}
-    (hx : x ∈ p.support) :
-    (p.takeUntil x hx).dart_counts ≤ p.dart_counts := by
-  conv => right; rw[←p.take_spec hx]
-  simp only [dart_counts, darts_append, Multiset.coe_le]
-  conv => left; rw[←List.append_nil (p.takeUntil x hx).darts]
-  rw[List.subperm_append_left]
-  exact List.nil_subperm
 
 -- Could be untied from N and be a Walk in the clique instead to loose the
 -- UndirectedNetwork requirement. For us, it might be nicer to not involve
@@ -54,6 +35,78 @@ def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.wal
     refine le_trans ?_ (p.cap d)
     apply (mul_le_mul_right p.pos).mpr
     exact Nat.cast_le.mpr <| Multiset.le_iff_count.mp (p.walk.dart_counts_takeUntil_le hu) d
+
+lemma Flow.Walk.val_le_f {F : Flow Pr} (p : F.Walk u v) (hd : d ∈ p.walk.darts) : p.val ≤ F.f d.fst d.snd :=
+  calc
+    p.val = 1                          * p.val := (one_mul _).symm
+    _     ≤ p.walk.dart_counts.count d * p.val := (mul_le_mul_right p.pos).mpr (Nat.one_le_cast.mpr (Multiset.one_le_count_iff_mem.mpr hd))
+    _     ≤ F.f d.fst d.snd                    := p.cap ..
+
+section
+
+variable {F : Flow Pr} {u v : V} (p : F.Walk u v) (hp : ¬p.walk.Nil)
+
+def Flow.Walk.Saturating := ∃ d ∈ p.walk.darts, p.walk.dart_counts.count d * p.val = F.f d.fst d.snd
+
+private def Flow.Walk.capList := p.walk.darts.map (fun d ↦ F.f d.fst d.snd / p.walk.dart_counts.count d)
+private lemma Flow.Walk.capList_length_pos : 0 < p.capList.length := by
+  by_contra hzero
+  absurd hp
+  simp[capList] at hzero
+  have := SimpleGraph.Walk.eq_of_length_eq_zero hzero
+  subst this
+  exact SimpleGraph.Walk.nil_iff_length_eq.mpr hzero
+
+def Flow.Walk.saturatingVal := p.capList.minimum_of_length_pos <| p.capList_length_pos hp
+
+lemma Flow.Walk.exists_saturatingVal : ∃ d ∈ p.walk.darts, p.walk.dart_counts.count d * p.saturatingVal hp = F.f d.fst d.snd := by
+  simp only [saturatingVal]
+  have := List.minimum_of_length_pos_mem <| p.capList_length_pos hp
+  simp only [capList, List.mem_map] at this
+  obtain ⟨d, hd, hd'⟩ := this
+  use d
+  constructor
+  · exact hd
+  · rw[←hd']
+    apply mul_div_cancel₀
+    simp only [ne_eq, Nat.cast_eq_zero, Multiset.count_eq_zero, not_not]
+    exact hd
+
+lemma Flow.Walk.exists_saturatingVal' : ∃ d ∈ p.walk.darts, p.saturatingVal hp = F.f d.fst d.snd / p.walk.dart_counts.count d := by
+  obtain ⟨d, hd, hd'⟩ := p.exists_saturatingVal hp
+  use d
+  constructor
+  · exact hd
+  · apply eq_div_of_mul_eq
+    · rw[@Nat.cast_ne_zero]
+      exact Ne.symm <| ne_of_lt <| Multiset.count_pos.mpr <| hd
+    · rwa[mul_comm] at hd'
+
+lemma Flow.Walk.val_le_saturatingVal : p.val ≤ p.saturatingVal hp := by
+  obtain ⟨d, hd, hd'⟩ := p.exists_saturatingVal' hp
+  rw[hd']
+  have : 0 < p.walk.dart_counts.count d := Multiset.count_pos.mpr <| hd
+  rw[le_div_iff' (Nat.cast_pos.mpr this)]
+  exact p.cap d
+
+def Flow.Walk.make_Saturating : F.Walk u v where
+  walk := p.walk
+  val := p.saturatingVal hp
+  pos := lt_of_lt_of_le p.pos <| p.val_le_saturatingVal hp
+  cap d := by
+    wlog hd : d ∈ p.walk.darts
+    · simp[SimpleGraph.Walk.dart_counts, hd, F.nonneg]
+
+    have : 0 < p.walk.dart_counts.count d := Multiset.count_pos.mpr <| hd
+    rw[←le_div_iff' (Nat.cast_pos.mpr this)]
+    simp only [saturatingVal, capList, List.minimum_of_length_pos_le_iff, val]
+    apply List.minimum_le_of_mem'
+    simp only [List.mem_map]
+    use d
+
+theorem Flow.Walk.make_Saturating_Saturating : (p.make_Saturating hp).Saturating := p.exists_saturatingVal hp
+
+end
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.walk.IsPath}
 
@@ -136,20 +189,24 @@ def Flow.Circulation.from_dart_and_path
 
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
+noncomputable instance {F : Flow Pr} : Decidable (F.CirculationFree) := Classical.dec _
+
+private lemma Flow.Circulation.toFlow_cap {F : Flow Pr} (c : F.Circulation v₀) :
+    ∀ d ∈ c.val.walk.darts, c.val.val ≤ N.cap d.fst d.snd := by
+  intro d hd
+  exact le_trans (c.val.val_le_f hd) (F.capacity ..)
+
 @[simp]
 def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr :=
   Flow.fromCirculation
     c.circulation
     c.val.val
     (le_of_lt c.val.pos)
-    (by
-      intro d hd
-      calc
-        c.val.val = 1                              * c.val.val := (one_mul _).symm
-        _         ≤ c.val.walk.dart_counts.count d * c.val.val := (mul_le_mul_right c.val.pos).mpr (Nat.one_le_cast.mpr (Multiset.one_le_count_iff_mem.mpr hd))
-        _         ≤ F.f d.fst d.snd                            := c.val.cap ..
-        _         ≤ N.cap d.fst d.snd                          := F.capacity ..
-    )
+    c.toFlow_cap
+
+lemma Flow.Circulation.toFlow_nonzero {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ≠ 0 := by
+  rw[Circulation.toFlow]
+  exact Flow.fromCirculation_nonzero c.circulation c.val.val c.toFlow_cap c.val.pos
 
 theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ⊆ F := by
   simp [toFlow, fromCirculation]
@@ -157,71 +214,73 @@ theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : 
   unfold Flow.fromCirculation_f
   if huv : contains_edge c.circulation u v then
     simp only [huv, ite_true]
-    obtain ⟨hAdj, hd⟩ := huv
-    let d := SimpleGraph.Dart.mk (u, v) hAdj
-    calc
-      c.val.val = 1 * c.val.val                              := (one_mul _).symm
-      _         ≤ c.val.walk.dart_counts.count d * c.val.val := (mul_le_mul_right c.val.pos).mpr (Nat.one_le_cast.mpr (Multiset.one_le_count_iff_mem.mpr hd))
-      _         ≤ F.f u v                                    := c.val.cap ..
+    obtain ⟨_, hd⟩ := huv
+    exact c.val.val_le_f hd
   else
     simp only [huv, ite_false, zero_le, F.nonneg]
 
+def Flow.Circulation.make_Saturating {F : Flow Pr} (c : F.Circulation v₀) : F.Circulation v₀ where
+  val := c.val.make_Saturating c.circulation.prop.not_nil
+  property := c.prop
+
 def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
+
+theorem Flow.remove_circulation_activeArcs_ssub_of_Saturating (F : Flow Pr) (c : F.Circulation v₀) (hc : c.val.Saturating) :
+    (Flow.sub c.toFlow_subset).activeArcs ⊂ F.activeArcs := by
+  obtain ⟨d, hd, hd'⟩ := hc
+  apply Flow.sub_activeArcs_ssubset c.toFlow_subset (u := d.fst) (v := d.snd)
+  constructor
+  · exact lt_of_lt_of_le c.val.pos <| c.val.val_le_f hd
+  · have : contains_edge c.circulation d.fst d.snd := by simp[SimpleGraph.instContainsEdgeCirculation]; use d.is_adj; exact hd
+    simp[←hd', fromCirculation, this]
+    suffices c.val.walk.dart_counts.count d = 1 by rw[this]; ring
+    exact Multiset.count_eq_one_of_mem c.circulation.prop.dart_counts_nodup hd
 
 @[simp]
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
   rw[remove_circulation, Flow.sub_value c.toFlow_subset, Circulation.toFlow, Flow.fromCirculation_value_zero]
   ring
 
--- TODO: Here we need to develop some new theory
---
--- Instead of picking any circulation to remove, we need to pick one that saturates an edge.
--- This way, the `activeArcs` metric will decrease, giving us a well founded recursion.
-
 theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := by
   rw[remove_circulation]
   apply Flow.sub_ssubset_of_nonzero
-  rw[Circulation.toFlow]
-  exact Flow.fromCirculation_nonzero ..
+  exact C.toFlow_nonzero
 
 noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
-  have : Decidable (F.CirculationFree) := Classical.dec _
   if hF : F.CirculationFree then
     F
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
-    (F.remove_circulation c).remove_all_circulations
-termination_by F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
+    (F.remove_circulation c.make_Saturating).remove_all_circulations
+termination_by F.activeArcs.card
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_Saturating (c.val.make_Saturating_Saturating c.circulation.prop.not_nil)
 
 theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_all_circulations.CirculationFree := by
-  have : Decidable (F.CirculationFree) := Classical.dec _
   unfold Flow.remove_all_circulations
   if hF : F.CirculationFree then
     simp only [dite_true, hF]
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_true, hF]
-    exact Flow.remove_all_circulations.CirculationFree ((F.remove_circulation c))
-termination_by F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
+    exact Flow.remove_all_circulations.CirculationFree ((F.remove_circulation c.make_Saturating))
+termination_by F.activeArcs.card
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_Saturating (c.val.make_Saturating_Saturating c.circulation.prop.not_nil)
 
+@[simp]
 theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulations.value = F.value := by
-  have : Decidable (F.CirculationFree) := Classical.dec _
   unfold Flow.remove_all_circulations
   if hF : F.CirculationFree then
     simp only [dite_true, hF]
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have h1: (remove_all_circulations (remove_circulation F c)).value =  (remove_circulation F c).value := by exact Flow.remove_all_circulations.value ( remove_circulation F c)
-    have h2 : (remove_circulation F c).value = F.value := by exact Flow.remove_circulation_value F c
+    have h1: (remove_all_circulations (remove_circulation F c.make_Saturating)).value =  (remove_circulation F c.make_Saturating).value := by exact Flow.remove_all_circulations.value (remove_circulation F c.make_Saturating)
+    have h2 : (remove_circulation F c.make_Saturating).value = F.value := by exact Flow.remove_circulation_value F c.make_Saturating
     apply Eq.trans h1 h2
-termination_by F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
+termination_by F.activeArcs.card
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_Saturating (c.val.make_Saturating_Saturating c.circulation.prop.not_nil)
 
 theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circulations ⊆ F := by
-  have : Decidable (F.CirculationFree) := Classical.dec _
   unfold Flow.remove_all_circulations
   if hF : F.CirculationFree then
     simp only [dite_true, hF]
@@ -229,11 +288,11 @@ theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circula
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have h1: remove_all_circulations (remove_circulation F c) ⊆  remove_circulation F c := by exact Flow.remove_all_circulations.subset (remove_circulation F c)
-    have h2 : remove_circulation F c ⊆ F := subset_of_ssubset (Flow.remove_circulation.ssubset F c)
+    have h1: remove_all_circulations (remove_circulation F c.make_Saturating) ⊆  remove_circulation F c.make_Saturating := by exact Flow.remove_all_circulations.subset (remove_circulation F c.make_Saturating)
+    have h2 : remove_circulation F c.make_Saturating ⊆ F := subset_of_ssubset (Flow.remove_circulation.ssubset F c.make_Saturating)
     exact subset_trans h1 h2
-termination_by F.range_sum
-decreasing_by apply Flow.range_sum_lt_of_ssubset; apply Flow.remove_circulation.ssubset
+termination_by F.activeArcs.card
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_Saturating (c.val.make_Saturating_Saturating c.circulation.prop.not_nil)
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t where
   val := p.val

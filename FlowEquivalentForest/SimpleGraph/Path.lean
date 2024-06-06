@@ -394,3 +394,24 @@ theorem SimpleGraph.Walk.mem_darts_of_mem_edges (p : G.Walk s t) (h : s(u, v) �
     obtain ⟨hv, hu⟩ := heq
     subst_vars
     use hd₁
+
+def SimpleGraph.Walk.dart_counts {G : SimpleGraph V} (p : G.Walk u v) : Multiset (G.Dart) := Multiset.ofList p.darts
+
+theorem SimpleGraph.Walk.dart_counts_cons
+    {G : SimpleGraph V}
+    (h : G.Adj u v)
+    (p : G.Walk v w) :
+    (Walk.cons h p).dart_counts = (SimpleGraph.Dart.mk (u, v) h) ::ₘ p.dart_counts := by
+  simp only [dart_counts, darts_cons, Multiset.cons_coe]
+
+theorem SimpleGraph.Walk.dart_counts_takeUntil_le
+    {G : SimpleGraph V}
+    (p : G.Walk s t)
+    {x : V}
+    (hx : x ∈ p.support) :
+    (p.takeUntil x hx).dart_counts ≤ p.dart_counts := by
+  conv => right; rw[←p.take_spec hx]
+  simp only [dart_counts, darts_append, Multiset.coe_le]
+  conv => left; rw[←List.append_nil (p.takeUntil x hx).darts]
+  rw[List.subperm_append_left]
+  exact List.nil_subperm
