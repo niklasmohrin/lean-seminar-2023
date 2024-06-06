@@ -44,11 +44,11 @@ instance : Zero (Flow Pr) where
 
 def Flow.Backward (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
 
-@[simp]
 def Flow.value (flow : Flow Pr) := flowOut flow.f Pr.s - flowIn flow.f Pr.s
 
 def Flow.isMaximal (F : Flow Pr) := ∀ F' : Flow Pr, F'.value ≤ F.value
 
+@[simp]
 theorem FlowProblem.nullFlow_value (Pr : FlowProblem N) : Pr.nullFlow.value = 0 := by
   simp only [Flow.value, flowOut, nullFlow, Finset.sum_const_zero, flowIn, sub_self]
 

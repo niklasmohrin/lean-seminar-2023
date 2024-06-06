@@ -9,7 +9,8 @@ import FlowEquivalentForest.Flow.Circulation
 open BigOperators
 open ContainsEdge
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type*} [LinearOrderedField R]
+universe u_v u_r
+variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} [LinearOrderedField R]
 variable {N : UndirectedNetwork V R} {Pr : FlowProblem N.toNetwork}
 
 -- Could be untied from N and be a Walk in the clique instead to loose the
@@ -412,7 +413,7 @@ def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
     Flow.sub hle
 
 @[simp]
-theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - p.val.val := by
+theorem Flow.remove_path_value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - p.val.val := by
   simp only [remove_path, dite_false, hst, sub_value, fromPath_value]
 
 lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
@@ -426,8 +427,24 @@ lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
   have : 0 < F.value := Ne.lt_of_le' hN Pr.maxFlow_nonneg
   exact h $ (F.exists_path_of_value_pos this).path.val.reachable
 
--- Not needed for our theorem, but maybe fun
--- def Flow.path_decomposition (F : Flow Pr) : Multiset (F.Path Pr.s Pr.t) := excuse_me
--- theorem Flow.path_decomposition_card (F : Flow Pr) : F.path_decomposition.card = F.value := excuse_me
--- theorem Flow.path_decomposition.f_eq_path_count (F : Flow Pr) :
---     ∀ d : N.asSimpleGraph.Dart, F.f d.fst d.snd = Multiset.countP (d ∈ ·.val.val.darts) F.path_decomposition := excuse_me
+inductive Flow.Decomposition : (F : Flow Pr) → Type (max (u_v + 1) (u_r + 1)) where
+  | nil : Flow.Decomposition 0
+  | cons :
+    {F : Flow Pr} →
+    (p : F.Path Pr.s Pr.t) →
+    (F.remove_path p).Decomposition →
+    F.Decomposition
+
+def Flow.Decomposition.size {F : Flow Pr} : F.Decomposition → ℕ
+  | nil => 0
+  | cons _ D => D.size + 1
+
+def Flow.Decomposition.Saturating {F : Flow Pr} : F.Decomposition → Prop
+  | nil => True
+  | cons p D => p.val.Saturating ∧ D.Saturating
+
+abbrev Flow.SaturatingDecomposition (F : Flow Pr) := { D : F.Decomposition // D.Saturating }
+
+noncomputable instance {F : Flow Pr} : Nonempty F.SaturatingDecomposition := sorry
+noncomputable instance {F : Flow Pr} : Nonempty F.Decomposition :=
+  Nonempty.intro <| (Classical.choice inferInstance : F.SaturatingDecomposition).val
