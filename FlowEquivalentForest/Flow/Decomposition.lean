@@ -185,6 +185,16 @@ def Flow.Path.relax_val {F : Flow Pr} (p : F.Path u v) (new_val : R) (hpos : 0 <
   val := p.val.relax_val new_val hpos
   property := p.prop
 
+lemma Flow.Path.val_le_bottleneck {F : Flow Pr} (p : F.Path u v) (hne : u ≠ v) :
+    let pne : N.asSimpleGraph.NonemptyPath u v := { path := p.path, ne := hne }
+    p.val.val ≤ N.bottleneck pne := by
+  intro pne
+  obtain ⟨d, hd, hd'⟩ := N.exists_bottleneck_dart pne
+  calc
+    p.val.val ≤ F.f d.fst d.snd   := p.val.val_le_f hd
+    _         ≤ N.cap d.fst d.snd := F.capacity ..
+    _         = N.bottleneck pne  := hd'
+
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.walk.IsCirculation}
 def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
@@ -382,37 +392,31 @@ theorem Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path 
 
 lemma Flow.from_flowPath_subseteq (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hPr : Pr.s ≠ Pr.t) :
     let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hPr }
-    let F' := Flow.fromPath pne 1 (by trivial) (N.bottleneck_pos pne)
+    let F' := Flow.fromPath pne p.val.val p.val.pos.le (p.val_le_bottleneck hPr)
     F' ⊆ F := by
   intro pne F' u v
   wlog huv : contains_edge p.path u v
   · simp only [F', fromPath, ite_false, huv, zero_le, F.nonneg]
   simp only [F', fromPath, ite_true, huv]
-
-  obtain ⟨h_adj, hd⟩ := huv
-  let d := SimpleGraph.Dart.mk (u, v) h_adj
-  have : 1 ≤ p.val.val.dart_counts.count d := Multiset.one_le_count_iff_mem.mpr hd
-  exact le_trans (Int.ofNat_le.mpr this) (p.val.prop _)
+  obtain ⟨_, hd⟩ := huv
+  exact p.val.val_le_f hd
 
 def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
   if hst : Pr.s = Pr.t then
     F
   else
     let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
-    let F' := Flow.fromPath pne 1 (by trivial) (N.bottleneck_pos pne)
+    let F' := Flow.fromPath pne p.val.val p.val.pos.le (p.val_le_bottleneck hst)
     have hle : F' ⊆ F := Flow.from_flowPath_subseteq F p hst
 
     Flow.sub hle
 
-theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - 1 := by
-  simp only [remove_path, dite_false, hst]
-  let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
-  have := Flow.fromPath_value pne 1 (by trivial) (N.bottleneck_pos pne)
-  conv => right; rw[←this]
-  exact Flow.sub_value (F.from_flowPath_subseteq p hst)
+@[simp]
+theorem Flow.remove_path.value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - p.val.val := by
+  simp only [remove_path, dite_false, hst, sub_value, fromPath_value]
 
 lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
-    (N : UndirectedNetwork V)
+    (N : UndirectedNetwork V R)
     {u v : V}
     (h : ¬N.asSimpleGraph.Reachable u v) :
     N.maxFlowValue u v = 0 := by
