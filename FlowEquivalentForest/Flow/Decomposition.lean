@@ -42,6 +42,14 @@ lemma Flow.Walk.val_le_f {F : Flow Pr} (p : F.Walk u v) (hd : d ∈ p.walk.darts
     _     ≤ p.walk.dart_counts.count d * p.val := (mul_le_mul_right p.pos).mpr (Nat.one_le_cast.mpr (Multiset.one_le_count_iff_mem.mpr hd))
     _     ≤ F.f d.fst d.snd                    := p.cap ..
 
+def Flow.Walk.relax_val {F : Flow Pr} (p : F.Walk u v) (new_val : R) (hpos : 0 < new_val) : F.Walk u v where
+  walk := p.walk
+  val := min p.val new_val
+  pos := lt_min p.pos hpos
+  cap d := by
+    refine le_trans ?_ (p.cap d)
+    exact mul_le_mul_of_nonneg_left (min_le_left ..) (by positivity)
+
 section
 
 variable {F : Flow Pr} {u v : V} (p : F.Walk u v) (hp : ¬p.walk.Nil)
@@ -173,6 +181,10 @@ def Flow.Path.takeUntil
   val := p.val.takeUntil u hu
   property := p.prop.takeUntil hu
 
+def Flow.Path.relax_val {F : Flow Pr} (p : F.Path u v) (new_val : R) (hpos : 0 < new_val) : F.Path u v where
+  val := p.val.relax_val new_val hpos
+  property := p.prop
+
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.walk.IsCirculation}
 def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
@@ -294,26 +306,19 @@ theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circula
 termination_by F.activeArcs.card
 decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_Saturating (c.val.make_Saturating_Saturating c.circulation.prop.not_nil)
 
-def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t where
-  val := p.val
-  property := by
-    intro d
-    calc
-      Multiset.count d p.val.dart_counts ≤ F.f d.fst d.snd  := p.prop d
-      _                                  ≤ F'.f d.fst d.snd := h ..
-
-def Flow.Walk.transfer.val {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : (p.transfer h).val = p.val := rfl
+def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t :=
+  { p with cap := (by intro d; exact le_trans (p.cap d) (h ..)) }
 
 def Flow.Path.transfer {F F' : Flow Pr} (p : F.Path s t) (h : F ⊆ F') : F'.Path s t where
   val := p.val.transfer h
-  property := Flow.Walk.transfer.val p.val h ▸ p.property
+  property := p.property
 
 theorem Flow.exists_path_of_value_pos_of_circulationFree
     (F : Flow Pr)
     (hF : 0 < F.value)
     (hC : F.CirculationFree) :
     F.Path Pr.s Pr.t :=
-  build_path (Flow.Path.nil F)
+  build_path (Flow.Path.nil F F.value (by positivity))
 where
   -- Recursive definition of the path: Given a path from some vertex v to the
   -- sink, we pick the next vertex u, add it to the front of the path and
@@ -322,25 +327,26 @@ where
     if hvs : v = Pr.s then
       hvs ▸ path_so_far
     else
-      let valid_us := {u : V // F.f u v ≠ 0}
+      let valid_us := {u : V // 0 < F.f u v}
       have : Nonempty valid_us := by
         by_contra h
         simp only [valid_us, nonempty_subtype, not_exists, not_not] at h
-        have hin : flowIn F.f v = 0 := Fintype.sum_eq_zero _ h
+        have hin : flowIn F.f v = 0 := Fintype.sum_eq_zero _ (by
+          intro u
+          exact le_antisymm (le_of_not_lt (h u)) (F.nonneg u v)
+        )
         if hvt : v = Pr.t then
           subst hvt
           have : excess F.f Pr.t ≤ 0 := by simp[excess, F.flowOut_nonneg, hin]
           have : F.value ≤ 0 := F.value_eq_excess_t ▸ this
-          omega
+          exact not_lt_of_le this hF
         else
-          have h_not_nil : ¬path_so_far.val.val.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
-          let w := path_so_far.val.val.sndOfNotNil h_not_nil
+          have h_not_nil : ¬path_so_far.val.walk.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
+          let w := path_so_far.val.walk.sndOfNotNil h_not_nil
           have hw : F.f v w ≠ 0 := by
-            intro h
-            let d := path_so_far.val.val.firstDart h_not_nil
-            have := path_so_far.val.prop d
-            simp [d, SimpleGraph.Walk.firstDart_toProd, h, SimpleGraph.Walk.dart_counts, List.count_eq_zero] at this
-            exact this $ path_so_far.val.val.firstDart_mem_darts h_not_nil
+            have := path_so_far.val.val_le_f <| path_so_far.val.walk.firstDart_mem_darts h_not_nil
+            have := lt_of_lt_of_le path_so_far.val.pos this
+            exact (ne_of_lt this).symm
           have : flowOut F.f v ≠ 0 := by
             intro h
             rw[flowOut] at h
@@ -349,20 +355,23 @@ where
           exact (F.conservation v ⟨hvs, hvt⟩ ▸ this) hin
 
       let u := Classical.choice this
-      have : u.val ∉ path_so_far.val.val.support := by
+      let path_so_far_with_new_val := path_so_far.relax_val (F.f u v) u.prop
+      have hval_le_uv : path_so_far_with_new_val.val.val ≤ F.f u v := min_le_right ..
+
+      have : u.val ∉ path_so_far_with_new_val.val.walk.support := by
         intro hu
-        let tail := path_so_far.takeUntil u hu
-        have := Flow.Circulation.from_dart_and_path u.prop tail
+        let tail := path_so_far_with_new_val.takeUntil u hu
+        have := Flow.Circulation.from_dart_and_path tail hval_le_uv
         exact (hC _).elim this
-      let path_with_u : F.Path u Pr.t := Flow.Path.cons u.prop this
+      let path_with_u : F.Path u Pr.t := Flow.Path.cons hval_le_uv this
 
       -- Proof for termination (the path got longer):
-      have : Fintype.card V - path_with_u.val.val.length < Fintype.card V - path_so_far.val.val.length := by
+      have : Fintype.card V - path_with_u.val.walk.length < Fintype.card V - path_so_far.val.walk.length := by
         simp[Flow.Path.cons, Flow.Walk.cons, SimpleGraph.Walk.length_cons]
         exact Nat.sub_lt_sub_left path_so_far.prop.length_lt (Nat.lt.base _)
 
       build_path path_with_u
-termination_by Fintype.card V - path_so_far.val.val.length
+termination_by Fintype.card V - path_so_far.val.walk.length
 
 theorem Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path Pr.s Pr.t :=
   let p := Flow.exists_path_of_value_pos_of_circulationFree
