@@ -416,6 +416,13 @@ def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
 theorem Flow.remove_path_value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - p.val.val := by
   simp only [remove_path, dite_false, hst, sub_value, fromPath_value]
 
+@[simp]
+theorem Flow.remove_path_subset (F : Flow Pr) (p : F.Path Pr.s Pr.t) : F.remove_path p ⊆ F := by
+  if hst : Pr.s = Pr.t then
+    simp only [remove_path, hst, dite_true, subset_rfl]
+  else
+    simp only [remove_path, hst, dite_false, sub_subset]
+
 lemma UndirectedNetwork.maxFlow_eq_zero_of_not_reachable
     (N : UndirectedNetwork V R)
     {u v : V}
