@@ -196,3 +196,9 @@ instance [DecidableEq α] : DecidableEq (NonDiag α) := by
   intro a b
   rw[NonDiag.ext_iff]
   exact And.decidable
+
+open List in
+lemma List.Sublist.nodup {l l' : List α} (h : l <+ l') (h' : l'.Nodup) : l.Nodup := by
+  rw[List.nodup_iff_forall_not_duplicate] at h' ⊢
+  intro x d
+  exact h' x <| d.mono_sublist h

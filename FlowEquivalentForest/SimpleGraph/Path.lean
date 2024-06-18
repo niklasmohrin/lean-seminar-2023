@@ -4,8 +4,10 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 import Mathlib.Logic.Basic
 
+import FlowEquivalentForest.Util
+
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-variable {G : SimpleGraph V}
+variable {G : SimpleGraph V} [DecidableRel G.Adj]
 
 lemma SimpleGraph.Walk.reverse_ne_nil {p : G.Walk v v} (h : p ≠ nil) : p.reverse ≠ nil :=
   λ h_nil => h $ reverse_nil ▸ SimpleGraph.Walk.reverse_reverse p ▸ congrArg SimpleGraph.Walk.reverse h_nil
@@ -415,3 +417,91 @@ theorem SimpleGraph.Walk.dart_counts_takeUntil_le
   conv => left; rw[←List.append_nil (p.takeUntil x hx).darts]
   rw[List.subperm_append_left]
   exact List.nil_subperm
+
+instance : Fintype (G.Path u v) where
+  elems := (Finset.range (Fintype.card V)).biUnion
+    fun n ↦ (Finset.univ (α := {p : G.Walk u v | p.IsPath ∧ p.length = n})).image
+      fun p ↦ { val := p.val, property := p.prop.left }
+  complete p := by
+    simp
+    use p.val.length
+    constructor
+    · exact p.prop.length_lt
+    · use p.val
+      use ⟨p.prop, rfl⟩
+
+namespace SimpleGraph.Walk
+
+def dropUntilDart : ∀ (p : G.Walk u v) (d : G.Dart), d ∈ p.darts → G.Walk d.fst v
+  | nil, d, hd => False.elim <| List.not_mem_nil _ <| darts_nil ▸ hd
+  | (cons' u v w hadj p'), d, hd => by
+    if h : d = Dart.mk (u, v) hadj then
+      have : d.fst = u := by aesop
+      subst u
+      exact cons hadj p'
+    else
+      rw[darts_cons, List.mem_cons] at hd
+      exact p'.dropUntilDart d <| hd.resolve_left h
+
+lemma dropUntilDart_darts_isSuffix : ∀ (p : G.Walk u v) (d : G.Dart) (hd : d ∈ p.darts), (p.dropUntilDart d hd).darts <:+ p.darts
+  | nil, d, hd => False.elim <| List.not_mem_nil _ <| darts_nil ▸ hd
+  | (cons' u v w hadj p'), d, hd => by
+    rw[dropUntilDart]
+    if h : d = Dart.mk (u, v) hadj then
+      simp[h]
+      have : d.fst = u := by aesop
+      subst u
+      exact List.suffix_refl _
+    else
+      simp only [h, ↓reduceDite, darts_cons]
+      rw[darts_cons, List.mem_cons] at hd
+      apply List.suffix_cons_iff.mpr
+      exact Or.inr <| p'.dropUntilDart_darts_isSuffix d <| hd.resolve_left h
+
+def dedupDarts : G.Walk u v → G.Walk u v
+  | nil => nil
+  | cons' u v w hadj p' =>
+    let p'' := p'.dedupDarts
+    let d := Dart.mk (u, v) hadj
+    if hd : d ∈ p''.darts then
+      p''.dropUntilDart d hd
+    else
+      cons hadj p''
+
+theorem dedupDarts_darts_nodup : (p : G.Walk u v) → p.dedupDarts.darts.Nodup
+  | nil => by rw[dedupDarts, darts_nil]; exact List.nodup_nil
+  | cons' u v w hadj p' => by
+    let p'' := p'.dedupDarts
+    let d := Dart.mk (u, v) hadj
+    if hd : d ∈ p''.darts then
+      simp only [dedupDarts, hd, ↓reduceDite]
+      exact (p'.dedupDarts.dropUntilDart_darts_isSuffix d hd).sublist.nodup <| p'.dedupDarts_darts_nodup
+    else
+      simp only [dedupDarts, hd, ↓reduceDite, darts_cons, List.nodup_cons, not_false_eq_true, true_and]
+      exact p'.dedupDarts_darts_nodup
+
+open List in
+theorem dedupDarts_darts_sublist : (p : G.Walk u v) → p.dedupDarts.darts <+ p.darts
+  | nil => by rw[dedupDarts]
+  | cons' u v w hadj p' => by
+    rw[dedupDarts]
+    let p'' := p'.dedupDarts
+    let d := Dart.mk (u, v) hadj
+    if hd : d ∈ p''.darts then
+      simp[hd]
+      apply Sublist.cons
+      exact List.Sublist.trans
+        (p'.dedupDarts.dropUntilDart_darts_isSuffix d hd).sublist
+        p'.dedupDarts_darts_sublist
+    else
+      simp[hd]
+      apply Sublist.cons₂
+      exact p'.dedupDarts_darts_sublist
+
+theorem dedupDarts_dartCounts_le (p : G.Walk u v) : p.dedupDarts.dart_counts ≤ p.dart_counts :=
+  p.dedupDarts_darts_sublist.subperm
+
+theorem dedupDarts_darts_subset (p : G.Walk u v) : p.dedupDarts.darts ⊆ p.darts :=
+  (Multiset.coe_subset ..).mpr <| Multiset.subset_of_le p.dedupDarts_dartCounts_le
+
+end SimpleGraph.Walk
