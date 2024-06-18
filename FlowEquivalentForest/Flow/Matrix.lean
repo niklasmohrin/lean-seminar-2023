@@ -10,12 +10,13 @@ import FlowEquivalentForest.Util
 import FlowEquivalentForest.SimpleGraph.Basic
 import FlowEquivalentForest.SimpleGraph.Acyclic
 
-variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
+universe u_v u_r
+variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} [LinearOrderedCommRing R]
 
 -- Currently, there is no need to pass in `hst`, but it is needed to match the
 -- definition of PairMatrix (and we might want to restrict FlowProblem later on
 -- to assume s ≠ t)
-noncomputable def Network.matrix (G : Network V) (s t : V) (_ : s ≠ t) : ℤ := G.maxFlowValue s t
+noncomputable def Network.matrix (N : Network V R) (s t : V) (_ : s ≠ t) : R := N.maxFlowValue s t
 
 open SimpleGraph
 open BigOperators
@@ -176,7 +177,7 @@ instance {M : PairMatrix V ℤ} : Nonempty (MaximalForest M) := by
 
 variable (M : PairMatrix V ℤ)
 
-def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : UndirectedNetwork V where
+def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : UndirectedNetwork V ℤ where
   cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
   nonneg u v := by
     wlog huv : g.val.Adj u v
@@ -300,12 +301,12 @@ lemma mkFrom_maxFlowValue_le_M
     (mkFrom M hsymm g).maxFlowValue u v ≤ M huv := by
   let N := mkFrom M hsymm g
   wlog h_Reachable : N.asSimpleGraph.Reachable u v
-  · linarith[N.maxFlow_eq_zero_of_not_reachable h_Reachable, hnonneg huv]
+  · linarith[N.maxFlowValue_eq_zero_of_not_reachable h_Reachable, hnonneg huv]
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
   have := mkFrom_IsAcyclic M hsymm g
-  rw[Acyclic_Path_maxflow_eq_bottleneck N this P]
+  rw[N.maxFlowValue_eq_bottleneck_of_isAcyclic this P]
 
   have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
@@ -340,7 +341,7 @@ theorem flowEquivalentForest
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
     (hnonneg : M.Nonneg) :
-    ∃ T : UndirectedNetwork V, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
+    ∃ T : UndirectedNetwork V ℤ, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
   open mkFlowEquivalentForest in
   have g : MaximalForest M := Classical.choice inferInstance
   ⟨
