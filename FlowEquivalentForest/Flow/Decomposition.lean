@@ -200,6 +200,15 @@ def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
 
 noncomputable instance {F : Flow Pr} : Decidable (F.CirculationFree) := Classical.dec _
 
+lemma FlowProblem.circulationFree_zero : (0 : Flow Pr).CirculationFree := by
+  intro v
+  by_contra h
+  obtain ⟨c⟩ := not_isEmpty_iff.mp h
+  exact lt_irrefl _
+    <| lt_of_lt_of_le c.val.pos
+    <| c.val.val_le_f
+    <| c.val.walk.firstDart_mem_darts c.circulation.prop.not_nil
+
 private lemma Flow.Circulation.toFlow_cap {F : Flow Pr} (c : F.Circulation v₀) :
     ∀ d ∈ c.val.walk.darts, c.val.val ≤ N.cap d.fst d.snd := by
   intro d hd

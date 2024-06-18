@@ -39,7 +39,7 @@ def FlowProblem.nullFlow (Pr : FlowProblem N) : Flow Pr where
 
 variable {Pr : FlowProblem N}
 
-instance : Zero (Flow Pr) where
+instance Flow.instZero : Zero (Flow Pr) where
   zero := Pr.nullFlow
 
 def Flow.Backward (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
