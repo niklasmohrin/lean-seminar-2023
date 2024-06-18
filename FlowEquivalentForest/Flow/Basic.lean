@@ -101,47 +101,6 @@ instance : Preorder (Flow Pr) := Preorder.lift Flow.value
 instance : IsTotalPreorder (Flow Pr) (LE.le) where
   total F F' := by simp only [instPreorderFlow, Preorder.lift]; exact le_total ..
 
-lemma increasing_seq_unbounded_wrt (w : α → ℤ) (succ : α → α) (h : ∀ a, w a < w (succ a)) (n : ℤ) (a : α) : ∃a', n ≤ w a' := by
-  if ha : n ≤ w a then
-    use a
-  else
-    have : (n - w (succ a)).toNat < (n - w a) := by
-      apply Int.lt_toNat.mp
-      refine (Int.toNat_lt_toNat ?_).mpr ?_
-      · linarith[ha]
-      · linarith[h a]
-    exact increasing_seq_unbounded_wrt w succ h n (succ a)
-termination_by (n - w a).toNat
-
-theorem FlowProblem.exists_top (Pr : FlowProblem N) : ∃ F : Flow Pr, IsTop F := by
-  sorry
-  -- by_contra h
-  -- have h' (F : Flow Pr) : ∃ F' : Flow Pr, F < F' := by
-  --   simp[IsTop] at h
-  --   obtain ⟨F', hF'⟩ := h F
-  --   use F'
-  --   simp only [instPreorderFlow, Preorder.lift] at hF' ⊢
-  --   exact lt_of_not_le hF'
-  -- let succ F := Classical.choose (h' F)
-  -- have hsucc F := Classical.choose_spec (h' F)
-  -- obtain ⟨F, hF⟩ := increasing_seq_unbounded_wrt Flow.value succ hsucc (Fintype.card V * N.capMax + 1) 0
-  -- linarith[hF, F.value_le_capMax]
-
-noncomputable instance : OrderTop (Flow Pr) where
-  top := Classical.choose Pr.exists_top
-  le_top := Classical.choose_spec Pr.exists_top
-
-noncomputable def FlowProblem.maxFlow (Pr : FlowProblem N) : R := (⊤ : Flow Pr).value
-
-noncomputable def Network.maxFlowValue (N : Network V R) (u v : V) := { s := u, t := v : FlowProblem N}.maxFlow
-
-lemma FlowProblem.maxFlow_nonneg (Pr : FlowProblem N) : 0 ≤ Pr.maxFlow := by
-  have := le_top (a := Pr.nullFlow)
-  simp only [instPreorderFlow, Preorder.lift, nullFlow_value] at this
-  exact this
-
-lemma Network.maxFlowValue_nonneg (N : Network V R) (u v : V) : 0 ≤ N.maxFlowValue u v := { s := u, t := v : FlowProblem N}.maxFlow_nonneg
-
 @[simp]
 lemma flow_pos_of_le_pos {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
   intro u v h
