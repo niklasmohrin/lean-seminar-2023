@@ -2,7 +2,7 @@ import FlowEquivalentForest.Flow.Decomposition
 import FlowEquivalentForest.Flow.Acyclic
 
 universe u_v u_r
-variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} [LinearOrderedField R]
+variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} [LinearOrderedCommRing R]
 
 open BigOperators
 
