@@ -21,7 +21,7 @@ noncomputable def Network.matrix (N : Network V R) (s t : V) (_ : s ≠ t) : R :
 open SimpleGraph
 open BigOperators
 
-def PairMatrix.TriangleInequality (M : PairMatrix V ℤ) :=
+def PairMatrix.TriangleInequality (M : PairMatrix V R) :=
   ∀ u v w, (huv : u ≠ v) → (hvw : v ≠ w) → (huw : u ≠ w) → min (M huv) (M hvw) ≤ M huw
 
 section
@@ -29,20 +29,20 @@ namespace mkFlowEquivalentForest
 
 -- All the "spanning trees" over the complete graph over V.
 -- We also cancel forest edges that would have 0 capacity in the end, because we can.
-abbrev Forest (M : PairMatrix V ℤ) := { g : SimpleGraph V // IsAcyclic g ∧ ∀ u v, (huv : u ≠ v) → g.Adj u v → 0 < M huv }
+abbrev Forest (M : PairMatrix V R) := { g : SimpleGraph V // IsAcyclic g ∧ ∀ u v, (huv : u ≠ v) → g.Adj u v → 0 < M huv }
 
-instance {M : PairMatrix V ℤ} : Nonempty (Forest M) := by
+instance {M : PairMatrix V R} : Nonempty (Forest M) := by
   simp only [nonempty_subtype]
   use emptyGraph V
   simp_all only [emptyGraph_eq_bot, isAcyclic_bot, bot_adj, IsEmpty.forall_iff, implies_true, forall_const, and_self]
 
 namespace Forest
-  variable {M : PairMatrix V ℤ}
+  variable {M : PairMatrix V R}
 
   @[simp]
   def weight (F : Forest M) [DecidableRel F.val.Adj] := ∑ e in F.val.dartNonDiagFinset, M e.ne
 
-  lemma weight_bounded (M : PairMatrix V ℤ) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
+  lemma weight_bounded (M : PairMatrix V R) : (∃ b, ∀ F : Forest M, F.weight ≤ b) := by
     let M_max := max 0 $ Classical.choose M.bounded
     use Fintype.card V * Fintype.card V * M_max
     intro F
@@ -53,20 +53,14 @@ namespace Forest
                                                               intros
                                                               simp only [ne_eq, le_max_iff, Classical.choose_spec M.bounded, or_true, M_max]
       _        = (F.val.dartNonDiagFinset).card * M_max   := by simp_all only [ne_eq, Finset.sum_const, nsmul_eq_mul, M_max]
-      _        ≤ Fintype.card V * Fintype.card V * M_max  := by
-                                                              apply mul_le_mul_of_nonneg_right
-                                                              · rw[←Int.natCast_mul, ←Fintype.card_prod, Int.ofNat_le]
-                                                                refine le_trans ?_ NonDiag.card_le
-                                                                rw[dartNonDiagFinset]
-                                                                exact Finset.card_le_univ _
-                                                              · simp only [ne_eq, le_max_iff, le_refl, true_or, M_max]
+      _        ≤ Fintype.card V * Fintype.card V * M_max  := by norm_cast; exact mul_le_mul_of_nonneg_right (Nat.cast_le.mpr F.val.dartNonDiagFinset_card_le) (le_max_left ..)
 
   @[simp]
   lemma le_weight {g : Forest M} (h_Adj : g.val.Adj u v) : M h_Adj.ne + M h_Adj.ne.symm ≤ g.weight := by
     unfold weight
     let e₁ := NonDiag.mk (u, v) h_Adj.ne
     let e₂ := NonDiag.mk (v, u) h_Adj.ne.symm
-    refine Finset.add_le_sum (N := ℤ) (f := λ e => M e.ne) (i := e₁) (j := e₂) ?_ ?_ ?_ ?_
+    refine Finset.add_le_sum (N := R) (f := λ e => M e.ne) (i := e₁) (j := e₂) ?_ ?_ ?_ ?_
     · intro e he
       have := (g.val.mem_dartNonDiagFinset_iff _).mp he
       exact le_of_lt <| g.prop.right _ _ this.ne this
@@ -166,18 +160,16 @@ namespace Forest
 
 end Forest
 
-abbrev MaximalForest (M : PairMatrix V ℤ) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
+abbrev MaximalForest (M : PairMatrix V R) := {F : Forest M // ∀ F' : Forest M, F'.weight ≤ F.weight}
 
-instance {M : PairMatrix V ℤ} : Nonempty (MaximalForest M) := by
-  obtain ⟨b, hb⟩ := Forest.weight_bounded M
-  obtain ⟨F : Forest M, hF⟩ := Int.exists_greatest_of_bdd_wrt (@Set.univ (Forest M)) (Set.univ_nonempty) (fun F _ => hb F)
-  use F
-  intro F'
-  simp_all only [Set.mem_univ, forall_true_left, Subtype.forall, ne_eq, true_and]
+instance {M : PairMatrix V R} : Nonempty (MaximalForest M) := by
+  classical
+  obtain ⟨F, _, hF⟩ := Finset.exists_mem_eq_sup' Finset.univ_nonempty fun (F : Forest M) ↦ F.weight
+  exact ⟨F, hF ▸ (Finset.le_sup' (·.weight) <| Finset.mem_univ ·)⟩
 
-variable (M : PairMatrix V ℤ)
+variable (M : PairMatrix V R)
 
-def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : UndirectedNetwork V ℤ where
+def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : UndirectedNetwork V R where
   cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
   nonneg u v := by
     wlog huv : g.val.Adj u v
@@ -202,7 +194,7 @@ lemma mkFrom_asSimpleGraph_eq
   · intro h
     by_contra huv
     simp only [mkFrom, UndirectedNetwork.asSimpleGraph, dite_false, huv] at h
-    contradiction
+    exact lt_irrefl _ h
   · intro huv
     simp only [mkFrom, UndirectedNetwork.asSimpleGraph, dite_true, huv]
     exact g.prop.right u v huv.ne huv
@@ -337,11 +329,11 @@ end mkFlowEquivalentForest
 end
 
 theorem flowEquivalentForest
-    (M : PairMatrix V ℤ)
+    (M : PairMatrix V R)
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
     (hnonneg : M.Nonneg) :
-    ∃ T : UndirectedNetwork V ℤ, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
+    ∃ T : UndirectedNetwork V R, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
   open mkFlowEquivalentForest in
   have g : MaximalForest M := Classical.choice inferInstance
   ⟨
@@ -350,5 +342,5 @@ theorem flowEquivalentForest
     mkFrom_IsAcyclic M hsymm g
   ⟩
 
--- theorem flowMatrixCharacterization (M : PairMatrix V ℤ) :
+-- theorem flowMatrixCharacterization (M : PairMatrix V R) :
 --     (∃ G : UndirectedNetwork V, @M = G.matrix) ↔ (M.Symmetrical ∧ M.TriangleInequality) := excuse_me

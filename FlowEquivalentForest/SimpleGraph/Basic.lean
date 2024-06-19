@@ -58,3 +58,7 @@ lemma subset_dartNonDiagFinset_of_adj
     (h : G.Adj u v) :
     {NonDiag.mk' h.ne, NonDiag.mk' h.ne.symm} ⊆ G.dartNonDiagFinset := by
   simp only [Finset.insert_subset_iff, Finset.singleton_subset_iff, mem_dartNonDiagFinset_iff, h, h.symm, and_self]
+
+lemma dartNonDiagFinset_card_le (G : SimpleGraph V) : G.dartNonDiagFinset.card ≤ Fintype.card V * Fintype.card V := by
+  rw[dartNonDiagFinset, ←Fintype.card_prod]
+  exact le_trans (Finset.card_filter_le ..) NonDiag.card_le
