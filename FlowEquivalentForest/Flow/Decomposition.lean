@@ -103,6 +103,14 @@ theorem Flow.Walk.make_saturating_Saturating : (p.make_saturating hp hp').Satura
 
 end
 
+lemma Flow.Walk.Saturating.not_nil {F : Flow Pr} {p : F.Walk u v} (h : p.Saturating) : ¬p.walk.Nil := by
+  open SimpleGraph.Walk in
+  obtain ⟨_, hd, _⟩ := h
+  cases h'' : p.walk with
+  | nil => subst_vars; rw[h'', darts_nil] at hd; contradiction
+  | cons _ _ => exact not_nil_cons
+
+
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.walk.IsPath}
 
 def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
@@ -182,6 +190,13 @@ lemma Flow.Path.val_le_bottleneck {F : Flow Pr} (p : F.Path u v) (hne : u ≠ v)
     _         ≤ N.cap d.fst d.snd := F.capacity ..
     _         = N.bottleneck pne  := hd'
 
+def Flow.Path.make_saturating {F : Flow Pr} (p : F.Path u v) (hp : ¬p.val.walk.Nil) : F.Path u v where
+  val := p.val.make_saturating hp <| SimpleGraph.Walk.darts_nodup_of_support_nodup p.path.prop.support_nodup
+  property := p.prop
+
+lemma Flow.Path.make_saturating_Saturating {F : Flow Pr} (p : F.Path u v) (hp : ¬p.val.walk.Nil) : (p.make_saturating hp).val.Saturating :=
+  p.val.make_saturating_Saturating hp <| SimpleGraph.Walk.darts_nodup_of_support_nodup p.path.prop.support_nodup
+
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.walk.IsCirculation}
 def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
@@ -241,6 +256,9 @@ def Flow.Circulation.make_saturating {F : Flow Pr} (c : F.Circulation v₀) : F.
   val := c.val.make_saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup
   property := c.prop
 
+lemma Flow.Circulation.make_saturating_Saturating {F : Flow Pr} (c : F.Circulation v₀) : c.make_saturating.val.Saturating :=
+  (c.val.make_saturating_Saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup)
+
 def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
 
 theorem Flow.remove_circulation_activeArcs_ssub_of_Saturating (F : Flow Pr) (c : F.Circulation v₀) (hc : c.val.Saturating) :
@@ -271,7 +289,7 @@ noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     (F.remove_circulation c.make_saturating).remove_all_circulations
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating (c.val.make_saturating_Saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup)
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
 
 theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_all_circulations.CirculationFree := by
   unfold Flow.remove_all_circulations
@@ -282,7 +300,7 @@ theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_al
     simp only [dite_true, hF]
     exact Flow.remove_all_circulations.CirculationFree ((F.remove_circulation c.make_saturating))
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating (c.val.make_saturating_Saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup)
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
 
 @[simp]
 theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulations.value = F.value := by
@@ -296,7 +314,7 @@ theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulat
     have h2 : (remove_circulation F c.make_saturating).value = F.value := by exact Flow.remove_circulation_value F c.make_saturating
     apply Eq.trans h1 h2
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating (c.val.make_saturating_Saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup)
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
 
 theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circulations ⊆ F := by
   unfold Flow.remove_all_circulations
@@ -310,7 +328,7 @@ theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circula
     have h2 : remove_circulation F c.make_saturating ⊆ F := subset_of_ssubset (Flow.remove_circulation.ssubset F c.make_saturating)
     exact subset_trans h1 h2
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating (c.val.make_saturating_Saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup)
+decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t :=
   { p with cap := (by intro d; exact le_trans (p.cap d) (h ..)) }
