@@ -39,6 +39,7 @@ def FlowProblem.nullFlow (Pr : FlowProblem N) : Flow Pr where
 
 variable {Pr : FlowProblem N}
 
+@[simp]
 instance Flow.instZero : Zero (Flow Pr) where
   zero := Pr.nullFlow
 
@@ -48,9 +49,11 @@ def Flow.value (flow : Flow Pr) := flowOut flow.f Pr.s - flowIn flow.f Pr.s
 
 def Flow.isMaximal (F : Flow Pr) := ∀ F' : Flow Pr, F'.value ≤ F.value
 
-@[simp]
 theorem FlowProblem.nullFlow_value (Pr : FlowProblem N) : Pr.nullFlow.value = 0 := by
   simp only [Flow.value, flowOut, nullFlow, Finset.sum_const_zero, flowIn, sub_self]
+
+@[simp]
+lemma Flow.zero_value : (0 : Flow Pr).value = 0 := Pr.nullFlow_value
 
 variable [Nonempty V]
 
@@ -95,11 +98,13 @@ instance : IsStrictOrder (Flow Pr) (· ⊂ ·) where
 instance : IsNonstrictStrictOrder (Flow Pr) (· ⊆ ·) (· ⊂ ·) where
   right_iff_left_not_left F₁ F₂ := by constructor <;> (intro h; simp_all only [instHasSSubsetFlow, instHasSubsetFlow]; exact h)
 
+instance Flow.instPreorder : Preorder (Flow Pr) := Preorder.lift Flow.value
+
 @[simp]
-instance : Preorder (Flow Pr) := Preorder.lift Flow.value
+lemma Flow.le_iff {F F' : Flow Pr} : F ≤ F' ↔ F.value ≤ F'.value := by simp[LE.le]
 
 instance : IsTotalPreorder (Flow Pr) (LE.le) where
-  total F F' := by simp only [instPreorderFlow, Preorder.lift]; exact le_total ..
+  total F F' := by simp only [Flow.le_iff]; exact le_total ..
 
 @[simp]
 lemma Flow.zero_subset (F : Flow Pr) : 0 ⊆ F := F.nonneg

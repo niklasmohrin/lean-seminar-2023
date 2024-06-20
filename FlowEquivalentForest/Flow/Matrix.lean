@@ -16,7 +16,20 @@ variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} 
 -- Currently, there is no need to pass in `hst`, but it is needed to match the
 -- definition of PairMatrix (and we might want to restrict FlowProblem later on
 -- to assume s ≠ t)
-noncomputable def Network.matrix (N : Network V R) (s t : V) (_ : s ≠ t) : R := N.maxFlowValue s t
+noncomputable def Network.matrix (N : Network V R) [HasMaxFlow N] (s t : V) (_ : s ≠ t) : R := N.maxFlowValue s t
+
+class HasMatrix (α : Type*) (β : outParam (Type*)) where
+  hasMatrix : α → β → Prop
+
+infixl:50 " ~ₘ " => HasMatrix.hasMatrix
+
+@[simp]
+instance Network.instHasMatrix : HasMatrix (Network V R) (PairMatrix V R) where
+  hasMatrix N M := ∃ (_ : HasMaxFlow N), N.matrix = @M
+
+@[simp]
+instance UndirectedNetwork.instHasMatrix : HasMatrix (UndirectedNetwork V R) (PairMatrix V R) where
+  hasMatrix := Network.instHasMatrix.hasMatrix ∘ UndirectedNetwork.toNetwork
 
 open SimpleGraph
 open BigOperators
@@ -209,35 +222,28 @@ theorem mkFrom_IsAcyclic
 lemma mkFrom_M_le_maxFlowValue
     (hsymm : M.Symmetrical)
     (g : MaximalForest M)
-    {u v : V}
-    (huv : u ≠ v) :
-    M huv ≤ (mkFrom M hsymm g).maxFlowValue u v := by
+    (Pr : FlowProblem (mkFrom M hsymm g).toNetwork)
+    (hst : Pr.s ≠ Pr.t) :
+    ∃ F : Flow Pr, M hst ≤ F.value := by
+  wlog h_pos : 0 < M hst
+  · use 0; rw[Flow.zero_value]; exact le_of_not_lt h_pos
+
   let N := mkFrom M hsymm g
 
-  wlog h_pos : 0 < M huv
-  · linarith[N.maxFlowValue_nonneg u v]
-
-  have h_uv_pos_weight : 0 < min (M huv) (M huv.symm) := (by simp only [lt_min_iff]; exact ⟨by linarith, by rw[hsymm]; linarith⟩)
-  have h_Reachable : N.asSimpleGraph.Reachable u v := by
-    -- We will show this by contradiction: If u and v are not connected, we can
+  have h_st_pos_weight : 0 < min (M hst) (M hst.symm) := (by simp only [lt_min_iff]; exact ⟨by linarith, by rw[hsymm]; linarith⟩)
+  have h_Reachable : N.asSimpleGraph.Reachable Pr.s Pr.t := by
+    -- We will show this by contradiction: If s and t are not connected, we can
     -- connect them with their direct edge and get a forest with increased
     -- weight - this contradicts that g is actually a maximal forest.
     by_contra h
-    let g' := g.val.add_edge huv h_uv_pos_weight (by rwa[mkFrom_asSimpleGraph_eq] at h)
-    have : g.val.weight < g'.weight := by rw[Forest.add_edge.weight_eq_add]; linarith[h_pos, hsymm huv]
+    let g' := g.val.add_edge hst h_st_pos_weight (by rwa[mkFrom_asSimpleGraph_eq] at h)
+    have : g.val.weight < g'.weight := by rw[Forest.add_edge.weight_eq_add]; linarith[h_pos, hsymm hst]
     exact not_le_of_lt this $ g.prop g'
 
-  let Pr : FlowProblem N.toNetwork := {s := u, t := v}
-  suffices h : ∃ F : Flow Pr, M huv ≤ F.value by
-    obtain ⟨F, hF⟩ := h
-    apply le_trans hF
-    simp only [Network.maxFlowValue, FlowProblem.maxFlow]
-    exact le_top (a := F)
-
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
-  have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
+  have P : N.asSimpleGraph.NonemptyPath _ _ := {path := P.toPath, ne := hst}
 
-  have M_huv_le e : (e ∈ P.path.val.darts) → M huv ≤ M e.is_adj.ne := by
+  have M_hst_le e : (e ∈ P.path.val.darts) → M hst ≤ M e.is_adj.ne := by
     -- This step has to connect knowledge of N.asSimpleGraph and g.val, which
     -- we know to be equal. To avoid having to convert each fact separately
     -- (which also sometimes doesn't work, because rewriting a variable does
@@ -254,18 +260,18 @@ lemma mkFrom_M_le_maxFlowValue
     have heq := mkFrom_asSimpleGraph_eq M hsymm g
     generalize N.asSimpleGraph = N_asSimpleGraph at *
     subst heq
-    -- We construct a forest by replacing the edge e with the edge (u, v). If
-    -- M (u, v) > M e, this forest would have a bigger weight - a
+    -- We construct a forest by replacing the edge e with the edge (s, t). If
+    -- M (s, t) > M e, this forest would have a bigger weight - a
     -- contradiction to the maximality of g.
     intro he
     let g' := g.val.remove_edge e.fst e.snd
-    have : ¬g'.val.Reachable u v := g.val.val.deleteEdges_not_reachable_of_mem_edges g.val.prop.left P.path (SimpleGraph.Walk.mem_edges_of_mem_darts he)
-    let g'' := g'.add_edge huv h_uv_pos_weight this
+    have : ¬g'.val.Reachable Pr.s Pr.t := g.val.val.deleteEdges_not_reachable_of_mem_edges g.val.prop.left P.path (SimpleGraph.Walk.mem_edges_of_mem_darts he)
+    let g'' := g'.add_edge hst h_st_pos_weight this
 
     by_contra hlt
     rw[not_le] at hlt
     let old := e.is_adj.ne
-    let new := huv
+    let new := hst
     have : g.val.weight < g''.weight := by calc
       g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [ne_eq, Forest.weight, lt_add_iff_pos_right, gt_iff_lt, Nat.ofNat_pos, mul_pos_iff_of_pos_left, sub_pos]
       _            = g.val.weight - M old - M old.symm + M new + M new.symm := by linarith[hsymm old, hsymm new]
@@ -278,7 +284,7 @@ lemma mkFrom_M_le_maxFlowValue
   rw[Flow.fromPath_value]
   simp only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro d hd
-  apply le_trans $ M_huv_le d hd
+  apply le_trans $ M_hst_le d hd
   simp only [mkFrom, ne_eq, Forest.weight, ge_iff_le, N]
   have := d.is_adj
   simp_all only [lt_min_iff, true_and, ne_eq, Forest.weight, mkFrom_asSimpleGraph_eq, ↓reduceDite, le_refl, N]
@@ -288,17 +294,19 @@ lemma mkFrom_maxFlowValue_le_M
     (htri : M.TriangleInequality)
     (hnonneg : M.Nonneg)
     (g : MaximalForest M)
-    {u v : V}
-    (huv : u ≠ v) :
-    (mkFrom M hsymm g).maxFlowValue u v ≤ M huv := by
+    {Pr : FlowProblem (mkFrom M hsymm g).toNetwork}
+    (hst : Pr.s ≠ Pr.t)
+    (F : Flow Pr) :
+    F.value ≤ M hst := by
   let N := mkFrom M hsymm g
-  wlog h_Reachable : N.asSimpleGraph.Reachable u v
-  · linarith[N.maxFlowValue_eq_zero_of_not_reachable h_Reachable, hnonneg huv]
+  wlog h_Reachable : N.asSimpleGraph.Reachable Pr.s Pr.t
+  · rw[N.flow_value_zero_of_not_reachable h_Reachable F]
+    exact hnonneg hst
 
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
-  have P : N.asSimpleGraph.NonemptyPath u v := {path := P.toPath, ne := huv}
+  have P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := {path := P.toPath, ne := hst}
   have := mkFrom_IsAcyclic M hsymm g
-  rw[N.maxFlowValue_eq_bottleneck_of_isAcyclic this P]
+  apply le_trans <| N.flow_value_le_bottleneck_of_isAcyclic this P F
 
   have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
@@ -316,14 +324,61 @@ lemma mkFrom_maxFlowValue_le_M
 
   exact triangle_along_path P
 
+theorem mkFrom_exists_top
+    (hsymm : M.Symmetrical)
+    (htri : M.TriangleInequality)
+    (hnonneg : M.Nonneg)
+    (g : MaximalForest M)
+    (Pr : FlowProblem (mkFrom M hsymm g).toNetwork) :
+    ∃ F : Flow Pr, IsTop F := by
+  wlog hst : Pr.s ≠ Pr.t
+  · use 0
+    intro F'
+    simp only [Flow.le_iff, Flow.zero_value]
+    exact le_of_eq <| F'.value_eq_zero_of_s_eq_t <| not_ne_iff.mp hst
+  classical
+  obtain ⟨F, hF⟩ := mkFrom_M_le_maxFlowValue M hsymm g Pr hst
+  use F
+  intro F'
+  rw[Flow.le_iff]
+  refine le_trans ?_ hF
+  exact mkFrom_maxFlowValue_le_M M hsymm htri hnonneg g hst F'
+
+noncomputable instance
+    instOrderTop
+    (M : PairMatrix V R)
+    (hsymm : M.Symmetrical)
+    (htri : M.TriangleInequality)
+    (hnonneg : M.Nonneg)
+    (g : MaximalForest M)
+    (Pr : FlowProblem (mkFrom M hsymm g).toNetwork) :
+    OrderTop (Flow Pr) where
+  top := Classical.choose <| mkFrom_exists_top M hsymm htri hnonneg g Pr
+  le_top := Classical.choose_spec <| mkFrom_exists_top M hsymm htri hnonneg g Pr
+
+noncomputable instance
+    instMaxFlow
+    (M : PairMatrix V R)
+    (hsymm : M.Symmetrical)
+    (htri : M.TriangleInequality)
+    (hnonneg : M.Nonneg)
+    (g : MaximalForest M) :
+    HasMaxFlow ((mkFrom M hsymm g).toNetwork) := instOrderTop M hsymm htri hnonneg g
+
 theorem mkFrom_hasMatrixM
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
     (hnonneg : M.Nonneg)
     (g : MaximalForest M) :
-    @M = (mkFrom M hsymm g).matrix := by
-  funext u v huv
-  exact le_antisymm (mkFrom_M_le_maxFlowValue M hsymm g huv) (mkFrom_maxFlowValue_le_M M hsymm htri hnonneg g huv)
+    mkFrom M hsymm g ~ₘ @M := by
+  have inst := instMaxFlow M hsymm htri hnonneg g
+  use inst
+  funext s t hst
+  simp[Network.matrix, Network.maxFlowValue, FlowProblem.maxFlow]
+  apply le_antisymm
+  · exact mkFrom_maxFlowValue_le_M htri hnonneg (Pr := {s, t}) hst _
+  · obtain ⟨F, hF⟩ := mkFrom_M_le_maxFlowValue M hsymm g {s, t} hst
+    exact le_trans hF <| le_top (α := Flow {s, t})
 
 end mkFlowEquivalentForest
 end
@@ -333,7 +388,7 @@ theorem flowEquivalentForest
     (hsymm : M.Symmetrical)
     (htri : M.TriangleInequality)
     (hnonneg : M.Nonneg) :
-    ∃ T : UndirectedNetwork V R, @M = T.matrix ∧ IsAcyclic T.asSimpleGraph :=
+    ∃ T : UndirectedNetwork V R, T ~ₘ @M ∧ T.asSimpleGraph.IsAcyclic :=
   open mkFlowEquivalentForest in
   have g : MaximalForest M := Classical.choice inferInstance
   ⟨
