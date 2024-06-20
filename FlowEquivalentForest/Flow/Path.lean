@@ -8,14 +8,15 @@ variable
   {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
   {R : Type*} [LinearOrderedCommRing R]
   {N : UndirectedNetwork V R}
-  {Pr : FlowProblem N.toNetwork}
 
 def Flow.fromPath
-    (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (P : N.asSimpleGraph.NonemptyPath s t)
     (x : R)
     (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P) :
+    let Pr := { s, t : FlowProblem N.toNetwork }
     Flow Pr :=
+  let Pr := { s, t : FlowProblem N.toNetwork }
   let contains_edge := contains_edge P.path
 
   let f u v : R := if contains_edge u v then x else 0
@@ -88,26 +89,26 @@ def Flow.fromPath
 
 @[simp]
 lemma Flow.fromPath_value
-    (P : N.asSimpleGraph.NonemptyPath Pr.s Pr.t)
+    (P : N.asSimpleGraph.NonemptyPath s t)
     (x : R)
     (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P) :
     let F := Flow.fromPath P x hnonneg hx
     F.value = x := by
   intro F
-  have h_in : flowIn F.f Pr.s = 0 := by
+  have h_in : flowIn F.f s = 0 := by
     rw[flowIn, Finset.sum_eq_zero]
     intro u _
-    suffices ¬contains_edge P.path u Pr.s by simp_all only [F, fromPath, contains_edge, ite_false]
+    suffices ¬contains_edge P.path u s by simp_all only [F, fromPath, contains_edge, ite_false]
     exact P.path.no_pred_first
 
   obtain ⟨v, hv⟩ := P.path.succ_exists (SimpleGraph.Walk.start_mem_support P.path.val) P.ne
-  have h_out_succ : F.f Pr.s v = x := by simp only [F, fromPath, hv.left, ite_true]
-  have h_out : flowOut F.f Pr.s = x := by
+  have h_out_succ : F.f s v = x := by simp only [F, fromPath, hv.left, ite_true]
+  have h_out : flowOut F.f s = x := by
     rw[←h_out_succ]
     apply Finset.sum_eq_single
     · intro v' _ hne
-      suffices ¬contains_edge P.path Pr.s v' by simp only [F, fromPath, this, ite_false]
+      suffices ¬contains_edge P.path s v' by simp only [F, fromPath, this, ite_false]
       by_contra h
       exact hne $ hv.right v' h
     · have := Finset.mem_univ v; intro; contradiction

@@ -57,7 +57,7 @@ theorem maxFlowValue_eq_bottleneck_of_isAcyclic
 
   suffices N.maxFlowValue u v ≤ N.bottleneck P by
     refine le_antisymm this ?_
-    have := Flow.fromPath_value (Pr := Pr) P (N.bottleneck P) (le_of_lt <| N.bottleneck_pos P) le_rfl
+    have := Flow.fromPath_value P (N.bottleneck P) (le_of_lt <| N.bottleneck_pos P) le_rfl
     rw[←this]
     exact le_top (α := Flow Pr)
 

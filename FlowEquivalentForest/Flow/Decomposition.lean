@@ -110,11 +110,29 @@ lemma Flow.Walk.Saturating.not_nil {F : Flow Pr} {p : F.Walk u v} (h : p.Saturat
   | nil => subst_vars; rw[h'', darts_nil] at hd; contradiction
   | cons _ _ => exact not_nil_cons
 
+class ToSubflow.{u} (F : Flow Pr) (α : Type u) where
+  to_subflow : α → Flow Pr
+  subset : ∀ a, to_subflow a ⊆ F
+
+open ToSubflow (to_subflow)
+
+@[simp]
+def Flow.remove_subflow_from (F : Flow Pr) [inst : ToSubflow F α] (a : α) : Flow Pr :=
+  Flow.sub <| inst.subset a
+
+class MaintainsSaturation (F : Flow Pr) (prop : F.Walk u v → Prop) extends ToSubflow F (Subtype prop) where
+  maintains_saturation (p : Subtype prop) :
+    p.val.Saturating → ∃ u v, 0 < F.f u v ∧ (to_subflow p).f u v = F.f u v
 
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.walk.IsPath}
 
+@[simp]
 def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
   val := p.val.walk
+  property := p.prop
+
+def Flow.Path.reverse_problem {F : Flow Pr} (p : F.Path u v) : F.reverse_problem.Path u v where
+  val := { p.val with cap := p.val.cap }
   property := p.prop
 
 def Flow.Path.nil (F : Flow Pr) (val : R) (hpos : 0 < val) : F.Path v v where
@@ -190,6 +208,61 @@ lemma Flow.Path.val_le_bottleneck {F : Flow Pr} (p : F.Path u v) (hne : u ≠ v)
     _         ≤ N.cap d.fst d.snd := F.capacity ..
     _         = N.bottleneck pne  := hd'
 
+@[simp]
+instance Flow.instPathToSubflowForward (F : Flow Pr) : ToSubflow F (F.Path Pr.s Pr.t) where
+  to_subflow p :=
+    if hst : Pr.s = Pr.t then
+      0
+    else
+      Flow.fromPath
+        { path := p.path, ne := hst }
+        p.val.val
+        p.val.pos.le
+        (p.val_le_bottleneck hst)
+  subset p := by
+    wlog hst : Pr.s ≠ Pr.t
+    · simp at hst; simp[hst]
+    simp only [instHasSubsetFlow, hst, ↓reduceDite, Flow.fromPath]
+    intro u v
+    wlog huv : contains_edge p.path u v
+    · simp only [huv, ↓reduceIte, F.nonneg]
+    simp only [huv, ↓reduceIte]
+    exact p.val.val_le_f huv.2
+
+@[simp]
+instance Flow.instPathToSubflowBackward (F : Flow Pr) : ToSubflow F (F.Path Pr.t Pr.s) where
+  to_subflow p := Flow.reverse_problem <| F.reverse_problem.instPathToSubflowForward.to_subflow p.reverse_problem
+  subset p := F.reverse_problem.instPathToSubflowForward.subset p.reverse_problem
+
+instance Flow.instPathMaintainsSaturationForward (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk Pr.s Pr.t) ↦ p.walk.IsPath) where
+  maintains_saturation p h := by
+    wlog hst : Pr.s ≠ Pr.t
+    · exfalso
+      generalize Pr.s = u, Pr.t = v at hst p
+      simp at hst
+      subst hst
+      exact p.val.walk.isPath_iff_eq_nil.mp p.prop ▸ h.not_nil <| .nil
+    obtain ⟨d, hd, hd'⟩ := h
+    use d.fst, d.snd, lt_of_lt_of_le p.val.pos (p.val.val_le_f hd)
+    have := Multiset.count_eq_one_of_mem
+      (Multiset.coe_nodup.mpr (SimpleGraph.Walk.darts_nodup_of_support_nodup p.prop.support_nodup))
+      hd
+    simp[hst, Flow.fromPath, d.is_adj, hd, ←hd', SimpleGraph.Walk.dart_counts, this]
+
+instance Flow.instPathMaintainsSaturationBackward (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk Pr.t Pr.s) ↦ p.walk.IsPath) where
+  maintains_saturation p h := F.reverse_problem.instPathMaintainsSaturationForward.maintains_saturation (Flow.Path.reverse_problem p) h
+
+theorem Flow.remove_subflow_from_activeArcs_ssubset_of_saturating
+    (F : Flow Pr)
+    {prop : F.Walk u v → Prop}
+    [MaintainsSaturation F prop]
+    (p : Subtype prop)
+    (h : p.val.Saturating) :
+    (F.remove_subflow_from p).activeArcs ⊂ F.activeArcs := by
+  simp only [remove_subflow_from]
+  obtain ⟨_, _, huv⟩ := MaintainsSaturation.maintains_saturation p h
+  exact Flow.sub_activeArcs_ssubset _ huv
+
 def Flow.Path.make_saturating {F : Flow Pr} (p : F.Path u v) (hp : ¬p.val.walk.Nil) : F.Path u v where
   val := p.val.make_saturating hp <| SimpleGraph.Walk.darts_nodup_of_support_nodup p.path.prop.support_nodup
   property := p.prop
@@ -211,7 +284,17 @@ def Flow.Circulation.from_dart_and_path
   val := p.val.cons h p.path.not_contains_edge_end_start
   property := p.path.cons_isCirculation (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero (ne_of_lt (lt_of_lt_of_le p.val.pos h)).symm)
 
+def Flow.Circulation.reverse_problem {F : Flow Pr} (c : F.Circulation v) : F.reverse_problem.Circulation v where
+  val := { c.val with cap := c.val.cap }
+  property := c.property
+
 def Flow.CirculationFree (F : Flow Pr) := ∀ v, IsEmpty (F.Circulation v)
+
+def Flow.CirculationFree.reverse_problem {F : Flow Pr} (h : F.CirculationFree) : F.reverse_problem.CirculationFree := by
+  intro v
+  by_contra h'
+  obtain ⟨c⟩ := not_isEmpty_iff.mp h'
+  exact (h v).elim c.reverse_problem
 
 noncomputable instance {F : Flow Pr} : Decidable (F.CirculationFree) := Classical.dec _
 
@@ -230,27 +313,15 @@ private lemma Flow.Circulation.toFlow_cap {F : Flow Pr} (c : F.Circulation v₀)
   exact le_trans (c.val.val_le_f hd) (F.capacity ..)
 
 @[simp]
-def Flow.Circulation.toFlow {F : Flow Pr} (c : F.Circulation v₀) : Flow Pr :=
-  Flow.fromCirculation
-    c.circulation
-    c.val.val
-    (le_of_lt c.val.pos)
-    c.toFlow_cap
+instance Flow.instCirculationToSubflow (F : Flow Pr) : ToSubflow F (F.Circulation v₀) where
+  to_subflow c := Flow.fromCirculation c.circulation c.val.val c.val.pos.le c.toFlow_cap
+  subset c u v := by
+    by_cases huv : contains_edge c.circulation u v
+    · simp[fromCirculation, fromCirculation_f, huv, c.val.val_le_f huv.2]
+    · simp[fromCirculation, fromCirculation_f, huv, F.nonneg]
 
-lemma Flow.Circulation.toFlow_nonzero {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ≠ 0 := by
-  rw[Circulation.toFlow]
-  exact Flow.fromCirculation_nonzero c.circulation c.val.val c.toFlow_cap c.val.pos
-
-theorem Flow.Circulation.toFlow_subset {F : Flow Pr} (c : F.Circulation v₀) : c.toFlow ⊆ F := by
-  simp [toFlow, fromCirculation]
-  intro u v
-  unfold Flow.fromCirculation_f
-  if huv : contains_edge c.circulation u v then
-    simp only [huv, ite_true]
-    obtain ⟨_, hd⟩ := huv
-    exact c.val.val_le_f hd
-  else
-    simp only [huv, ite_false, zero_le, F.nonneg]
+lemma Flow.Circulation.toFlow_nonzero {F : Flow Pr} (c : F.Circulation v₀) : to_subflow F c ≠ 0 :=
+  Flow.fromCirculation_nonzero c.circulation c.val.val c.toFlow_cap c.val.pos
 
 def Flow.Circulation.make_saturating {F : Flow Pr} (c : F.Circulation v₀) : F.Circulation v₀ where
   val := c.val.make_saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup
@@ -259,26 +330,18 @@ def Flow.Circulation.make_saturating {F : Flow Pr} (c : F.Circulation v₀) : F.
 lemma Flow.Circulation.make_saturating_Saturating {F : Flow Pr} (c : F.Circulation v₀) : c.make_saturating.val.Saturating :=
   (c.val.make_saturating_Saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup)
 
-def Flow.remove_circulation (F : Flow Pr) (c : F.Circulation s) := Flow.sub c.toFlow_subset
-
-theorem Flow.remove_circulation_activeArcs_ssub_of_Saturating (F : Flow Pr) (c : F.Circulation v₀) (hc : c.val.Saturating) :
-    (Flow.sub c.toFlow_subset).activeArcs ⊂ F.activeArcs := by
-  obtain ⟨d, hd, hd'⟩ := hc
-  apply Flow.sub_activeArcs_ssubset c.toFlow_subset (u := d.fst) (v := d.snd)
-  constructor
-  · exact lt_of_lt_of_le c.val.pos <| c.val.val_le_f hd
-  · have : contains_edge c.circulation d.fst d.snd := by simp[SimpleGraph.instContainsEdgeCirculation]; use d.is_adj; exact hd
-    simp[←hd', fromCirculation, this]
-    suffices c.val.walk.dart_counts.count d = 1 by rw[this]; ring
-    exact Multiset.count_eq_one_of_mem c.circulation.prop.dart_counts_nodup hd
+instance (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk v v) ↦ p.walk.IsCirculation) where
+  maintains_saturation c h := by
+    obtain ⟨d, hd, hd'⟩ := h
+    use d.fst, d.snd, lt_of_lt_of_le c.val.pos (c.val.val_le_f hd)
+    have := Multiset.count_eq_one_of_mem c.prop.dart_counts_nodup hd
+    simp[Flow.fromCirculation, Flow.fromCirculation_f, Flow.Circulation.circulation, d.is_adj, hd, ←hd', this]
 
 @[simp]
-theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_circulation c).value = F.value := by
-  rw[remove_circulation, Flow.sub_value c.toFlow_subset, Circulation.toFlow, Flow.fromCirculation_value_zero]
-  ring
+theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_subflow_from c).value = F.value := by simp
 
-theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_circulation C ⊂ F := by
-  rw[remove_circulation]
+theorem Flow.remove_circulation.ssubset (F : Flow Pr) (C : F.Circulation v) : F.remove_subflow_from C ⊂ F := by
+  rw[remove_subflow_from]
   apply Flow.sub_ssubset_of_nonzero
   exact C.toFlow_nonzero
 
@@ -287,9 +350,9 @@ noncomputable def Flow.remove_all_circulations (F : Flow Pr) : Flow Pr :=
     F
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
-    (F.remove_circulation c.make_saturating).remove_all_circulations
+    (F.remove_subflow_from c.make_saturating).remove_all_circulations
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
+decreasing_by apply Finset.card_lt_card; exact F.remove_subflow_from_activeArcs_ssubset_of_saturating c.make_saturating c.make_saturating_Saturating
 
 theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_all_circulations.CirculationFree := by
   unfold Flow.remove_all_circulations
@@ -298,9 +361,9 @@ theorem Flow.remove_all_circulations.CirculationFree (F : Flow Pr) : F.remove_al
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_true, hF]
-    exact Flow.remove_all_circulations.CirculationFree ((F.remove_circulation c.make_saturating))
+    exact Flow.remove_all_circulations.CirculationFree ((F.remove_subflow_from c.make_saturating))
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
+decreasing_by apply Finset.card_lt_card; exact F.remove_subflow_from_activeArcs_ssubset_of_saturating c.make_saturating c.make_saturating_Saturating
 
 @[simp]
 theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulations.value = F.value := by
@@ -310,11 +373,11 @@ theorem Flow.remove_all_circulations.value (F : Flow Pr) : F.remove_all_circulat
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have h1: (remove_all_circulations (remove_circulation F c.make_saturating)).value =  (remove_circulation F c.make_saturating).value := by exact Flow.remove_all_circulations.value (remove_circulation F c.make_saturating)
-    have h2 : (remove_circulation F c.make_saturating).value = F.value := by exact Flow.remove_circulation_value F c.make_saturating
+    have h1: (remove_all_circulations (F.remove_subflow_from c.make_saturating)).value =  (F.remove_subflow_from c.make_saturating).value := by exact Flow.remove_all_circulations.value (F.remove_subflow_from c.make_saturating)
+    have h2 : (F.remove_subflow_from c.make_saturating).value = F.value := by exact Flow.remove_circulation_value F c.make_saturating
     apply Eq.trans h1 h2
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
+decreasing_by apply Finset.card_lt_card; exact F.remove_subflow_from_activeArcs_ssubset_of_saturating c.make_saturating c.make_saturating_Saturating
 
 theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circulations ⊆ F := by
   unfold Flow.remove_all_circulations
@@ -324,11 +387,11 @@ theorem Flow.remove_all_circulations.subset (F : Flow Pr) : F.remove_all_circula
   else
     let c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hF
     simp only [dite_false, hF]
-    have h1: remove_all_circulations (remove_circulation F c.make_saturating) ⊆  remove_circulation F c.make_saturating := by exact Flow.remove_all_circulations.subset (remove_circulation F c.make_saturating)
-    have h2 : remove_circulation F c.make_saturating ⊆ F := subset_of_ssubset (Flow.remove_circulation.ssubset F c.make_saturating)
+    have h1 := Flow.remove_all_circulations.subset (F.remove_subflow_from c.make_saturating)
+    have h2 := subset_of_ssubset (Flow.remove_circulation.ssubset F c.make_saturating)
     exact subset_trans h1 h2
 termination_by F.activeArcs.card
-decreasing_by apply Finset.card_lt_card; exact F.remove_circulation_activeArcs_ssub_of_Saturating c.make_saturating c.make_saturating_Saturating
+decreasing_by apply Finset.card_lt_card; exact F.remove_subflow_from_activeArcs_ssubset_of_saturating c.make_saturating c.make_saturating_Saturating
 
 def Flow.Walk.transfer {F F' : Flow Pr} (p : F.Walk s t) (h : F ⊆ F') : F'.Walk s t :=
   { p with cap := (by intro d; exact le_trans (p.cap d) (h ..)) }
@@ -337,19 +400,20 @@ def Flow.Path.transfer {F F' : Flow Pr} (p : F.Path s t) (h : F ⊆ F') : F'.Pat
   val := p.val.transfer h
   property := p.property
 
-theorem Flow.exists_path_of_value_pos_of_circulationFree
+theorem Flow.exists_path_to_of_flowIn_pos_of_circulationFree
     (F : Flow Pr)
-    (hF : 0 < F.value)
+    {t : V}
+    (ht : 0 < flowIn F.f t)
     (hC : F.CirculationFree) :
-    F.Path Pr.s Pr.t :=
-  build_path (Flow.Path.nil F F.value (by positivity))
+    ∃ s, excess F.f s < 0 ∧ Nonempty (F.Path s t) :=
+  build_path (Flow.Path.nil F 1 (by positivity))
 where
   -- Recursive definition of the path: Given a path from some vertex v to the
   -- sink, we pick the next vertex u, add it to the front of the path and
   -- recurse until we arrive at the source.
-  build_path {v} (path_so_far : F.Path v Pr.t) : F.Path Pr.s Pr.t :=
-    if hvs : v = Pr.s then
-      hvs ▸ path_so_far
+  build_path {v} (path_so_far : F.Path v t) : ∃ s, excess F.f s < 0 ∧ Nonempty (F.Path s t) :=
+    if hv : flowIn F.f v < flowOut F.f v then
+      ⟨v, by unfold excess; linarith[hv], .intro path_so_far⟩
     else
       let valid_us := {u : V // 0 < F.f u v}
       have : Nonempty valid_us := by
@@ -359,11 +423,10 @@ where
           intro u
           exact le_antisymm (le_of_not_lt (h u)) (F.nonneg u v)
         )
-        if hvt : v = Pr.t then
+        if hvt : v = t then
           subst hvt
-          have : excess F.f Pr.t ≤ 0 := by simp[excess, F.flowOut_nonneg, hin]
-          have : F.value ≤ 0 := F.value_eq_excess_t ▸ this
-          exact not_lt_of_le this hF
+          rw[hin] at ht
+          exact lt_irrefl _ ht
         else
           have h_not_nil : ¬path_so_far.val.walk.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
           let w := path_so_far.val.walk.sndOfNotNil h_not_nil
@@ -376,7 +439,8 @@ where
             rw[flowOut] at h
             have : ∀ w, F.f v w = 0 := by simp[(Fintype.sum_eq_zero_iff_of_nonneg (F.nonneg v)).mp h]
             exact hw <| this w
-          exact (F.conservation v ⟨hvs, hvt⟩ ▸ this) hin
+          have : 0 < flowOut F.f v := lt_of_le_of_ne (F.flowOut_nonneg v) this.symm
+          exact hv <| hin ▸ this
 
       let u := Classical.choice this
       let path_so_far_with_new_val := path_so_far.relax_val (F.f u v) u.prop
@@ -387,7 +451,7 @@ where
         let tail := path_so_far_with_new_val.takeUntil u hu
         have := Flow.Circulation.from_dart_and_path tail hval_le_uv
         exact (hC _).elim this
-      let path_with_u : F.Path u Pr.t := Flow.Path.cons hval_le_uv this
+      let path_with_u : F.Path u t := Flow.Path.cons hval_le_uv this
 
       -- Proof for termination (the path got longer):
       have : Fintype.card V - path_with_u.val.walk.length < Fintype.card V - path_so_far.val.walk.length := by
@@ -397,6 +461,20 @@ where
       build_path path_with_u
 termination_by Fintype.card V - path_so_far.val.walk.length
 
+theorem Flow.exists_path_of_value_pos_of_circulationFree
+    (F : Flow Pr)
+    (hF : 0 < F.value)
+    (hC : F.CirculationFree) :
+    F.Path Pr.s Pr.t := by
+  apply Classical.choice
+  have ht : 0 < flowIn F.f Pr.t := by
+    rw[F.value_eq_excess_t, excess] at hF
+    exact lt_of_lt_of_le hF <| sub_le_self _ <| F.flowOut_nonneg Pr.t
+  obtain ⟨s, hs, hs'⟩ := F.exists_path_to_of_flowIn_pos_of_circulationFree ht hC
+  suffices s = Pr.s from this ▸ hs'
+  suffices s ≠ Pr.t from (F.eq_st_of_excess_nonzero hs.ne).resolve_right this
+  exact lt_asymm (F.value_eq_excess_t ▸ hF) ∘ (· ▸ hs)
+
 theorem Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path Pr.s Pr.t :=
   let p := Flow.exists_path_of_value_pos_of_circulationFree
     F.remove_all_circulations
@@ -404,59 +482,81 @@ theorem Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path 
     (remove_all_circulations.CirculationFree F)
   p.transfer $ remove_all_circulations.subset _
 
-lemma Flow.from_flowPath_subseteq (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hPr : Pr.s ≠ Pr.t) :
-    let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hPr }
-    let F' := Flow.fromPath pne p.val.val p.val.pos.le (p.val_le_bottleneck hPr)
-    F' ⊆ F := by
-  intro pne F' u v
-  wlog huv : contains_edge p.path u v
-  · simp only [F', fromPath, ite_false, huv, zero_le, F.nonneg]
-  simp only [F', fromPath, ite_true, huv]
-  obtain ⟨_, hd⟩ := huv
-  exact p.val.val_le_f hd
-
-def Flow.remove_path (F : Flow Pr) (p : F.Path Pr.s Pr.t) : Flow Pr :=
-  if hst : Pr.s = Pr.t then
-    F
+theorem Flow.value_nonzero_of_circulationFree_of_nonzero (F : Flow Pr) (hc : F.CirculationFree) (h : F ≠ 0) : F.value ≠ 0 := by
+  have : ∃ u v, F.f u v ≠ 0 := by by_contra h0; simp at h0; absurd h; ext u v; exact h0 u v
+  obtain ⟨u, v, huv⟩ := this
+  have hv : 0 < flowIn F.f v := Fintype.sum_pos ⟨(F.nonneg · v), fun h ↦ huv <| le_antisymm (h u) (F.nonneg u v)⟩
+  obtain ⟨s, hs, hs'⟩ := F.exists_path_to_of_flowIn_pos_of_circulationFree hv hc
+  rw[Flow.value_eq_excess_t]
+  if hs' : s = Pr.s then
+    subst_vars
+    linarith[F.excess_s_eq_neg_excess_t, hs]
+  else if ht' : s = Pr.t then
+    subst_vars
+    linarith[hs]
   else
-    let pne : N.asSimpleGraph.NonemptyPath Pr.s Pr.t := { path := p.path, ne := hst }
-    let F' := Flow.fromPath pne p.val.val p.val.pos.le (p.val_le_bottleneck hst)
-    have hle : F' ⊆ F := Flow.from_flowPath_subseteq F p hst
-
-    Flow.sub hle
+    absurd hs
+    simp[F.conservation s ⟨hs', ht'⟩, excess]
 
 @[simp]
-theorem Flow.remove_path_value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) : (F.remove_path p).value = F.value - p.val.val := by
-  simp only [remove_path, dite_false, hst, sub_value, fromPath_value]
-
-@[simp]
-theorem Flow.remove_path_subset (F : Flow Pr) (p : F.Path Pr.s Pr.t) : F.remove_path p ⊆ F := by
-  if hst : Pr.s = Pr.t then
-    simp only [remove_path, hst, dite_true, subset_rfl]
-  else
-    simp only [remove_path, hst, dite_false, sub_subset]
+theorem Flow.remove_path_value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) :
+    (F.remove_subflow_from p).value = F.value - p.val.val := by simp[hst]
 
 inductive Flow.Decomposition : (F : Flow Pr) → Type (max (u_v + 1) (u_r + 1)) where
-  | nil : Flow.Decomposition 0
-  | cons :
-    {F : Flow Pr} →
-    (p : F.Path Pr.s Pr.t) →
-    (F.remove_path p).Decomposition →
-    F.Decomposition
-
-def Flow.Decomposition.size {F : Flow Pr} : F.Decomposition → ℕ
-  | nil => 0
-  | cons _ D => D.size + 1
+  | zero : Flow.Decomposition 0
+  | path : {F : Flow Pr} → (p : F.Path Pr.s Pr.t) → (F.remove_subflow_from p).Decomposition → F.Decomposition
+  | backwards_path : {F : Flow Pr} → (p : F.Path Pr.t Pr.s) → (F.remove_subflow_from p).Decomposition → F.Decomposition
+  | circulation : {F : Flow Pr} → (v : V) → (c : F.Circulation v) → (F.remove_subflow_from c).Decomposition → F.Decomposition
 
 def Flow.Decomposition.Saturating {F : Flow Pr} : F.Decomposition → Prop
-  | nil => True
-  | cons p D => p.val.Saturating ∧ D.Saturating
+  | zero => True
+  | path p D => p.val.Saturating ∧ D.Saturating
+  | backwards_path p D => p.val.Saturating ∧ D.Saturating
+  | circulation _ c D => c.val.Saturating ∧ D.Saturating
 
 abbrev Flow.SaturatingDecomposition (F : Flow Pr) := { D : F.Decomposition // D.Saturating }
 
-noncomputable instance {F : Flow Pr} : Nonempty F.SaturatingDecomposition := sorry
+noncomputable instance Flow.SaturatingDecomposition.instNonempty (F : Flow Pr) : Nonempty F.SaturatingDecomposition := by
+  apply Nonempty.intro
+  if h0 : F = 0 then
+    subst h0
+    exact ⟨.zero, .intro⟩
+  else if hc : F.CirculationFree then
+    have hv := F.value_nonzero_of_circulationFree_of_nonzero hc h0
+    have hst := F.s_ne_t_of_value_nonzero hv
+    if hv_pos : 0 < F.value then
+      have p := F.exists_path_of_value_pos_of_circulationFree hv_pos hc
+      have hp : ¬p.val.walk.Nil := SimpleGraph.Walk.not_nil_of_ne hst
+      let F' := F.remove_subflow_from <| p.make_saturating hp
+      have : F'.activeArcs.card < F.activeArcs.card := by
+        apply Finset.card_lt_card
+        exact F.remove_subflow_from_activeArcs_ssubset_of_saturating (p.make_saturating hp) (p.make_saturating_Saturating hp)
+      have D := Classical.choice <| instNonempty F'
+      exact ⟨.path (p.make_saturating hp) D, ⟨p.make_saturating_Saturating hp, D.prop⟩⟩
+    else if hv_neg : F.value < 0 then
+      have p := (F.reverse_problem.exists_path_of_value_pos_of_circulationFree (by linarith[hv_neg, F.value_reverse_problem]) hc.reverse_problem).reverse_problem
+      simp only [F.reverse_problem_involutive, FlowProblem.reverse] at p
+      have hp : ¬p.val.walk.Nil := SimpleGraph.Walk.not_nil_of_ne hst.symm
+      let F' := F.remove_subflow_from <| p.make_saturating hp
+      have : F'.activeArcs.card < F.activeArcs.card := by
+        apply Finset.card_lt_card
+        exact F.remove_subflow_from_activeArcs_ssubset_of_saturating (p.make_saturating hp) (p.make_saturating_Saturating hp)
+      have D := Classical.choice <| instNonempty F'
+      exact ⟨.backwards_path (p.make_saturating hp) D, ⟨p.make_saturating_Saturating hp, D.prop⟩⟩
+    else
+      exact False.elim <| hv <| le_antisymm (le_of_not_lt hv_pos) (le_of_not_lt hv_neg)
+  else
+    have c := Classical.choice $ not_isEmpty_iff.mp $ Classical.choose_spec $ not_forall.mp hc
+    let F' := F.remove_subflow_from c.make_saturating
+    have : F'.activeArcs.card < F.activeArcs.card := by
+      apply Finset.card_lt_card
+      exact F.remove_subflow_from_activeArcs_ssubset_of_saturating c.make_saturating c.make_saturating_Saturating
+    have D := Classical.choice <| instNonempty F'
+    exact ⟨.circulation _ c.make_saturating D, ⟨c.make_saturating_Saturating, D.prop⟩⟩
+termination_by F.activeArcs.card
+
 noncomputable instance {F : Flow Pr} : Nonempty F.Decomposition :=
-  Nonempty.intro <| (Classical.choice inferInstance : F.SaturatingDecomposition).val
+  .intro (Classical.choice inferInstance : F.SaturatingDecomposition).val
 
 namespace Flow
 
@@ -472,20 +572,17 @@ theorem value_le_sum_f
 
   have D : F.Decomposition := Classical.choice inferInstance
   induction D with
-  | nil => exact Pr.nullFlow_value ▸ h_right_nonneg
-  | @cons F p D' hF' =>
-    wlog h_value : 0 ≤ F.value
-    · exact le_trans (le_of_not_le h_value) h_right_nonneg
+  | zero => exact Pr.nullFlow_value ▸ h_right_nonneg
+  | @path F p D' hF' =>
+    specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ (F.remove_subflow_from p).nonneg d.fst d.snd)
 
-    specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ (F.remove_path p).nonneg d.fst d.snd)
-
-    let F' := F.remove_path p
+    let F' := F.remove_subflow_from p
     obtain ⟨d, hd, hd'⟩ := hds p.path
     let u := d.fst
     let v := d.snd
     have hf : F'.f u v + p.val.val = F.f u v := by
       have hp : contains_edge p.path u v := ⟨d.is_adj, hd'⟩
-      simp only [F', remove_path, Flow.sub, dite_false, hst, fromPath]
+      simp only [F', remove_subflow_from, to_subflow, Flow.sub, dite_false, hst, fromPath]
       -- annoyingly, we cannot use hp directly because the function subtraction
       -- is not evaluated in the goal, so we need to do that first
       simp only [HSub.hSub, Sub.sub, hp, ite_true]
@@ -498,8 +595,10 @@ theorem value_le_sum_f
       _       ≤ ∑ d in ds , F'.f d.fst d.snd            + p.val.val := add_le_add_right hF' _
       _       = ∑ d in ds', F'.f d.fst d.snd + F'.f u v + p.val.val := by rw[Finset.sum_erase_add ds _ hd]
       _       = ∑ d in ds', F'.f d.fst d.snd + F.f  u v             := by simp only [hf, add_assoc]
-      _       ≤ ∑ d in ds', F.f  d.fst d.snd + F.f  u v             := by apply add_le_add_right; exact Finset.sum_le_sum <| fun d _ ↦ F.remove_path_subset ..
+      _       ≤ ∑ d in ds', F.f  d.fst d.snd + F.f  u v             := by apply add_le_add_right; exact Finset.sum_le_sum <| fun d _ ↦ Flow.sub_subset ..
       _       = ∑ d in ds , F.f  d.fst d.snd                        := Finset.sum_erase_add ds _ hd
+  | @backwards_path F p D' hF' => sorry
+  | @circulation F v c D' hF' => sorry
 
 theorem value_le_f
     (d : N.asSimpleGraph.Dart)

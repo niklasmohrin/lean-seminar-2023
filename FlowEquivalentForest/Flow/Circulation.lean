@@ -28,8 +28,8 @@ lemma Flow.fromCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation 
     · intro h; exact False.elim <| h <| Finset.mem_univ w
   else
     rw[Finset.sum_eq_zero, Finset.sum_eq_zero]
-    · simp; intro u hu; absurd h_sup; exact c.val.dart_snd_mem_support_of_mem_darts hu.snd
-    · simp; intro w hw; absurd h_sup; exact c.val.dart_fst_mem_support_of_mem_darts hw.snd
+    · simp only [Finset.mem_univ, ite_eq_right_iff, forall_true_left]; intro u hu; absurd h_sup; exact c.val.dart_snd_mem_support_of_mem_darts hu.snd
+    · simp only [Finset.mem_univ, ite_eq_right_iff, forall_true_left]; intro w hw; absurd h_sup; exact c.val.dart_fst_mem_support_of_mem_darts hw.snd
 
 def Flow.fromCirculation (c : N.asSimpleGraph.Circulation v0) (x : R) (hnonneg : 0 ≤ x) (hcap : ∀ d ∈ c.val.darts, x ≤ N.cap d.fst d.snd) : Flow Pr where
   f := Flow.fromCirculation_f c x
@@ -37,7 +37,7 @@ def Flow.fromCirculation (c : N.asSimpleGraph.Circulation v0) (x : R) (hnonneg :
   conservation v _ := fromCirculation_f_flowOut_eq_flowIn c x v
   capacity := by
     intro u v
-    simp
+    simp only [fromCirculation_f]
     if h : contains_edge c u v then
       simp [h]
       obtain ⟨_, hd⟩ := h

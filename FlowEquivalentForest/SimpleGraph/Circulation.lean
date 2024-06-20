@@ -19,6 +19,7 @@ structure Walk.IsCirculation (p : G.Walk v v) : Prop where
 
 abbrev Circulation (v : V) := {p : G.Walk v v // p.IsCirculation}
 
+@[simp]
 instance : ContainsEdge V (G.Circulation v₀) where
   contains_edge c := contains_edge c.val
 

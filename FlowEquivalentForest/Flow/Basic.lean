@@ -102,6 +102,9 @@ instance : IsTotalPreorder (Flow Pr) (LE.le) where
   total F F' := by simp only [instPreorderFlow, Preorder.lift]; exact le_total ..
 
 @[simp]
+lemma Flow.zero_subset (F : Flow Pr) : 0 ⊆ F := F.nonneg
+
+@[simp]
 lemma flow_pos_of_le_pos {F₁ F₂ : Flow Pr} (h_le : F₁ ⊆ F₂) : ∀ {u v : V}, 0 < F₁.f u v → 0 < F₂.f u v := by
   intro u v h
   exact lt_of_lt_of_le h (h_le ..)
@@ -128,6 +131,7 @@ theorem Flow.sub_value
   simp [value, sub, flowOut, flowIn]
   exact sub_sub_sub_comm ..
 
+@[simp]
 theorem Flow.sub_subset
     {F₁ F₂ : Flow Pr}
     (hle : F₁ ⊆ F₂):
@@ -185,7 +189,8 @@ theorem Flow.flowOut_st_eq_flowIn_st (F : Flow Pr) :
   rw[Finset.mem_compl, Finset.mem_insert, not_or, Finset.mem_singleton] at hv
   exact F.conservation v hv
 
-theorem Flow.excess_s_eq_neg_excess_t (F : Flow Pr) :
+theorem Flow.excess_s_eq_neg_excess_t (F : Flow Pr) : excess F.f Pr.s = -excess F.f Pr.t := by unfold excess; linarith[F.flowOut_st_eq_flowIn_st]
+theorem Flow.excess_s_eq_neg_excess_t' (F : Flow Pr) :
     flowOut F.f Pr.s - flowIn F.f Pr.s = flowIn F.f Pr.t - flowOut F.f Pr.t := by linarith[F.flowOut_st_eq_flowIn_st]
 
 lemma Flow.value_eq_zero_of_s_eq_t (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value = 0 := by
@@ -196,7 +201,16 @@ lemma Flow.value_eq_zero_of_s_eq_t (F : Flow Pr) (hPr : Pr.s = Pr.t) : F.value =
     (Finset.mem_univ _)
     (λ v _ hv => F.conservation v ⟨hv, (hPr ▸ hv)⟩)
 
-lemma Flow.value_eq_excess_t (F : Flow Pr) : F.value = excess F.f Pr.t := by simp only [value, excess, F.excess_s_eq_neg_excess_t]
+lemma Flow.s_ne_t_of_value_nonzero (F : Flow Pr) (h : F.value ≠ 0) : Pr.s ≠ Pr.t := h ∘ F.value_eq_zero_of_s_eq_t
+
+lemma Flow.eq_st_of_excess_nonzero (F : Flow Pr) (hv : excess F.f v ≠ 0) : v = Pr.s ∨ v = Pr.t := by
+  by_contra h
+  apply hv
+  rw[not_or] at h
+  unfold excess
+  linarith[F.conservation v h]
+
+lemma Flow.value_eq_excess_t (F : Flow Pr) : F.value = excess F.f Pr.t := by simp only [value, excess, F.excess_s_eq_neg_excess_t']
 
 -- For arbitrary rings R, the strict subset relation is not necessarily well
 -- founded (we can construct an infinite sequence of strict subflows). Instead,
@@ -219,3 +233,22 @@ theorem Flow.sub_activeArcs_ssubset {F₁ F₂ : Flow Pr} (hle : F₁ ⊆ F₂) 
     constructor
     · exact Finset.mem_filter.mpr ⟨Finset.mem_univ _, huv.left⟩
     · simp[sub, activeArcs, huv.right]
+
+@[simp]
+abbrev FlowProblem.reverse (P : FlowProblem N) : FlowProblem N where
+  s := P.t
+  t := P.s
+
+@[simp]
+abbrev Flow.reverse_problem (F : Flow Pr) : Flow Pr.reverse where
+  f := F.f
+  nonneg := F.nonneg
+  conservation v hv := F.conservation v hv.symm
+  capacity := F.capacity
+
+@[simp]
+lemma Flow.value_reverse_problem (F : Flow Pr) : F.reverse_problem.value = -F.value := by
+  simp[value, F.excess_s_eq_neg_excess_t']
+
+@[simp]
+lemma Flow.reverse_problem_involutive (F : Flow Pr) : F.reverse_problem.reverse_problem = F := rfl
