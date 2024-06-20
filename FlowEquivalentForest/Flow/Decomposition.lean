@@ -131,6 +131,7 @@ def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v whe
   val := p.val.walk
   property := p.prop
 
+@[simp]
 def Flow.Path.reverse_problem {F : Flow Pr} (p : F.Path u v) : F.reverse_problem.Path u v where
   val := { p.val with cap := p.val.cap }
   property := p.prop
@@ -502,6 +503,9 @@ theorem Flow.value_nonzero_of_circulationFree_of_nonzero (F : Flow Pr) (hc : F.C
 theorem Flow.remove_path_value (F : Flow Pr) (p : F.Path Pr.s Pr.t) (hst : Pr.s ≠ Pr.t) :
     (F.remove_subflow_from p).value = F.value - p.val.val := by simp[hst]
 
+theorem Flow.remove_backward_path_value (F : Flow Pr) (p : F.Path Pr.t Pr.s) (hst : Pr.s ≠ Pr.t) :
+    (F.remove_subflow_from p).value = F.value + p.val.val := by simp[hst.symm]
+
 inductive Flow.Decomposition : (F : Flow Pr) → Type (max (u_v + 1) (u_r + 1)) where
   | zero : Flow.Decomposition 0
   | path : {F : Flow Pr} → (p : F.Path Pr.s Pr.t) → (F.remove_subflow_from p).Decomposition → F.Decomposition
@@ -573,10 +577,10 @@ theorem value_le_sum_f
   have D : F.Decomposition := Classical.choice inferInstance
   induction D with
   | zero => exact Pr.nullFlow_value ▸ h_right_nonneg
-  | @path F p D' hF' =>
-    specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ (F.remove_subflow_from p).nonneg d.fst d.snd)
-
+  | @path F p _ hF' =>
     let F' := F.remove_subflow_from p
+    specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ F'.nonneg d.fst d.snd)
+
     obtain ⟨d, hd, hd'⟩ := hds p.path
     let u := d.fst
     let v := d.snd
@@ -597,8 +601,21 @@ theorem value_le_sum_f
       _       = ∑ d in ds', F'.f d.fst d.snd + F.f  u v             := by simp only [hf, add_assoc]
       _       ≤ ∑ d in ds', F.f  d.fst d.snd + F.f  u v             := by apply add_le_add_right; exact Finset.sum_le_sum <| fun d _ ↦ Flow.sub_subset ..
       _       = ∑ d in ds , F.f  d.fst d.snd                        := Finset.sum_erase_add ds _ hd
-  | @backwards_path F p D' hF' => sorry
-  | @circulation F v c D' hF' => sorry
+  | @backwards_path F p _ hF' =>
+    let F' := F.remove_subflow_from p
+    specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ F'.nonneg d.fst d.snd)
+    calc
+      F.value = F'.value - p.val.val        := by rw[F.remove_backward_path_value p hst]; ring
+      _       ≤ F'.value                    := sub_le_self _ p.val.pos.le
+      _       ≤ ∑ d in ds, F'.f d.fst d.snd := hF'
+      _       ≤ ∑ d in ds, F.f d.fst d.snd  := Finset.sum_le_sum fun _ _ ↦ Flow.sub_subset ..
+  | @circulation F v c _ hF' =>
+    let F' := F.remove_subflow_from c
+    specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ F'.nonneg d.fst d.snd)
+    calc
+      F.value = F'.value                    := (F.remove_circulation_value c).symm
+      _       ≤ ∑ d in ds, F'.f d.fst d.snd := hF'
+      _       ≤ ∑ d in ds, F.f d.fst d.snd  := Finset.sum_le_sum fun _ _ ↦ Flow.sub_subset ..
 
 theorem value_le_f
     (d : N.asSimpleGraph.Dart)
