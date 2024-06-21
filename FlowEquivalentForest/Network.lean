@@ -42,7 +42,60 @@ lemma Network.capMax_max {N : Network V R} : ∀ {u v}, N.cap u v ≤ N.capMax :
   simp_all only [Prod.forall]
 )
 
-def UndirectedNetwork.asSimpleGraph (N : UndirectedNetwork V R) : SimpleGraph V where
+namespace Network
+variable (N : Network V R)
+
+def bottleneck (P : (completeGraph V).NonemptyPath s t) : R
+  := (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)).min' (by
+    apply (Finset.Nonempty.image_iff _).mpr
+    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
+  )
+
+@[simp]
+lemma bottleneck_single_edge {u v : V} (h : (completeGraph V).Adj u v) :
+    N.bottleneck h.toNonemptyPath = N.cap u v := by
+  simp_all only [bottleneck, SimpleGraph.Adj.toNonemptyPath, SimpleGraph.Adj.toPath, SimpleGraph.Walk.darts_cons, SimpleGraph.Walk.darts_nil, List.toFinset_cons, List.toFinset_nil, insert_emptyc_eq, Finset.image_singleton, Finset.min'_singleton]
+
+@[simp]
+lemma bottleneck_cons
+    (P : (completeGraph V).NonemptyPath v w)
+    (hu : u ∉ P.path.val.support) :
+    have h_adj := fun heq ↦ (heq ▸ hu) P.path.val.start_mem_support
+    N.bottleneck (SimpleGraph.NonemptyPath.cons h_adj P hu) = min (N.cap u v) (N.bottleneck P) := by
+  simp [bottleneck, SimpleGraph.NonemptyPath.cons.darts]
+  rw[min_comm, Finset.min'_insert]
+
+@[simp]
+lemma bottleneck_le_dart
+    (P : (completeGraph V).NonemptyPath s t)
+    {d : (completeGraph V).Dart}
+    (hd : d ∈ P.path.val.darts) :
+    N.bottleneck P ≤ N.cap d.toProd.fst d.toProd.snd := by
+  apply Finset.min'_le
+  rw[Finset.mem_image]
+  use d
+  rw[List.mem_toFinset]
+  exact ⟨hd, rfl⟩
+
+lemma exists_bottleneck_dart (P : (completeGraph V).NonemptyPath s t) :
+    ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := by
+  obtain ⟨d, hd₁, hd₂⟩ := Finset.mem_image.mp (Finset.min'_mem (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)) (by
+    apply (Finset.Nonempty.image_iff _).mpr
+    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
+  ))
+  exact ⟨d, List.mem_toFinset.mp hd₁, hd₂⟩
+
+@[simp]
+lemma bottleneck_nonneg (P : (completeGraph V).NonemptyPath s t) : 0 ≤ N.bottleneck P := by
+  simp[bottleneck, N.nonneg]
+
+end Network
+
+namespace UndirectedNetwork
+
+variable (N : UndirectedNetwork V R)
+
+def asSimpleGraph : SimpleGraph V where
   Adj u v := 0 < N.cap u v
   symm := by
     intro u v huv
@@ -53,57 +106,19 @@ def UndirectedNetwork.asSimpleGraph (N : UndirectedNetwork V R) : SimpleGraph V 
     rw[N.loopless] at hv
     exact LT.lt.false hv
 
-variable {N : UndirectedNetwork V R}
+theorem mem_edgeSet_of_bottleneck_pos
+    (p : (completeGraph V).NonemptyPath s t)
+    (h : 0 < N.bottleneck p)
+    (e : Sym2 V)
+    (he : e ∈ p.path.val.edges) :
+    e ∈ N.asSimpleGraph.edgeSet := by
+  obtain ⟨⟨u, v⟩, huv⟩ := e.exists_rep
+  subst huv
+  simp only [SimpleGraph.mem_edgeSet, asSimpleGraph]
+  apply lt_of_lt_of_le h
+  match p.path.val.mem_darts_of_mem_edges he with
+  | Or.inl hd => exact N.bottleneck_le_dart p hd
+  | Or.inr hd => exact N.symm u v ▸ (N.bottleneck_le_dart p hd)
 
-def UndirectedNetwork.bottleneck (P : N.asSimpleGraph.NonemptyPath s t) : R
-  := (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)).min' (by
-    apply (Finset.Nonempty.image_iff _).mpr
-    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
-  )
-
-lemma UndirectedNetwork.bottleneck.single_edge
-    (h: N.asSimpleGraph.Adj u v) :
-    N.bottleneck h.toNonemptyPath = N.cap u v := by
-  simp_all only [bottleneck, SimpleGraph.Adj.toNonemptyPath, SimpleGraph.Adj.toPath, SimpleGraph.Walk.darts_cons, SimpleGraph.Walk.darts_nil, List.toFinset_cons, List.toFinset_nil, insert_emptyc_eq, Finset.image_singleton, Finset.min'_singleton]
-
-lemma UndirectedNetwork.bottleneck.cons
-    (h_Adj : N.asSimpleGraph.Adj u v)
-    (P : N.asSimpleGraph.NonemptyPath v w)
-    (hu : u ∉ P.path.val.support) :
-    N.bottleneck (SimpleGraph.NonemptyPath.cons h_Adj P hu) = min (N.cap u v) (N.bottleneck P) := by
-  simp [bottleneck, SimpleGraph.NonemptyPath.cons.darts]
-  rw[min_comm, Finset.min'_insert]
-
-@[simp]
-lemma UndirectedNetwork.bottleneck.le_dart
-    (P : N.asSimpleGraph.NonemptyPath s t)
-    {d : N.asSimpleGraph.Dart}
-    (hd : d ∈ P.path.val.darts) :
-    N.bottleneck P ≤ N.cap d.toProd.fst d.toProd.snd := by
-  apply Finset.min'_le
-  rw[Finset.mem_image]
-  use d
-  rw[List.mem_toFinset]
-  exact ⟨hd, rfl⟩
-
-lemma UndirectedNetwork.exists_bottleneck_dart (P : N.asSimpleGraph.NonemptyPath s t) :
-    ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := by
-  obtain ⟨d, hd₁, hd₂⟩ := Finset.mem_image.mp (Finset.min'_mem (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)) (by
-    apply (Finset.Nonempty.image_iff _).mpr
-    exact Walk_darts_Nonempty_from_ne P.ne P.path.val
-  ))
-  exact ⟨d, List.mem_toFinset.mp hd₁, hd₂⟩
-
-lemma UndirectedNetwork.bottleneck_pos (P : N.asSimpleGraph.NonemptyPath s t) : 0 < N.bottleneck P := by
-  by_contra h
-  simp only [bottleneck, Finset.lt_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, not_forall, not_lt, nonpos_iff_eq_zero, exists_prop] at h
-  obtain ⟨d, _, hd₂⟩ := h
-  absurd hd₂
-  have : N.asSimpleGraph.Adj d.fst d.snd := d.is_adj
-  simp only [UndirectedNetwork.asSimpleGraph, hd₂, d.is_adj] at this
-  exact not_le.mpr this
-
-lemma UndirectedNetwork.bottleneck_nonneg (P : N.asSimpleGraph.NonemptyPath s t) :
-    0 ≤ N.bottleneck P := le_of_lt <| UndirectedNetwork.bottleneck_pos P
-
+end UndirectedNetwork
 end

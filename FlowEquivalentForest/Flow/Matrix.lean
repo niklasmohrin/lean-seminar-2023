@@ -243,7 +243,7 @@ lemma mkFrom_M_le_maxFlowValue
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P : N.asSimpleGraph.NonemptyPath _ _ := {path := P.toPath, ne := hst}
 
-  have M_hst_le e : (e ∈ P.path.val.darts) → M hst ≤ M e.is_adj.ne := by
+  have M_hst_le {e} : (e ∈ P.path.val.darts) → M hst ≤ M e.is_adj.ne := by
     -- This step has to connect knowledge of N.asSimpleGraph and g.val, which
     -- we know to be equal. To avoid having to convert each fact separately
     -- (which also sometimes doesn't work, because rewriting a variable does
@@ -280,14 +280,14 @@ lemma mkFrom_M_le_maxFlowValue
 
   -- Now that we know that the capacity along the path is big enough, we
   -- construct the flow.
-  use Flow.fromPath P (N.bottleneck P) (N.bottleneck_nonneg P) (le_refl _)
+  use Flow.fromPath P.transfer_top (N.bottleneck P.transfer_top) (N.bottleneck_nonneg P.transfer_top) (le_refl _)
   rw[Flow.fromPath_value]
-  simp only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
+  simp only [Network.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂]
   intro d hd
-  apply le_trans $ M_hst_le d hd
-  simp only [mkFrom, ne_eq, Forest.weight, ge_iff_le, N]
-  have := d.is_adj
-  simp_all only [lt_min_iff, true_and, ne_eq, Forest.weight, mkFrom_asSimpleGraph_eq, ↓reduceDite, le_refl, N]
+  obtain ⟨hadj', hd'⟩ := P.path.val.mem_darts_of_mem_darts_transfer ⊤ (fun _ he ↦ SimpleGraph.edgeSet_mono le_top <| P.path.val.edges_subset_edgeSet he) hd
+  apply le_trans $ M_hst_le hd'
+  rw[mkFrom_asSimpleGraph_eq] at hadj'
+  simp [mkFrom, ne_eq, Forest.weight, ge_iff_le, N, hadj']
 
 lemma mkFrom_maxFlowValue_le_M
     (hsymm : M.Symmetrical)
@@ -308,21 +308,21 @@ lemma mkFrom_maxFlowValue_le_M
   have := mkFrom_IsAcyclic M hsymm g
   apply le_trans <| N.flow_value_le_bottleneck_of_isAcyclic this P F
 
-  have triangle_along_path {u v : V} (P : N.asSimpleGraph.NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
+  have triangle_along_path {u v : V} (P : (completeGraph V).NonemptyPath u v) : N.bottleneck P ≤ M P.ne := by
     induction P using SimpleGraph.NonemptyPath.ind with
     | base u v h_Adj =>
-      simp only [N, mkFrom, UndirectedNetwork.bottleneck.single_edge]
+      simp only [N, mkFrom, Network.bottleneck_single_edge]
       aesop
     | ind u v w P h_Adj hu hvw ih =>
       have huv : u ≠ v := h_Adj.ne
       have huw : u ≠ w := by aesop
-      rw[UndirectedNetwork.bottleneck.cons]
+      simp only [NonemptyPath.transfer_top_cons, Network.bottleneck_cons]
       calc min (N.cap u v) (N.bottleneck P)
         _ ≤ min (N.cap u v) (M hvw) := min_le_min_left _ ih
-        _ = min (M huv) (M hvw)     := by have : N.cap u v = M huv := (by rw[mkFrom_asSimpleGraph_eq] at h_Adj; simp only [N, mkFrom, dite_true, h_Adj]); rw[this]
+        _ ≤ min (M huv) (M hvw)     := min_le_min_right _ <| by simp only [N, mkFrom]; split; exacts [le_rfl, hnonneg ..]
         _ ≤ M huw                   := htri u v w huv hvw huw
 
-  exact triangle_along_path P
+  exact triangle_along_path P.transfer_top
 
 theorem mkFrom_exists_top
     (hsymm : M.Symmetrical)

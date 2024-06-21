@@ -240,6 +240,62 @@ theorem SimpleGraph.NonemptyPath.ind.{u₁}
       exact ind u b v tail_nonemptypath h_Adj hu hbv ih
 termination_by P.path.val.length
 
+@[simp]
+def SimpleGraph.NonemptyPath.transfer {G : SimpleGraph V} (p : G.NonemptyPath u v) (H : SimpleGraph V) (h : ∀ e ∈ p.path.val.edges, e ∈ H.edgeSet) : H.NonemptyPath u v where
+  path := p.path.transfer H h
+  ne := p.ne
+
+@[simp]
+def SimpleGraph.Walk.transfer_top {G : SimpleGraph V} (p : G.Walk u v) : (completeGraph V).Walk u v :=
+  p.transfer _ fun _ he ↦ edgeSet_mono le_top <| p.edges_subset_edgeSet he
+
+lemma SimpleGraph.Walk.IsPath.transfer_top {G : SimpleGraph V} {p : G.Walk u v} : p.IsPath → p.transfer_top.IsPath :=
+  IsPath.transfer (fun _ he ↦ edgeSet_mono le_top <| p.edges_subset_edgeSet he)
+
+@[simp]
+lemma SimpleGraph.Walk.support_transfer_top {G : SimpleGraph V} (p : G.Walk u v) : p.transfer_top.support = p.support :=
+  p.support_transfer (fun _ he ↦ edgeSet_mono le_top <| p.edges_subset_edgeSet he)
+
+@[simp]
+def SimpleGraph.Path.transfer_top {G : SimpleGraph V} (p : G.Path u v) : (completeGraph V).Path u v where
+  val := p.val.transfer_top
+  property := p.prop.transfer_top
+
+@[simp]
+def SimpleGraph.NonemptyPath.transfer_top {G : SimpleGraph V} (p : G.NonemptyPath u v) : (completeGraph V).NonemptyPath u v :=
+  { p with path := p.path.transfer_top }
+
+@[simp]
+lemma SimpleGraph.NonemptyPath.transfer_top_cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (p : G.NonemptyPath v w) (hu : u ∉ p.path.val.support) :
+    (NonemptyPath.cons h_Adj p hu).transfer_top = NonemptyPath.cons (by exact h_Adj.ne) p.transfer_top (p.path.val.support_transfer_top ▸ hu) := rfl
+
+@[simp]
+def SimpleGraph.Dart.transfer {G : SimpleGraph V} (d : G.Dart) (H : SimpleGraph V) (h : G ≤ H) : H.Dart := Dart.mk d.toProd <| h d.is_adj
+
+@[simp]
+def SimpleGraph.Dart.transfer_top {G : SimpleGraph V} (d : G.Dart) : (completeGraph V).Dart := d.transfer ⊤ le_top
+
+@[simp]
+lemma SimpleGraph.Walk.transfer_mem_darts_iff
+    {G : SimpleGraph V}
+    (p : G.Walk u v)
+    (d : G.Dart)
+    (H : SimpleGraph V)
+    (h : G ≤ H) :
+    d.transfer H h ∈ (p.transfer H fun _ he ↦ SimpleGraph.edgeSet_mono h <| p.edges_subset_edgeSet he).darts ↔ d ∈ p.darts := by
+  induction p with
+  | nil => simp
+  | @cons u v w hadj p ih => aesop
+
+lemma SimpleGraph.Walk.mem_darts_of_mem_darts_transfer
+    {G : SimpleGraph V}
+    (p : G.Walk u v)
+    (H : SimpleGraph V)
+    (h : ∀ e ∈ p.edges, e ∈ H.edgeSet)
+    {d : H.Dart}
+    (hd : d ∈ (p.transfer H h).darts) :
+    ∃ hadj, Dart.mk d.toProd hadj ∈ p.darts := by induction p <;> aesop
+
 open SimpleGraph
 
 example

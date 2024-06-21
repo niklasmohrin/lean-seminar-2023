@@ -15,7 +15,7 @@ variable {N : UndirectedNetwork V R} {Pr : FlowProblem N.toNetwork}
 -- UndirectedNetwork requirement. For us, it might be nicer to not involve
 -- another graph here since we are working on an undirected network anyways.
 structure Flow.Walk (F : Flow Pr) (u v : V) where
-  walk : N.asSimpleGraph.Walk u v
+  walk : (completeGraph V).Walk u v
   val : R
   pos : 0 < val
   cap : ∀ d, walk.dart_counts.count d * val ≤ F.f d.fst d.snd
@@ -24,7 +24,7 @@ def Flow.Walk.nil {F : Flow Pr} (val : R) (hpos : 0 < val) : F.Walk v v where
   walk := SimpleGraph.Walk.nil
   val := val
   pos := hpos
-  cap d := by simp [SimpleGraph.Walk.dart_counts]; exact F.nonneg ..
+  cap d := by simp [SimpleGraph.Walk.dart_counts, Multiset.count_zero d]; exact F.nonneg ..
 
 def Flow.Walk.takeUntil {F : Flow Pr} (p : F.Walk v w) (u : V) (hu : u ∈ p.walk.support) : F.Walk v u where
   walk := p.walk.takeUntil u hu
@@ -86,7 +86,7 @@ def Flow.Walk.make_saturating : F.Walk u v where
   pos := lt_of_lt_of_le p.pos <| p.val_le_fList_min hp
   cap d := by
     wlog hd : d ∈ p.walk.darts
-    · simp[SimpleGraph.Walk.dart_counts, hd, F.nonneg]
+    · rw[SimpleGraph.Walk.dart_counts, Multiset.coe_count, List.count_eq_zero.mpr hd]; simp[F.nonneg]
     have : p.walk.dart_counts.count d = 1 := p.walk.dart_counts.count_eq_one_of_mem hp' hd
     simp[this, fList_min, fList]
     apply List.minimum_le_of_mem'
@@ -127,7 +127,7 @@ class MaintainsSaturation (F : Flow Pr) (prop : F.Walk u v → Prop) extends ToS
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.walk.IsPath}
 
 @[simp]
-def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : N.asSimpleGraph.Path u v where
+def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : (completeGraph V).Path u v where
   val := p.val.walk
   property := p.prop
 
@@ -150,6 +150,12 @@ lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
   have := this ▸ F.capacity u v
   exact h <| le_antisymm this <| F.nonneg ..
 
+lemma Flow.Walk.ne_of_val_le
+    {F : Flow Pr}
+    (p : F.Walk v w)
+    (h : p.val ≤ F.f u v) :
+    u ≠ v := fun heq ↦  (heq ▸ (lt_of_lt_of_le (lt_of_lt_of_le p.pos h) (F.capacity u v)).ne.symm) <| N.loopless v
+
 def Flow.Walk.cons
     {F : Flow Pr}
     (p : F.Walk v w)
@@ -157,19 +163,19 @@ def Flow.Walk.cons
     (h' : ¬contains_edge p.walk u v) : -- h' could be relaxed, but this suffices for our purposes
     F.Walk u w where
   walk := SimpleGraph.Walk.cons
-    (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero (ne_of_lt (lt_of_lt_of_le p.pos h)).symm)
+    (p.ne_of_val_le h)
     p.walk
   val := p.val
   pos := p.pos
   cap d := by
-    have hnonzero := (ne_of_lt (lt_of_lt_of_le p.pos h)).symm
+    have huv : (completeGraph V).Adj u v := p.ne_of_val_le h
     rw[SimpleGraph.Walk.dart_counts_cons, Multiset.count_cons]
-    if hd : d = SimpleGraph.Dart.mk (u, v) (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero hnonzero) then
+    if hd : d = SimpleGraph.Dart.mk (u, v) huv then
       simp only [hd, ite_true]
       have hdp : p.walk.dart_counts.count d = 0 := by
         rw[Multiset.count_eq_zero, SimpleGraph.Walk.dart_counts, Multiset.mem_coe]
         intro hd'
-        exact h' ⟨(UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero hnonzero), hd ▸ hd'⟩
+        exact h' ⟨huv, hd ▸ hd'⟩
       rw[←hd, hdp]
       ring_nf
       exact h
@@ -200,7 +206,7 @@ def Flow.Path.relax_val {F : Flow Pr} (p : F.Path u v) (new_val : R) (hpos : 0 <
   property := p.prop
 
 lemma Flow.Path.val_le_bottleneck {F : Flow Pr} (p : F.Path u v) (hne : u ≠ v) :
-    let pne : N.asSimpleGraph.NonemptyPath u v := { path := p.path, ne := hne }
+    let pne : (completeGraph V).NonemptyPath u v := { path := p.path, ne := hne }
     p.val.val ≤ N.bottleneck pne := by
   intro pne
   obtain ⟨d, hd, hd'⟩ := N.exists_bottleneck_dart pne
@@ -208,6 +214,10 @@ lemma Flow.Path.val_le_bottleneck {F : Flow Pr} (p : F.Path u v) (hne : u ≠ v)
     p.val.val ≤ F.f d.fst d.snd   := p.val.val_le_f hd
     _         ≤ N.cap d.fst d.snd := F.capacity ..
     _         = N.bottleneck pne  := hd'
+
+lemma Flow.Path.bottleneck_pos {F : Flow Pr} (p : F.Path u v) (huv : u ≠ v) :
+    0 < N.bottleneck {path := p.path, ne := huv} :=
+  lt_of_lt_of_le p.val.pos <| p.val_le_bottleneck huv
 
 @[simp]
 instance Flow.instPathToSubflowForward (F : Flow Pr) : ToSubflow F (F.Path Pr.s Pr.t) where
@@ -248,7 +258,7 @@ instance Flow.instPathMaintainsSaturationForward (F : Flow Pr) : MaintainsSatura
     have := Multiset.count_eq_one_of_mem
       (Multiset.coe_nodup.mpr (SimpleGraph.Walk.darts_nodup_of_support_nodup p.prop.support_nodup))
       hd
-    simp[hst, Flow.fromPath, d.is_adj, hd, ←hd', SimpleGraph.Walk.dart_counts, this]
+    simp[hst, Flow.fromPath, d.is_adj, d.is_adj.ne, hd, ←hd', SimpleGraph.Walk.dart_counts, this]
 
 instance Flow.instPathMaintainsSaturationBackward (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk Pr.t Pr.s) ↦ p.walk.IsPath) where
   maintains_saturation p h := F.reverse_problem.instPathMaintainsSaturationForward.maintains_saturation (Flow.Path.reverse_problem p) h
@@ -273,7 +283,7 @@ lemma Flow.Path.make_saturating_Saturating {F : Flow Pr} (p : F.Path u v) (hp : 
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.walk.IsCirculation}
-def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : N.asSimpleGraph.Circulation v where
+def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : (completeGraph V).Circulation v where
   val := c.val.walk
   property := c.prop
 
@@ -283,7 +293,7 @@ def Flow.Circulation.from_dart_and_path
     (h : p.val.val ≤ F.f u v) :
     F.Circulation u where
   val := p.val.cons h p.path.not_contains_edge_end_start
-  property := p.path.cons_isCirculation (UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero (ne_of_lt (lt_of_lt_of_le p.val.pos h)).symm)
+  property := p.path.cons_isCirculation <| p.val.ne_of_val_le h
 
 def Flow.Circulation.reverse_problem {F : Flow Pr} (c : F.Circulation v) : F.reverse_problem.Circulation v where
   val := { c.val with cap := c.val.cap }
@@ -315,14 +325,14 @@ private lemma Flow.Circulation.toFlow_cap {F : Flow Pr} (c : F.Circulation v₀)
 
 @[simp]
 instance Flow.instCirculationToSubflow (F : Flow Pr) : ToSubflow F (F.Circulation v₀) where
-  to_subflow c := Flow.fromCirculation c.circulation c.val.val c.val.pos.le c.toFlow_cap
+  to_subflow c := Flow.fromCirculation Pr c.circulation c.val.val c.val.pos.le c.toFlow_cap
   subset c u v := by
     by_cases huv : contains_edge c.circulation u v
     · simp[fromCirculation, fromCirculation_f, huv, c.val.val_le_f huv.2]
     · simp[fromCirculation, fromCirculation_f, huv, F.nonneg]
 
 lemma Flow.Circulation.toFlow_nonzero {F : Flow Pr} (c : F.Circulation v₀) : to_subflow F c ≠ 0 :=
-  Flow.fromCirculation_nonzero c.circulation c.val.val c.toFlow_cap c.val.pos
+  Flow.fromCirculation_nonzero Pr c.circulation c.val.val c.toFlow_cap c.val.pos
 
 def Flow.Circulation.make_saturating {F : Flow Pr} (c : F.Circulation v₀) : F.Circulation v₀ where
   val := c.val.make_saturating c.circulation.prop.not_nil c.circulation.prop.darts_nodup
@@ -336,7 +346,7 @@ instance (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk v v) ↦ p.walk.
     obtain ⟨d, hd, hd'⟩ := h
     use d.fst, d.snd, lt_of_lt_of_le c.val.pos (c.val.val_le_f hd)
     have := Multiset.count_eq_one_of_mem c.prop.dart_counts_nodup hd
-    simp[Flow.fromCirculation, Flow.fromCirculation_f, Flow.Circulation.circulation, d.is_adj, hd, ←hd', this]
+    simp[Flow.fromCirculation, Flow.fromCirculation_f, Flow.Circulation.circulation, d.is_adj, d.is_adj.ne, hd, ←hd', this]
 
 @[simp]
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_subflow_from c).value = F.value := by simp
@@ -567,8 +577,8 @@ namespace Flow
 variable (F : Flow Pr)
 
 theorem value_le_sum_f
-    (ds : Finset N.asSimpleGraph.Dart)
-    (hds : ∀ p : N.asSimpleGraph.Path Pr.s Pr.t, ∃ d ∈ ds, d ∈ p.val.darts) :
+    (ds : Finset (completeGraph V).Dart)
+    (hds : ∀ p : (completeGraph V).NonemptyPath Pr.s Pr.t, 0 < N.bottleneck p → ∃ d ∈ ds, d ∈ p.path.val.darts) :
     F.value ≤ ∑ d in ds, F.f d.fst d.snd := by
   have h_right_nonneg := Finset.sum_nonneg (s := ds) (fun d _ ↦ F.nonneg d.fst d.snd)
   wlog hst : Pr.s ≠ Pr.t
@@ -581,7 +591,7 @@ theorem value_le_sum_f
     let F' := F.remove_subflow_from p
     specialize hF' <| Finset.sum_nonneg (s := ds) (fun d _ ↦ F'.nonneg d.fst d.snd)
 
-    obtain ⟨d, hd, hd'⟩ := hds p.path
+    obtain ⟨d, hd, hd'⟩ := hds {path := p.path, ne := hst} <| p.bottleneck_pos hst
     let u := d.fst
     let v := d.snd
     have hf : F'.f u v + p.val.val = F.f u v := by
@@ -618,11 +628,11 @@ theorem value_le_sum_f
       _       ≤ ∑ d in ds, F.f d.fst d.snd  := Finset.sum_le_sum fun _ _ ↦ Flow.sub_subset ..
 
 theorem value_le_f
-    (d : N.asSimpleGraph.Dart)
-    (hd : ∀ p : N.asSimpleGraph.Path Pr.s Pr.t, d ∈ p.val.darts) :
+    (d : (completeGraph V).Dart)
+    (hd : ∀ p : (completeGraph V).NonemptyPath Pr.s Pr.t, 0 < N.bottleneck p → d ∈ p.path.val.darts) :
     F.value ≤ F.f d.fst d.snd :=
   le_of_le_of_eq
-    (F.value_le_sum_f {d} fun p ↦ ⟨d, Finset.mem_singleton_self d, hd p⟩)
+    (F.value_le_sum_f {d} fun p hp ↦ ⟨d, Finset.mem_singleton_self d, hd p hp⟩)
     (Finset.sum_singleton ..)
 
 end Flow

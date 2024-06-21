@@ -8,13 +8,16 @@ open ContainsEdge
 variable
   {V : Type*} [Fintype V] [DecidableEq V]
   {R : Type*} [LinearOrderedCommRing R]
-  {N : UndirectedNetwork V R}
-  {Pr : FlowProblem N.toNetwork}
+  {N : Network V R}
+
+namespace Flow
+
+variable (Pr : FlowProblem N) {v₀ : V} (c : (completeGraph V).Circulation v₀) (x : R)
 
 @[simp]
-abbrev Flow.fromCirculation_f (c : N.asSimpleGraph.Circulation v₀) (x : R) (u v : V) : R := if contains_edge c u v then x else 0
+abbrev fromCirculation_f (u v : V) : R := if contains_edge c u v then x else 0
 
-lemma Flow.fromCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation v₀) (x : R) (v : V) :
+lemma fromCirculation_f_flowOut_eq_flowIn (v : V) :
     flowOut (Flow.fromCirculation_f c x) v = flowIn (Flow.fromCirculation_f c x) v := by
   simp only [flowOut, flowIn, fromCirculation_f]
   if h_sup : v ∈ c.val.support then
@@ -31,7 +34,9 @@ lemma Flow.fromCirculation_f_flowOut_eq_flowIn (c : N.asSimpleGraph.Circulation 
     · simp only [Finset.mem_univ, ite_eq_right_iff, forall_true_left]; intro u hu; absurd h_sup; exact c.val.dart_snd_mem_support_of_mem_darts hu.snd
     · simp only [Finset.mem_univ, ite_eq_right_iff, forall_true_left]; intro w hw; absurd h_sup; exact c.val.dart_fst_mem_support_of_mem_darts hw.snd
 
-def Flow.fromCirculation (c : N.asSimpleGraph.Circulation v0) (x : R) (hnonneg : 0 ≤ x) (hcap : ∀ d ∈ c.val.darts, x ≤ N.cap d.fst d.snd) : Flow Pr where
+variable (hnonneg : 0 ≤ x) (hcap : ∀ d ∈ c.val.darts, x ≤ N.cap d.fst d.snd)
+
+def fromCirculation : Flow Pr where
   f := Flow.fromCirculation_f c x
   nonneg u v := by unfold fromCirculation_f; exact ite_nonneg hnonneg le_rfl
   conservation v _ := fromCirculation_f_flowOut_eq_flowIn c x v
@@ -45,14 +50,12 @@ def Flow.fromCirculation (c : N.asSimpleGraph.Circulation v0) (x : R) (hnonneg :
     else
       simp [h, N.nonneg]
 
-variable {v₀ : V} (c : N.asSimpleGraph.Circulation v₀) (x : R) (hnonneg : 0 ≤ x) (hcap : ∀ d ∈ c.val.darts, x ≤ N.cap d.fst d.snd)
-
 @[simp]
-theorem Flow.fromCirculation_value_zero : (Flow.fromCirculation (Pr := Pr) c x hnonneg hcap).value = 0 := by
+theorem fromCirculation_value_zero : (fromCirculation Pr c x hnonneg hcap).value = 0 := by
   rw [value, fromCirculation, Flow.fromCirculation_f_flowOut_eq_flowIn c x Pr.s]
   linarith
 
-theorem Flow.fromCirculation_nonzero (hpos : 0 < x) : (Flow.fromCirculation (Pr := Pr) c x (le_of_lt hpos) hcap) ≠ 0 := by
+theorem fromCirculation_nonzero (hpos : 0 < x) : (fromCirculation Pr c x (le_of_lt hpos) hcap) ≠ 0 := by
   let d := c.val.firstDart c.prop.not_nil
   suffices fromCirculation_f c x d.fst d.snd = x by
     intro h
@@ -63,3 +66,5 @@ theorem Flow.fromCirculation_nonzero (hpos : 0 < x) : (Flow.fromCirculation (Pr 
   suffices contains_edge c d.fst d.snd by simp_all only [ne_eq, SimpleGraph.Walk.firstDart_toProd, fromCirculation_f, ↓reduceIte, d]
   use d.is_adj
   exact c.val.firstDart_mem_darts c.prop.not_nil
+
+end Flow

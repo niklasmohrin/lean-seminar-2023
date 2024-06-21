@@ -7,22 +7,29 @@ open ContainsEdge
 variable
   {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
   {R : Type*} [LinearOrderedCommRing R]
-  {N : UndirectedNetwork V R}
+  {N : Network V R}
 
-def Flow.fromPath
-    (P : N.asSimpleGraph.NonemptyPath s t)
+namespace Flow
+
+variable 
+    {s t : V}
+    (P : (completeGraph V).NonemptyPath s t)
     (x : R)
     (hnonneg : 0 ≤ x)
-    (hx : x ≤ N.bottleneck P) :
-    let Pr := { s, t : FlowProblem N.toNetwork }
-    Flow Pr :=
-  let Pr := { s, t : FlowProblem N.toNetwork }
+    (hx : x ≤ N.bottleneck P)
+
+def fromPath : Flow {s, t : FlowProblem N} :=
+  let Pr := { s, t : FlowProblem N }
   let contains_edge := contains_edge P.path
 
   let f u v : R := if contains_edge u v then x else 0
   have nonneg u v : 0 ≤ f u v := by simp only [f]; exact ite_nonneg hnonneg le_rfl
 
-  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by by_contra; simp_all only [UndirectedNetwork.bottleneck, Finset.le_min'_iff, Finset.mem_image, List.mem_toFinset, forall_exists_index, and_imp, forall_apply_eq_imp_iff₂, instPathContainsEdge, instContainsEdgeWalk, ne_eq, ite_eq_right_iff, not_forall, exists_prop, exists_and_right, not_true_eq_false, f, contains_edge]
+  have contains_edge_from_nonzero {u v} (h : f u v ≠ 0) : contains_edge u v := by
+    by_contra
+    simp_all only [SimpleGraph.completeGraph_eq_top, instPathContainsEdge, instContainsEdgeWalk,
+      SimpleGraph.top_adj, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop,
+      exists_and_right, not_true_eq_false, f, contains_edge]
   have conservation v : v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v := by
     intro hv
     if hp : v ∈ P.path.val.support then
@@ -64,12 +71,16 @@ def Flow.fromPath
         by_contra h_nonzero
         have ⟨h_Adj, h_dart⟩ := contains_edge_from_nonzero h_nonzero
         have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_fst_mem_support_of_mem_darts _ h_dart
-        simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop, exists_and_right, and_imp, implies_true, forall_const,not_true_eq_false]
+        simp_all only [SimpleGraph.completeGraph_eq_top, instPathContainsEdge, instContainsEdgeWalk,
+          SimpleGraph.top_adj, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop,
+          exists_and_right, and_imp, implies_true, forall_const, not_true_eq_false, f, contains_edge]
       have h_in u : f u v = 0 := by
         by_contra h_nonzero
         have ⟨h_Adj, h_dart⟩  := contains_edge_from_nonzero h_nonzero
         have : v ∈ P.path.val.support := SimpleGraph.Walk.dart_snd_mem_support_of_mem_darts _ h_dart
-        simp_all only [contains_edge, List.elem_iff, UndirectedNetwork.bottleneck, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop, exists_and_right, and_imp, implies_true, forall_const,not_true_eq_false]
+        simp_all only [SimpleGraph.completeGraph_eq_top, instPathContainsEdge, instContainsEdgeWalk,
+          SimpleGraph.top_adj, ne_eq, ite_eq_right_iff, forall_exists_index, not_forall, exists_prop,
+          exists_and_right, and_imp, implies_true, forall_const, not_true_eq_false, f, contains_edge]
       calc
         flowOut f v = ∑ u : V, f v u := rfl
         _           = 0              := Finset.sum_eq_zero $ fun u _ => h_out u
@@ -80,7 +91,7 @@ def Flow.fromPath
       calc
         f u v = x                := by simp only [f, he, ite_true]
         _     ≤ N.bottleneck P   := hx
-        _     ≤ N.cap u v        := UndirectedNetwork.bottleneck.le_dart P he.snd
+        _     ≤ N.cap u v        := N.bottleneck_le_dart P he.snd
     else
       have : f u v = 0 := by simp only [f, he, ite_false]
       linarith[N.nonneg u v]
@@ -88,11 +99,7 @@ def Flow.fromPath
   { f, nonneg, conservation, capacity }
 
 @[simp]
-lemma Flow.fromPath_value
-    (P : N.asSimpleGraph.NonemptyPath s t)
-    (x : R)
-    (hnonneg : 0 ≤ x)
-    (hx : x ≤ N.bottleneck P) :
+lemma fromPath_value :
     let F := Flow.fromPath P x hnonneg hx
     F.value = x := by
   intro F
@@ -115,3 +122,5 @@ lemma Flow.fromPath_value
 
   rw[Flow.value, h_in, h_out]
   ring
+
+end Flow
