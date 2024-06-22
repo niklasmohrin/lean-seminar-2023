@@ -12,7 +12,8 @@ import FlowEquivalentForest.SimpleGraph.Path
 open BigOperators
 
 -- Note: Although `LinearOrderedRing` would maybe suffice, `linarith` works better with the stricter class
-variable {V : Type*} [Fintype V] [DecidableEq V] {R : Type*} [LinearOrderedCommRing R]
+universe u_v u_r
+variable {V : Type u_v} [Fintype V] [DecidableEq V] {R : Type u_r} [LinearOrderedCommRing R]
 
 structure FlowProblem (N : Network V R) where
   s : V
@@ -42,6 +43,8 @@ variable {Pr : FlowProblem N}
 @[simp]
 instance Flow.instZero : Zero (Flow Pr) where
   zero := Pr.nullFlow
+
+lemma Flow.loopless (F : Flow Pr) (v : V) : F.f v v = 0 := le_antisymm (N.loopless v ▸ F.capacity v v) (F.nonneg v v)
 
 def Flow.Backward (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
 

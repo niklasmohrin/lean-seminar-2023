@@ -29,11 +29,11 @@ namespace Cut
 
 variable {N : UndirectedNetwork V R} [DecidableRel N.asSimpleGraph.Adj] {Pr : FlowProblem N.toNetwork} (c : Cut Pr)
 
-def crossing_darts : Finset (N.asSimpleGraph.Dart) :=
+def crossing_darts : Finset ((⊤ : SimpleGraph V).Dart) :=
   Finset.univ.filter fun d ↦ d.fst ∈ c.left ∧ d.snd ∈ c.right
 
 @[simp]
-instance : Membership (N.asSimpleGraph.Dart) (Cut Pr) where
+instance : Membership ((⊤ : SimpleGraph V).Dart) (Cut Pr) where
   mem d c := d ∈ c.crossing_darts
 
 theorem value_eq_sum_crossing_darts : c.value = ∑ d in c.crossing_darts, N.cap d.fst d.snd := by
@@ -46,16 +46,16 @@ theorem value_eq_sum_crossing_darts : c.value = ∑ d in c.crossing_darts, N.cap
     simp at hd ⊢
     exact hd
   · intro (u, v) huv huv'
-    by_contra h
+    exfalso
     simp at huv huv'
     exact huv'
-      (SimpleGraph.Dart.mk (u, v) (lt_of_le_of_ne (N.nonneg u v) (Ne.symm h)))
+      (SimpleGraph.Dart.mk (u, v) fun heq ↦ by simp at heq; exact huv.right <| heq ▸ huv.left)
       huv.left huv.right rfl
   · simp
 
 open SimpleGraph Walk in
 theorem exists_crossing_dart (hu : u ∈ c.left) (hw : w ∈ c.right) :
-    (p : N.asSimpleGraph.Walk u w) → ∃ d ∈ c.crossing_darts, d ∈ p.darts
+    (p : (completeGraph V).Walk u w) → ∃ d ∈ c.crossing_darts, d ∈ p.darts
   | nil => by rw[right, Finset.mem_compl] at hw; contradiction
   | cons' u v w huv p' => by
     if hv : v ∈ c.left then
@@ -66,11 +66,11 @@ theorem exists_crossing_dart (hu : u ∈ c.left) (hw : w ∈ c.right) :
       simp[crossing_darts, hu, hv]
 
 theorem exists_crossing_dart_st :
-    (p : N.asSimpleGraph.Walk Pr.s Pr.t) → ∃ d ∈ c.crossing_darts, d ∈ p.darts :=
+    (p : (completeGraph V).Walk Pr.s Pr.t) → ∃ d ∈ c.crossing_darts, d ∈ p.darts :=
   c.exists_crossing_dart c.s_mem c.t_mem_right
 
 theorem bounds_flow (c : Cut Pr) (F : Flow Pr) : F.value ≤ c.value := by
-  apply le_trans <| F.value_le_sum_f c.crossing_darts fun p ↦ c.exists_crossing_dart_st p.val
+  apply le_trans <| F.value_le_sum_f c.crossing_darts fun p _ ↦ c.exists_crossing_dart_st p.path.val
   rw[value_eq_sum_crossing_darts]
   exact Finset.sum_le_sum fun d _ ↦ F.capacity ..
 

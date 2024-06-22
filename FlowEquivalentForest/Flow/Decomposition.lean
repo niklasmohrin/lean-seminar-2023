@@ -9,7 +9,7 @@ open ContainsEdge
 
 universe u_v u_r
 variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} [LinearOrderedCommRing R]
-variable {N : UndirectedNetwork V R} {Pr : FlowProblem N.toNetwork}
+variable {N : Network V R} {Pr : FlowProblem N}
 
 -- Could be untied from N and be a Walk in the clique instead to loose the
 -- UndirectedNetwork requirement. For us, it might be nicer to not involve
@@ -139,16 +139,6 @@ def Flow.Path.reverse_problem {F : Flow Pr} (p : F.Path u v) : F.reverse_problem
 def Flow.Path.nil (F : Flow Pr) (val : R) (hpos : 0 < val) : F.Path v v where
   val := Flow.Walk.nil val hpos
   property := SimpleGraph.Walk.IsPath.nil
-
-lemma UndirectedNetwork.asSimpleGraph_adj_of_f_nonzero
-    {F : Flow Pr}
-    (h : F.f u v ≠ 0) :
-    N.asSimpleGraph.Adj u v := by
-  by_contra h'
-  simp [asSimpleGraph] at h'
-  have := le_antisymm h' <| N.nonneg u v
-  have := this ▸ F.capacity u v
-  exact h <| le_antisymm this <| F.nonneg ..
 
 lemma Flow.Walk.ne_of_val_le
     {F : Flow Pr}
