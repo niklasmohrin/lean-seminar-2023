@@ -2,12 +2,11 @@ import FlowEquivalentForest.Flow.Decomposition
 
 universe u_v u_r
 variable {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type u_r} [LinearOrderedCommRing R]
+variable {N : Network V R}
 
 open BigOperators
 
 section
-
-variable {N : Network V R}
 
 structure Cut (Pr : FlowProblem N) where
   left : Finset V
@@ -27,7 +26,7 @@ end
 
 namespace Cut
 
-variable {N : UndirectedNetwork V R} [DecidableRel N.asSimpleGraph.Adj] {Pr : FlowProblem N.toNetwork} (c : Cut Pr)
+variable {Pr : FlowProblem N} (c : Cut Pr)
 
 def crossing_darts : Finset ((⊤ : SimpleGraph V).Dart) :=
   Finset.univ.filter fun d ↦ d.fst ∈ c.left ∧ d.snd ∈ c.right
@@ -69,7 +68,9 @@ theorem exists_crossing_dart_st :
     (p : (completeGraph V).Walk Pr.s Pr.t) → ∃ d ∈ c.crossing_darts, d ∈ p.darts :=
   c.exists_crossing_dart c.s_mem c.t_mem_right
 
-theorem bounds_flow (c : Cut Pr) (F : Flow Pr) : F.value ≤ c.value := by
+variable (F : Flow Pr)
+
+theorem bounds_flow : F.value ≤ c.value := by
   apply le_trans <| F.value_le_sum_f c.crossing_darts fun p _ ↦ c.exists_crossing_dart_st p.path.val
   rw[value_eq_sum_crossing_darts]
   exact Finset.sum_le_sum fun d _ ↦ F.capacity ..
