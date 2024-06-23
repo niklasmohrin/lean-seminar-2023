@@ -52,20 +52,41 @@ theorem value_eq_flowOut_sub_flowIn_on' (a : Finset V) (hs : Pr.s ∈ a) (ht : P
 
 def residualNetwork : Network V R where
   cap u v := N.cap u v - F.f u v + F.f v u
-  nonneg := sorry
+  nonneg u v := by norm_num; linarith[N.nonneg u v, F.capacity u v, F.nonneg v u]
   loopless := by simp[N.loopless, F.loopless]
 
 def add (F' : Flow ({ s := Pr.s, t := Pr.t : FlowProblem F.residualNetwork })) : Flow Pr where
-  f := F.f + F'.f
-  nonneg u v := add_nonneg (F.nonneg u v) (F'.nonneg u v)
+  f u v := max 0 <| F.f u v + F'.f u v - F.f v u - F'.f v u
+  nonneg _ _ := le_max_left 0 _
   capacity u v := by
-    have := F'.capacity u v
-    simp[residualNetwork] at this ⊢
-    sorry
-    -- linarith[this]
+    simp only [residualNetwork, max_le_iff, N.nonneg, tsub_le_iff_right, true_and]
+    calc F.f u v + F'.f u v
+      _ ≤ F.f u v + F.residualNetwork.cap u v     := by linarith[F'.capacity u v]
+      _ = F.f u v + N.cap u v - F.f u v + F.f v u := by rw[residualNetwork]; ring
+      _ = N.cap u v + F.f v u                     := by ring
+      _ ≤ N.cap u v + F'.f v u + F.f v u          := by linarith[F'.nonneg v u]
   conservation v hv := by
-    simp only [flowOut, Pi.add_apply, Finset.sum_add_distrib, flowIn]
-    rw[←flowOut, ←flowOut, ←flowIn, ←flowIn, F.conservation v hv, F'.conservation v hv]
+    generalize hg : F.f + F'.f = g at *
+    have hg' u v : max 0 (F.f u v + F'.f u v - F.f v u - F'.f v u) = max 0 (g u v - g v u) := by
+      conv => right; right; simp[←hg, sub_add_eq_sub_sub]
+    simp only [flowOut, flowIn, hg']
+    clear hg'
+
+    have h (f : V → R) : ∑ x, max 0 (f x) = ∑ x in Finset.univ.filter (0 < f ·), f x := sorry
+    simp[h, sub_eq_sub_iff_add_eq_add] 
+    have : Disjoint (Finset.univ.filter fun u ↦ g u v < g v u) (Finset.univ.filter fun u ↦ g v u < g u v) := sorry
+    rw[←Finset.sum_union this, ←Finset.sum_union this.symm]
+    have : (Finset.univ.filter fun u ↦ g u v < g v u) ∪ (Finset.univ.filter fun u ↦ g v u < g u v) = (Finset.univ.filter fun u ↦ g u v ≠ g v u) := sorry
+    rw[this, Finset.union_comm, this]
+    suffices ∑ u, g u v = ∑ u, g v u by
+      let eqs := Finset.univ.filter (fun u ↦ g u v = g v u)
+      simp only [←Finset.sum_add_sum_compl eqs] at this
+      have heqs : ∑ u in eqs, g u v = ∑ u in eqs, g v u := Finset.sum_congr rfl fun u hu ↦ by simpa [eqs, Finset.mem_filter] using hu
+      simp[heqs, eqs] at this
+      linarith[heqs, this]
+    subst g
+    simp only [Pi.add_apply, Finset.sum_add_distrib]
+    rw[← flowOut, ←flowOut, ← flowIn, ← flowIn, F.conservation v hv, F'.conservation v hv]
 
 def augment_with (p : (completeGraph V).NonemptyPath Pr.s Pr.t) : Flow Pr :=
   F.add <| Flow.fromPath
