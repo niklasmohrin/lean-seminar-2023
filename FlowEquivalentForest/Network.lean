@@ -100,6 +100,10 @@ variable {p}
 lemma bottleneck_filter_eq_of_forall (P : (completeGraph V).NonemptyPath s t) (h : ∀ d ∈ P.path.val.darts, p d.fst d.snd) :
     (N.filter p).bottleneck P = N.bottleneck P := sorry
 
+def activePath (s t : V) := { p : (⊤ : SimpleGraph V).NonemptyPath s t // 0 < N.bottleneck p }
+
+instance : Fintype (N.activePath s t) := Subtype.fintype _
+
 end Network
 
 namespace UndirectedNetwork
