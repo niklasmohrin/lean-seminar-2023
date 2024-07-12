@@ -197,6 +197,30 @@ def SimpleGraph.NonemptyPath.cons {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G
 
 lemma SimpleGraph.NonemptyPath.cons.darts {G : SimpleGraph V} (h_Adj : G.Adj u v) (P : G.NonemptyPath v w) (hu : u ∉ P.path.val.support) : (SimpleGraph.NonemptyPath.cons h_Adj P hu).path.val.darts = Dart.mk (u,v) h_Adj :: P.path.val.darts := rfl
 
+lemma SimpleGraph.Walk.IsPath.concat {G : SimpleGraph V} {p : G.Walk u v} (h : p.IsPath) (h_Adj : G.Adj v w) (hw : w ∉ p.support) : (p.concat h_Adj).IsPath := by
+  rw[←(p.concat h_Adj).reverse_reverse, reverse_concat]
+  apply IsPath.reverse
+  apply IsPath.cons h.reverse
+  simp[hw]
+
+def SimpleGraph.NonemptyPath.concat {G : SimpleGraph V} (P : G.NonemptyPath u v) (h_Adj : G.Adj v w) (hw : w ∉ P.path.val.support) : G.NonemptyPath u w where
+  path := {
+    val := P.path.val.concat h_Adj
+    property := P.path.property.concat h_Adj hw
+  }
+  ne := by aesop
+
+lemma SimpleGraph.NonemptyPath.concat_darts {G : SimpleGraph V} (P : G.NonemptyPath u v) (h_Adj : G.Adj v w) (hw : w ∉ P.path.val.support) :
+    (P.concat h_Adj hw).path.val.darts = P.path.val.darts.concat (Dart.mk (v, w) h_Adj) := by simp[concat]
+
+def SimpleGraph.Path.takeUntil {G : SimpleGraph V} (p : G.Path u w) (v : V) (hv : v ∈ p.val.support) : G.Path u v where
+  val := p.val.takeUntil v hv
+  property := p.prop.takeUntil hv
+
+def SimpleGraph.NonemptyPath.takeUntil {G : SimpleGraph V} (p : G.NonemptyPath u w) (v : V) (hv : v ∈ p.path.val.support) (huv : u ≠ v) : G.NonemptyPath u v where
+  path := p.path.takeUntil v hv
+  ne := huv
+
 -- Same as SimpleGraph.Path.ind, but for non-trivial paths (paths with at least one edge).
 theorem SimpleGraph.NonemptyPath.ind.{u₁}
     {G : SimpleGraph V}

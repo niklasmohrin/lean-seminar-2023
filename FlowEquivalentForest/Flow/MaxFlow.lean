@@ -185,7 +185,7 @@ def add (F' : F.ResidualFlow) : Flow Pr where
       have h2 : g v u < g u v := (Finset.mem_filter.mp <| hs' hu).right
       exact False.elim <| lt_asymm h1 h2
     rw[←Finset.sum_union this, ←Finset.sum_union this.symm]
-    have : (Finset.univ.filter fun u ↦ g u v < g v u) ∪ (Finset.univ.filter fun u ↦ g v u < g u v) = (Finset.univ.filter fun u ↦ g u v ≠ g v u) := sorry
+    have : (Finset.univ.filter fun u ↦ g u v < g v u) ∪ (Finset.univ.filter fun u ↦ g v u < g u v) = (Finset.univ.filter fun u ↦ g u v ≠ g v u) := by simp[Finset.ext_iff]
     rw[this, Finset.union_comm, this]
     suffices ∑ u, g u v = ∑ u, g v u by
       let eqs := Finset.univ.filter (fun u ↦ g u v = g v u)
@@ -250,15 +250,17 @@ theorem isTop_of_not_exists_active_path (h : IsEmpty (F.residualNetwork.activePa
     }
   else
     have p := Classical.choice <| hu.resolve_left hs
-    exact .intro {
-      val := {
-        path := {
-          val := p.val.path.val.concat hadj
-          property := sorry
-        }
-        ne := Ne.symm hv.left
+    if hv' : v ∈ p.val.path.val.support then
+      exact .intro <| {
+        val := p.val.takeUntil v hv' (Ne.symm hv.left)
+        property := lt_of_lt_of_le p.property <| F.residualNetwork.bottleneck_le_takeUntil p.val hv' (Ne.symm hv.left)
       }
-      property := sorry
-    }
+    else
+      exact .intro {
+        val := p.val.concat hadj hv'
+        property := by
+          rw[F.residualNetwork.bottleneck_concat p.val hv']
+          exact lt_min p.property hlt
+      }
 
 end Flow

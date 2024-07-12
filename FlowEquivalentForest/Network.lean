@@ -65,6 +65,14 @@ lemma bottleneck_cons (P : (completeGraph V).NonemptyPath v w) (hu : u ∉ P.pat
   rw[min_comm, Finset.min'_insert]
 
 @[simp]
+lemma bottleneck_concat (P : (completeGraph V).NonemptyPath u v) (hw : w ∉ P.path.val.support) :
+    have h_adj := fun heq ↦ (heq.symm ▸ hw) P.path.val.end_mem_support
+    N.bottleneck (P.concat h_adj hw) = min (N.bottleneck P) (N.cap v w) := by
+  simp [bottleneck, SimpleGraph.NonemptyPath.concat_darts, Finset.image_union]
+  conv => left; left; rw[Finset.union_comm, ←Finset.insert_eq]
+  rw[Finset.min'_insert]
+
+@[simp]
 lemma bottleneck_le_dart {d : (completeGraph V).Dart} (hd : d ∈ P.path.val.darts) :
     N.bottleneck P ≤ N.cap d.toProd.fst d.toProd.snd := by
   apply Finset.min'_le
@@ -100,9 +108,24 @@ variable {p}
 lemma bottleneck_filter_eq_of_forall (P : (completeGraph V).NonemptyPath s t) (h : ∀ d ∈ P.path.val.darts, p d.fst d.snd) :
     (N.filter p).bottleneck P = N.bottleneck P := sorry
 
+lemma bottleneck_le_of_darts_subset
+    (p : (completeGraph V).NonemptyPath u v)
+    (p' : (completeGraph V).NonemptyPath u' v')
+    (h : p'.path.val.darts ⊆ p.path.val.darts) :
+    N.bottleneck p ≤ N.bottleneck p' := by
+  apply Finset.min'_subset
+  apply Finset.image_subset_image
+  simpa [←Finset.coe_subset] using h
+
+lemma bottleneck_le_takeUntil (p : (completeGraph V).NonemptyPath u w) (hv : v ∈ p.path.val.support) (huv : u ≠ v) :
+    N.bottleneck p ≤ N.bottleneck (p.takeUntil v hv huv) :=
+  N.bottleneck_le_of_darts_subset _ _ <| p.path.val.darts_takeUntil_subset hv
+
 def activePath (s t : V) := { p : (⊤ : SimpleGraph V).NonemptyPath s t // 0 < N.bottleneck p }
 
 instance : Fintype (N.activePath s t) := Subtype.fintype _
+
+variable {N}
 
 end Network
 
