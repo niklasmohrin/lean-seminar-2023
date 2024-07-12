@@ -26,11 +26,18 @@ def flowOut (f : V → V → R) (v : V) := ∑ w, f v w
 def excess (f : V → V → R) (v : V) := flowIn f v - flowOut f v
 
 @[ext]
-structure Flow (Pr : FlowProblem N) where
+structure PseudoFlow (Pr : FlowProblem N) where
   f : V → V → R
   nonneg : ∀ u v, 0 ≤ f u v
-  conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v
   capacity : ∀ u v, f u v ≤ N.cap u v
+
+@[ext]
+structure PreFlow (Pr : FlowProblem N) extends PseudoFlow Pr where
+  excess : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v ≤ flowIn f v
+
+@[ext]
+structure Flow (Pr : FlowProblem N) extends PseudoFlow Pr where
+  conservation : ∀ v, v ≠ Pr.s ∧ v ≠ Pr.t → flowOut f v = flowIn f v
 
 def FlowProblem.nullFlow (Pr : FlowProblem N) : Flow Pr where
   f _ _ := 0
@@ -145,7 +152,7 @@ theorem Flow.sub_subset
     (hle : F₁ ⊆ F₂):
     (Flow.sub hle) ⊆ F₂ := by
   intro u v
-  simp only [sub, Pi.sub_apply, tsub_le_iff_right, le_add_iff_nonneg_right, zero_le, nonneg]
+  simp only [sub, Pi.sub_apply, tsub_le_iff_right, le_add_iff_nonneg_right, zero_le, F₁.nonneg]
 
 lemma Flow.zero_of_sub_neutral
     {F₁ F₂ : Flow Pr}

@@ -45,9 +45,10 @@ lemma Network.capMax_max {N : Network V R} : ∀ {u v}, N.cap u v ≤ N.capMax :
 namespace Network
 variable (N : Network V R)
 
-def bottleneck (P : (completeGraph V).NonemptyPath s t) : R
-  := (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)).min' (by
-    apply (Finset.Nonempty.image_iff _).mpr
+variable { s t : V } (P : (completeGraph V).NonemptyPath s t)
+
+def bottleneck : R := (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)).min' (by
+    rw[Finset.image_nonempty]
     exact Walk_darts_Nonempty_from_ne P.ne P.path.val
   )
 
@@ -57,19 +58,14 @@ lemma bottleneck_single_edge {u v : V} (h : (completeGraph V).Adj u v) :
   simp_all only [bottleneck, SimpleGraph.Adj.toNonemptyPath, SimpleGraph.Adj.toPath, SimpleGraph.Walk.darts_cons, SimpleGraph.Walk.darts_nil, List.toFinset_cons, List.toFinset_nil, insert_emptyc_eq, Finset.image_singleton, Finset.min'_singleton]
 
 @[simp]
-lemma bottleneck_cons
-    (P : (completeGraph V).NonemptyPath v w)
-    (hu : u ∉ P.path.val.support) :
+lemma bottleneck_cons (P : (completeGraph V).NonemptyPath v w) (hu : u ∉ P.path.val.support) :
     have h_adj := fun heq ↦ (heq ▸ hu) P.path.val.start_mem_support
     N.bottleneck (SimpleGraph.NonemptyPath.cons h_adj P hu) = min (N.cap u v) (N.bottleneck P) := by
   simp [bottleneck, SimpleGraph.NonemptyPath.cons.darts]
   rw[min_comm, Finset.min'_insert]
 
 @[simp]
-lemma bottleneck_le_dart
-    (P : (completeGraph V).NonemptyPath s t)
-    {d : (completeGraph V).Dart}
-    (hd : d ∈ P.path.val.darts) :
+lemma bottleneck_le_dart {d : (completeGraph V).Dart} (hd : d ∈ P.path.val.darts) :
     N.bottleneck P ≤ N.cap d.toProd.fst d.toProd.snd := by
   apply Finset.min'_le
   rw[Finset.mem_image]
@@ -77,17 +73,32 @@ lemma bottleneck_le_dart
   rw[List.mem_toFinset]
   exact ⟨hd, rfl⟩
 
-lemma exists_bottleneck_dart (P : (completeGraph V).NonemptyPath s t) :
-    ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := by
+lemma exists_bottleneck_dart : ∃ d ∈ P.path.val.darts, N.cap d.fst d.snd = N.bottleneck P := by
   obtain ⟨d, hd₁, hd₂⟩ := Finset.mem_image.mp (Finset.min'_mem (P.path.val.darts.toFinset.image (λ e => N.cap e.fst e.snd)) (by
-    apply (Finset.Nonempty.image_iff _).mpr
+    rw[Finset.image_nonempty]
     exact Walk_darts_Nonempty_from_ne P.ne P.path.val
   ))
   exact ⟨d, List.mem_toFinset.mp hd₁, hd₂⟩
 
 @[simp]
-lemma bottleneck_nonneg (P : (completeGraph V).NonemptyPath s t) : 0 ≤ N.bottleneck P := by
+lemma bottleneck_nonneg : 0 ≤ N.bottleneck P := by
   simp[bottleneck, N.nonneg]
+
+lemma lt_bottleneck_of_lt_cap (h : ∀ d ∈ P.path.val.darts, x < N.cap d.fst d.snd) : x < N.bottleneck P := sorry
+
+variable (p : V → V → Prop) [DecidableRel p] (p' : V → V → Prop) [DecidableRel p']
+
+def filter : Network V R where
+  cap u v := if p u v then N.cap u v else 0
+  nonneg u v := by by_cases (p u v) <;> simp[*, N.nonneg]
+  loopless v := by by_cases (p v v) <;> simp[*, N.loopless]
+
+lemma filter_filter : (N.filter p).filter p' = N.filter (fun u v ↦ p u v ∧ p' u v) := sorry
+
+variable {p}
+
+lemma bottleneck_filter_eq_of_forall (P : (completeGraph V).NonemptyPath s t) (h : ∀ d ∈ P.path.val.darts, p d.fst d.snd) :
+    (N.filter p).bottleneck P = N.bottleneck P := sorry
 
 end Network
 

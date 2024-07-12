@@ -60,6 +60,7 @@ theorem fromCirculation_nonzero (hpos : 0 < x) : (fromCirculation Pr c x (le_of_
   suffices fromCirculation_f c x d.fst d.snd = x by
     intro h
     injection h with f_eq
+    simp only [PseudoFlow.mk.injEq] at f_eq
     rw[f_eq] at this
     simp only [f_eq, zero_ne_one] at this
     exact (ne_of_lt hpos) this

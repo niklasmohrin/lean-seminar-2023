@@ -1,5 +1,6 @@
 import Mathlib.Tactic.Basic
 import Mathlib.Data.Fintype.Basic
+import Mathlib.Data.Fintype.Option
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Combinatorics.SimpleGraph.Connectivity
 import Mathlib.Logic.Basic
@@ -174,6 +175,7 @@ termination_by P.val.length
 structure SimpleGraph.NonemptyPath {V : Type*} (G : SimpleGraph V) (u v : V) where
   path : G.Path u v
   ne : u ≠ v
+  deriving DecidableEq
 
 -- A path containing just a single edge.
 @[simp]
@@ -485,6 +487,16 @@ instance : Fintype (G.Path u v) where
     · exact p.prop.length_lt
     · use p.val
       use ⟨p.prop, rfl⟩
+
+instance : IsEmpty (G.NonemptyPath v v) where
+  false p := p.ne rfl
+
+instance : Fintype (G.NonemptyPath s t) :=
+  if hst : s = t then by
+    subst hst
+    exact Fintype.ofIsEmpty
+  else
+    Fintype.ofSurjective (fun (p : G.Path s t) ↦  { path := p, ne := hst }) (fun p ↦ ⟨p.path, rfl⟩)
 
 namespace SimpleGraph.Walk
 
