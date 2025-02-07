@@ -1,9 +1,8 @@
 import Mathlib.Tactic.Linarith
-import Mathlib.Algebra.BigOperators.Basic
+import Mathlib.Algebra.BigOperators.Ring
 import Mathlib.Order.Zorn
 import Mathlib.Data.Fintype.BigOperators
 import Mathlib.Combinatorics.SimpleGraph.Acyclic
-import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
 import FlowEquivalentForest.Network
 import FlowEquivalentForest.Util
@@ -51,7 +50,7 @@ variable {Pr : FlowProblem N}
 instance Flow.instZero : Zero (Flow Pr) where
   zero := Pr.nullFlow
 
-lemma Flow.loopless (F : Flow Pr) (v : V) : F.f v v = 0 := le_antisymm (N.loopless v ▸ F.capacity v v) (F.nonneg v v)
+lemma PseudoFlow.loopless (F : PseudoFlow Pr) (v : V) : F.f v v = 0 := le_antisymm (N.loopless v ▸ F.capacity v v) (F.nonneg v v)
 
 def Flow.Backward (F : Flow Pr) := flowOut F.f Pr.s < flowIn F.f Pr.s
 
@@ -112,9 +111,6 @@ instance Flow.instPreorder : Preorder (Flow Pr) := Preorder.lift Flow.value
 
 @[simp]
 lemma Flow.le_iff {F F' : Flow Pr} : F ≤ F' ↔ F.value ≤ F'.value := by simp[LE.le]
-
-instance : IsTotalPreorder (Flow Pr) (LE.le) where
-  total F F' := by simp only [Flow.le_iff]; exact le_total ..
 
 @[simp]
 lemma Flow.zero_subset (F : Flow Pr) : 0 ⊆ F := F.nonneg
@@ -197,7 +193,7 @@ theorem Flow.flowOut_st_eq_flowIn_st (F : Flow Pr) :
     if hst : Pr.s = Pr.t then
       simp_all only [Finset.mem_singleton, Finset.insert_eq_of_mem, Finset.disjoint_singleton_left, Finset.mem_compl, not_true_eq_false, not_false_eq_true, flowOut, Finset.sum_singleton, flowIn, add_left_inj, st]
     else
-      simp only [Finset.sum_pair hst] at this
+      simp[Finset.sum_pair hst, st] at this
       exact this
   apply Finset.sum_congr rfl
   intro v hv

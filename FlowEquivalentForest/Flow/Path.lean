@@ -1,3 +1,5 @@
+import Mathlib.Algebra.ZeroOne.Lemmas
+
 import FlowEquivalentForest.Flow.Basic
 import FlowEquivalentForest.SimpleGraph.Path
 
@@ -11,9 +13,9 @@ variable
 
 namespace Flow
 
-variable 
+variable
     {s t : V}
-    (P : (completeGraph V).NonemptyPath s t)
+    (P : (⊤ : SimpleGraph V).NonemptyPath s t)
     (x : R)
     (hnonneg : 0 ≤ x)
     (hx : x ≤ N.bottleneck P)

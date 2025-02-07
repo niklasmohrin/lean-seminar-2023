@@ -2,7 +2,10 @@ import Mathlib.Tactic.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Fintype.Option
 import Mathlib.Combinatorics.SimpleGraph.Basic
-import Mathlib.Combinatorics.SimpleGraph.Connectivity
+import Mathlib.Combinatorics.SimpleGraph.Walk
+import Mathlib.Combinatorics.SimpleGraph.Path
+import Mathlib.Combinatorics.SimpleGraph.Dart
+import Mathlib.Combinatorics.SimpleGraph.Connectivity.WalkCounting
 import Mathlib.Logic.Basic
 
 import FlowEquivalentForest.Util
@@ -36,7 +39,7 @@ theorem SimpleGraph.Walk.contains_edge_iff_mem_darts (p : G.Walk s t) :
     obtain ⟨d, hd, huv⟩ := h
     obtain ⟨hu, hv⟩ := Prod.ext_iff.mp huv
     subst_vars
-    use d.is_adj
+    use d.adj
 
 instance {p : G.Walk s t} : Decidable (contains_edge p u v) := by
   rw[SimpleGraph.Walk.contains_edge_iff_mem_darts]
@@ -82,7 +85,7 @@ lemma SimpleGraph.Walk.firstDart_mem_darts (p : G.Walk s t) (hp : ¬p.Nil) : p.f
     left
     ext
     · simp
-    · simp[sndOfNotNil, notNilRec]
+    · simp
   ) hp
 
 @[simp]
@@ -147,7 +150,7 @@ going. We need to prove to Lean again that this recursion terminates, this time
 we even need to specify what function is decreasing in the recursion (see the
 `termination_by` after the proof).
 -/
-theorem SimpleGraph.Path.ind.{u₁}
+def SimpleGraph.Path.ind.{u₁}
     {G : SimpleGraph V}
     {motive : (u : V) → (v : V) → G.Path u v → Sort u₁}
     {u v : V}
@@ -222,7 +225,7 @@ def SimpleGraph.NonemptyPath.takeUntil {G : SimpleGraph V} (p : G.NonemptyPath u
   ne := huv
 
 -- Same as SimpleGraph.Path.ind, but for non-trivial paths (paths with at least one edge).
-theorem SimpleGraph.NonemptyPath.ind.{u₁}
+def SimpleGraph.NonemptyPath.ind.{u₁}
     {G : SimpleGraph V}
     {motive : (u : V) → (v : V) → G.NonemptyPath u v → Sort u₁}
     {u v : V}
@@ -296,7 +299,7 @@ lemma SimpleGraph.NonemptyPath.transfer_top_cons {G : SimpleGraph V} (h_Adj : G.
     (NonemptyPath.cons h_Adj p hu).transfer_top = NonemptyPath.cons (by exact h_Adj.ne) p.transfer_top (p.path.val.support_transfer_top ▸ hu) := rfl
 
 @[simp]
-def SimpleGraph.Dart.transfer {G : SimpleGraph V} (d : G.Dart) (H : SimpleGraph V) (h : G ≤ H) : H.Dart := Dart.mk d.toProd <| h d.is_adj
+def SimpleGraph.Dart.transfer {G : SimpleGraph V} (d : G.Dart) (H : SimpleGraph V) (h : G ≤ H) : H.Dart := Dart.mk d.toProd <| h d.adj
 
 @[simp]
 def SimpleGraph.Dart.transfer_top {G : SimpleGraph V} (d : G.Dart) : (completeGraph V).Dart := d.transfer ⊤ le_top
@@ -500,17 +503,17 @@ theorem SimpleGraph.Walk.dart_counts_takeUntil_le
   rw[List.subperm_append_left]
   exact List.nil_subperm
 
-instance : Fintype (G.Path u v) where
-  elems := (Finset.range (Fintype.card V)).biUnion
-    fun n ↦ (Finset.univ (α := {p : G.Walk u v | p.IsPath ∧ p.length = n})).image
-      fun p ↦ { val := p.val, property := p.prop.left }
-  complete p := by
-    simp
-    use p.val.length
-    constructor
-    · exact p.prop.length_lt
-    · use p.val
-      use ⟨p.prop, rfl⟩
+-- instance : Fintype (G.Path u v) where
+--   elems := (Finset.range (Fintype.card V)).biUnion
+--     fun n ↦ (Finset.univ (α := {p : G.Walk u v | p.IsPath ∧ p.length = n})).image
+--       fun p ↦ { val := p.val, property := p.prop.left }
+--   complete p := by
+--     simp
+--     use p.val.length
+--     constructor
+--     · exact p.prop.length_lt
+--     · use p.val
+--       use ⟨p.prop, rfl⟩
 
 instance : IsEmpty (G.NonemptyPath v v) where
   false p := p.ne rfl
@@ -545,7 +548,7 @@ lemma dropUntilDart_darts_isSuffix : ∀ (p : G.Walk u v) (d : G.Dart) (hd : d �
       subst u
       exact List.suffix_refl _
     else
-      simp only [h, ↓reduceDite, darts_cons]
+      simp only [h, darts_cons]
       rw[darts_cons, List.mem_cons] at hd
       apply List.suffix_cons_iff.mpr
       exact Or.inr <| p'.dropUntilDart_darts_isSuffix d <| hd.resolve_left h
@@ -563,14 +566,12 @@ def dedupDarts : G.Walk u v → G.Walk u v
 theorem dedupDarts_darts_nodup : (p : G.Walk u v) → p.dedupDarts.darts.Nodup
   | nil => by rw[dedupDarts, darts_nil]; exact List.nodup_nil
   | cons' u v w hadj p' => by
+    simp[dedupDarts]
     let p'' := p'.dedupDarts
     let d := Dart.mk (u, v) hadj
-    if hd : d ∈ p''.darts then
-      simp only [dedupDarts, hd, ↓reduceDite]
-      exact (p'.dedupDarts.dropUntilDart_darts_isSuffix d hd).sublist.nodup <| p'.dedupDarts_darts_nodup
-    else
-      simp only [dedupDarts, hd, ↓reduceDite, darts_cons, List.nodup_cons, not_false_eq_true, true_and]
-      exact p'.dedupDarts_darts_nodup
+    split
+    next hd => exact (p'.dedupDarts.dropUntilDart_darts_isSuffix d hd).sublist.nodup <| p'.dedupDarts_darts_nodup
+    next hd => simp [hd, p'.dedupDarts_darts_nodup]
 
 open List in
 theorem dedupDarts_darts_sublist : (p : G.Walk u v) → p.dedupDarts.darts <+ p.darts
@@ -579,16 +580,15 @@ theorem dedupDarts_darts_sublist : (p : G.Walk u v) → p.dedupDarts.darts <+ p.
     rw[dedupDarts]
     let p'' := p'.dedupDarts
     let d := Dart.mk (u, v) hadj
-    if hd : d ∈ p''.darts then
+    split
+    next hd =>
       simp[hd]
       apply Sublist.cons
       exact List.Sublist.trans
         (p'.dedupDarts.dropUntilDart_darts_isSuffix d hd).sublist
         p'.dedupDarts_darts_sublist
-    else
-      simp[hd]
-      apply Sublist.cons₂
-      exact p'.dedupDarts_darts_sublist
+    next hd =>
+      simp[hd, p'.dedupDarts_darts_sublist]
 
 theorem dedupDarts_dartCounts_le (p : G.Walk u v) : p.dedupDarts.dart_counts ≤ p.dart_counts :=
   p.dedupDarts_darts_sublist.subperm

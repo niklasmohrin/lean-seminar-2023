@@ -8,4 +8,4 @@ package FlowEquivalentForest where
 lean_lib FlowEquivalentForest
 
 require mathlib from git
-  "https://github.com/leanprover-community/mathlib4.git"@"v4.7.0"
+  "https://github.com/leanprover-community/mathlib4.git"@"v4.16.0"

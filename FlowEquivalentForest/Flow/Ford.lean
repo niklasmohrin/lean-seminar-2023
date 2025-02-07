@@ -1,5 +1,4 @@
-import FlowEquivalentForest.Flow.Decomposition
-import FlowEquivalentForest.Cut
+import FlowEquivalentForest.Flow.MaxFlow
 
 open BigOperators
 open ContainsEdge
@@ -40,6 +39,56 @@ end Network
 
 namespace Flow
 
+abbrev ResidualFlow := Flow ({ s := Pr.s, t := Pr.t : FlowProblem F.residualNetwork })
+
+def add (F' : F.ResidualFlow) : Flow Pr where
+  f u v := max 0 <| F.f u v + F'.f u v - F.f v u - F'.f v u
+  nonneg _ _ := le_max_left 0 _
+  capacity u v := by
+    simp only [residualNetwork, max_le_iff, N.nonneg, tsub_le_iff_right, true_and]
+    calc F.f u v + F'.f u v
+      _ ≤ F.f u v + F.residualNetwork.cap u v     := by linarith[F'.capacity u v]
+      _ = F.f u v + N.cap u v - F.f u v + F.f v u := by rw[residualNetwork]; ring
+      _ = N.cap u v + F.f v u                     := by ring
+      _ ≤ N.cap u v + F'.f v u + F.f v u          := by linarith[F'.nonneg v u]
+  conservation v hv := by
+    generalize hg : F.f + F'.f = g at *
+    have hg' u v : max 0 (F.f u v + F'.f u v - F.f v u - F'.f v u) = max 0 (g u v - g v u) := by
+      conv => right; right; simp[←hg, sub_add_eq_sub_sub]
+    simp only [flowOut, flowIn, hg']
+    clear hg'
+
+    have h (f : V → R) : ∑ x, max 0 (f x) = ∑ x in Finset.univ.filter (0 < f ·), f x := by
+      rw[Finset.sum_filter, Finset.sum_congr rfl]
+      intro x _
+      by_cases h : (0 < f x) <;> simp[h, le_of_lt, le_of_not_lt]
+
+    simp[h, sub_eq_sub_iff_add_eq_add]
+    have : Disjoint (Finset.univ.filter fun u ↦ g u v < g v u) (Finset.univ.filter fun u ↦ g v u < g u v) := by
+      intro s hs hs' u hu
+      have h1 : g u v < g v u := (Finset.mem_filter.mp <| hs hu).right
+      have h2 : g v u < g u v := (Finset.mem_filter.mp <| hs' hu).right
+      exact False.elim <| lt_asymm h1 h2
+    rw[←Finset.sum_union this, ←Finset.sum_union this.symm]
+    have : (Finset.univ.filter fun u ↦ g u v < g v u) ∪ (Finset.univ.filter fun u ↦ g v u < g u v) = (Finset.univ.filter fun u ↦ g u v ≠ g v u) := by simp[Finset.ext_iff]
+    rw[this, Finset.union_comm, this]
+    suffices ∑ u, g u v = ∑ u, g v u by
+      let eqs := Finset.univ.filter (fun u ↦ g u v = g v u)
+      simp only [←Finset.sum_add_sum_compl eqs] at this
+      have heqs : ∑ u in eqs, g u v = ∑ u in eqs, g v u := Finset.sum_congr rfl fun u hu ↦ by simpa [eqs, Finset.mem_filter] using hu
+      simp[heqs, eqs] at this
+      linarith[heqs, this]
+    subst g
+    simp only [Pi.add_apply, Finset.sum_add_distrib]
+    rw[← flowOut, ←flowOut, ← flowIn, ← flowIn, F.conservation v hv, F'.conservation v hv]
+
+def augment_with (p : (completeGraph V).NonemptyPath Pr.s Pr.t) : Flow Pr :=
+  F.add <| Flow.fromPath
+    p
+    (F.residualNetwork.bottleneck p)
+    (F.residualNetwork.bottleneck_nonneg p)
+    le_rfl
+
 def IsBlocking := ∀ p : N.activePath Pr.s Pr.t, ∃ d ∈ p.val.path.val.darts, F.f d.fst d.snd = N.cap d.fst d.snd
 
 abbrev LevelFlow := Flow { s := Pr.s, t := Pr.t : FlowProblem (F.residualNetwork.levelNetwork Pr.s) }
@@ -57,18 +106,22 @@ private theorem dist_le_add_dist_of_isBlocking
     {F' : F.LevelFlow}
     (hF' : F'.IsBlocking) :
     F.residualNetwork.dist Pr.s v ≤ (F.add F'.toResidualFlow).residualNetwork.dist Pr.s v := by
-  rw[← WithTop.coe_untop _ hF]
-  wlog hdist : (F.add F'.toResidualFlow).residualNetwork.dist Pr.s v ≠ ⊤
-  · simp only [ne_eq, not_not] at hdist; rw[hdist]; exact le_top
-  obtain ⟨⟨p, hpb⟩, hpl⟩ := (F.add F'.toResidualFlow).residualNetwork.exists_residualPath_of_dist_ne_top hdist
-  rw[← WithTop.coe_untop _ hdist, ←hpl, WithTop.coe_le_coe]
-  simp only
-  sorry
+  let F'' := F.add F'.toResidualFlow
+  wlog hF'' : F''.residualNetwork.dist Pr.s v ≠ ⊤
+  · simp only [ne_eq, not_not] at hF''; rw[hF'']; exact le_top
 
-  -- rw[← WithTop.coe_untop _ hdist, ←hpl, WithTop.coe_le_coe]
-  -- induction p using SimpleGraph.NonemptyPath.ind with
-  -- | base h => sorry
-  -- | ind _ => sorry
+  suffices ∀ (n : ℕ) (v : V), F''.residualNetwork.dist Pr.s v = n → F.residualNetwork.dist Pr.s v ≤ (F.add F'.toResidualFlow).residualNetwork.dist Pr.s v from
+    this ((F''.residualNetwork.dist Pr.s v).untop hF'') v (by conv => left; rw[← WithTop.coe_untop _ hF''])
+  clear hF''
+
+  intro n v hv
+  induction n using Nat.caseStrongInductionOn generalizing v with
+  | zero => sorry -- s = v
+  | ind n ih =>
+    have hF'' : F''.residualNetwork.dist Pr.s v ≠ ⊤ := sorry
+    obtain ⟨p, hp⟩ := F''.residualNetwork.exists_residualPath_of_dist_ne_top hF''
+    rw[←WithTop.coe_untop _ hF'', ←hp]
+    sorry
 
 private theorem dist_lt_add_dist_of_isBlocking (hF : F.residualNetwork.dist Pr.s Pr.t ≠ ⊤) {F' : F.LevelFlow} (hF' : F'.IsBlocking) :
     F.residualNetwork.dist Pr.s Pr.t < (F.add F'.toResidualFlow).residualNetwork.dist Pr.s Pr.t := by
@@ -76,13 +129,11 @@ private theorem dist_lt_add_dist_of_isBlocking (hF : F.residualNetwork.dist Pr.s
   rw[← WithTop.coe_untop _ hF]
 
   intro heq
-  absurd hF'
 
   obtain ⟨⟨p, hpb⟩, hpl⟩ := (F.add F'.toResidualFlow).residualNetwork.exists_residualPath_of_dist_ne_top (by
     rw[←heq]
     exact WithTop.coe_ne_top
   )
-  simp[IsBlocking]
 
   let p' : (F.residualNetwork.levelNetwork Pr.s).activePath Pr.s Pr.t := {
     val := p
@@ -104,7 +155,8 @@ private theorem dist_lt_add_dist_of_isBlocking (hF : F.residualNetwork.dist Pr.s
     ring_nf
 
     -- simp only [add] at hd'
-  have : (F.add F').residualNetwork.bottleneck p = 0 := sorry
+    sorry
+  have : (F.add F'.toResidualFlow).residualNetwork.bottleneck p = 0 := sorry
   exact hpb.ne this.symm
 
   -- use {

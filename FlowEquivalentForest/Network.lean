@@ -2,7 +2,6 @@ import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Finset.Card
 import Mathlib.Data.Finset.Image
-import Mathlib.Data.Finset.Lattice
 
 import FlowEquivalentForest.SimpleGraph.Path
 
@@ -26,7 +25,9 @@ variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V] {R : Type*} [Linea
 
 def Network.capRange (N : Network V R) := Finset.image (λ t ↦ N.cap t.1 t.2) (@Finset.univ (V × V) _)
 
-lemma Network.capRange_NonEmpty {N: Network V R} : Finset.Nonempty (Network.capRange N) := by simp only [capRange, Finset.Nonempty.image_iff, Finset.univ_nonempty]
+lemma Network.capRange_NonEmpty {N: Network V R} : Finset.Nonempty (Network.capRange N) := by
+  simp only [capRange, Finset.image_nonempty, Finset.univ_nonempty]
+
 
 def Network.capMax (N : Network V R) := Finset.max' (Network.capRange N) Network.capRange_NonEmpty
 
@@ -154,6 +155,7 @@ theorem mem_edgeSet_of_bottleneck_pos
   subst huv
   simp only [SimpleGraph.mem_edgeSet, asSimpleGraph]
   apply lt_of_lt_of_le h
+  classical
   match p.path.val.mem_darts_of_mem_edges he with
   | Or.inl hd => exact N.bottleneck_le_dart p hd
   | Or.inr hd => exact N.symm u v ▸ (N.bottleneck_le_dart p hd)

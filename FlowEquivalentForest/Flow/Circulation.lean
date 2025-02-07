@@ -1,3 +1,5 @@
+import Mathlib.Algebra.ZeroOne.Lemmas
+
 import FlowEquivalentForest.Flow.Basic
 import FlowEquivalentForest.SimpleGraph.Path
 import FlowEquivalentForest.SimpleGraph.Circulation
@@ -5,14 +7,16 @@ import FlowEquivalentForest.SimpleGraph.Circulation
 open BigOperators
 open ContainsEdge
 
+universe u_v u_r
+
 variable
-  {V : Type*} [Fintype V] [DecidableEq V]
-  {R : Type*} [LinearOrderedCommRing R]
+  {V : Type u_v} [Fintype V] [DecidableEq V] [Nonempty V]
+  {R : Type u_r} [LinearOrderedCommRing R]
   {N : Network V R}
 
 namespace Flow
 
-variable (Pr : FlowProblem N) {v₀ : V} (c : (completeGraph V).Circulation v₀) (x : R)
+variable (Pr : FlowProblem N) {v₀ : V} (c : (⊤ : SimpleGraph V).Circulation v₀) (x : R)
 
 @[simp]
 abbrev fromCirculation_f (u v : V) : R := if contains_edge c u v then x else 0
@@ -65,7 +69,7 @@ theorem fromCirculation_nonzero (hpos : 0 < x) : (fromCirculation Pr c x (le_of_
     simp only [f_eq, zero_ne_one] at this
     exact (ne_of_lt hpos) this
   suffices contains_edge c d.fst d.snd by simp_all only [ne_eq, SimpleGraph.Walk.firstDart_toProd, fromCirculation_f, ↓reduceIte, d]
-  use d.is_adj
+  use d.adj
   exact c.val.firstDart_mem_darts c.prop.not_nil
 
 end Flow

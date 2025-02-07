@@ -88,7 +88,7 @@ lemma maxFlowValue_eq_zero_of_not_reachable
     {u v : V}
     (h : ¬N.asSimpleGraph.Reachable u v) :
     N.maxFlowValue u v = 0 :=
-  flow_value_zero_of_not_reachable (Pr := { s := u, t := v }) h ⊤
+  N.flow_value_zero_of_not_reachable (Pr := { s := u, t := v }) h ⊤
 
 theorem maxFlowValue_eq_bottleneck_of_isAcyclic
     (hG : N.asSimpleGraph.IsAcyclic)
@@ -104,7 +104,7 @@ theorem maxFlowValue_eq_bottleneck_of_isAcyclic
 
   suffices ∀ F : Flow Pr, F.value ≤ N.bottleneck P.transfer_top by simp_all only [Network.maxFlowValue, FlowProblem.maxFlow, Finset.mem_image, forall_exists_index, Finset.max'_le_iff, Finset.mem_univ, true_and, forall_apply_eq_imp_iff, implies_true]
   intro F
-  exact flow_value_le_bottleneck_of_isAcyclic hG (Pr := Pr) P F
+  exact N.flow_value_le_bottleneck_of_isAcyclic hG (Pr := Pr) P F
 
 end UndirectedNetwork
 
@@ -154,56 +154,6 @@ def residualNetwork : Network V R where
   nonneg u v := by norm_num; linarith[N.nonneg u v, F.capacity u v, F.nonneg v u]
   loopless := by simp[N.loopless, F.loopless]
 
-abbrev ResidualFlow := Flow ({ s := Pr.s, t := Pr.t : FlowProblem F.residualNetwork })
-
-def add (F' : F.ResidualFlow) : Flow Pr where
-  f u v := max 0 <| F.f u v + F'.f u v - F.f v u - F'.f v u
-  nonneg _ _ := le_max_left 0 _
-  capacity u v := by
-    simp only [residualNetwork, max_le_iff, N.nonneg, tsub_le_iff_right, true_and]
-    calc F.f u v + F'.f u v
-      _ ≤ F.f u v + F.residualNetwork.cap u v     := by linarith[F'.capacity u v]
-      _ = F.f u v + N.cap u v - F.f u v + F.f v u := by rw[residualNetwork]; ring
-      _ = N.cap u v + F.f v u                     := by ring
-      _ ≤ N.cap u v + F'.f v u + F.f v u          := by linarith[F'.nonneg v u]
-  conservation v hv := by
-    generalize hg : F.f + F'.f = g at *
-    have hg' u v : max 0 (F.f u v + F'.f u v - F.f v u - F'.f v u) = max 0 (g u v - g v u) := by
-      conv => right; right; simp[←hg, sub_add_eq_sub_sub]
-    simp only [flowOut, flowIn, hg']
-    clear hg'
-
-    have h (f : V → R) : ∑ x, max 0 (f x) = ∑ x in Finset.univ.filter (0 < f ·), f x := by
-      rw[Finset.sum_filter, Finset.sum_congr rfl]
-      intro x _
-      by_cases h : (0 < f x) <;> simp[h, le_of_lt, le_of_not_lt]
-
-    simp[h, sub_eq_sub_iff_add_eq_add]
-    have : Disjoint (Finset.univ.filter fun u ↦ g u v < g v u) (Finset.univ.filter fun u ↦ g v u < g u v) := by
-      intro s hs hs' u hu
-      have h1 : g u v < g v u := (Finset.mem_filter.mp <| hs hu).right
-      have h2 : g v u < g u v := (Finset.mem_filter.mp <| hs' hu).right
-      exact False.elim <| lt_asymm h1 h2
-    rw[←Finset.sum_union this, ←Finset.sum_union this.symm]
-    have : (Finset.univ.filter fun u ↦ g u v < g v u) ∪ (Finset.univ.filter fun u ↦ g v u < g u v) = (Finset.univ.filter fun u ↦ g u v ≠ g v u) := by simp[Finset.ext_iff]
-    rw[this, Finset.union_comm, this]
-    suffices ∑ u, g u v = ∑ u, g v u by
-      let eqs := Finset.univ.filter (fun u ↦ g u v = g v u)
-      simp only [←Finset.sum_add_sum_compl eqs] at this
-      have heqs : ∑ u in eqs, g u v = ∑ u in eqs, g v u := Finset.sum_congr rfl fun u hu ↦ by simpa [eqs, Finset.mem_filter] using hu
-      simp[heqs, eqs] at this
-      linarith[heqs, this]
-    subst g
-    simp only [Pi.add_apply, Finset.sum_add_distrib]
-    rw[← flowOut, ←flowOut, ← flowIn, ← flowIn, F.conservation v hv, F'.conservation v hv]
-
-def augment_with (p : (completeGraph V).NonemptyPath Pr.s Pr.t) : Flow Pr :=
-  F.add <| Flow.fromPath
-    p
-    (F.residualNetwork.bottleneck p)
-    (F.residualNetwork.bottleneck_nonneg p)
-    le_rfl
-
 theorem isTop_of_not_exists_active_path (h : IsEmpty (F.residualNetwork.activePath Pr.s Pr.t)) : IsTop F := by
   wlog hst : Pr.s ≠ Pr.t
   · simp only [ne_eq, not_not] at hst; intro F'; simp[Flow.value_eq_zero_of_s_eq_t, hst]
@@ -227,7 +177,7 @@ theorem isTop_of_not_exists_active_path (h : IsEmpty (F.residualNetwork.activePa
 
   intro u v hu hv
   have hadj : (completeGraph V).Adj u v := Finset.mem_compl.mp hv ∘ (· ▸ hu)
-  simp[not_or] at hu hv
+  simp[c, not_or] at hu hv
 
   suffices F.residualNetwork.cap u v = 0 by
     simp[residualNetwork] at this

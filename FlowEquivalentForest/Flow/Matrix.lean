@@ -1,4 +1,3 @@
-import Mathlib.Algebra.BigOperators.Order
 import Mathlib.Combinatorics.SimpleGraph.Acyclic
 import Mathlib.Combinatorics.SimpleGraph.Basic
 import Mathlib.Tactic.Linarith
@@ -77,8 +76,8 @@ namespace Forest
     · intro e he
       have := (g.val.mem_dartNonDiagFinset_iff _).mp he
       exact le_of_lt <| g.prop.right _ _ this.ne this
-    · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj, and_self]
-    · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj.symm, and_self]
+    · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj, and_self, e₁]
+    · simp only [dartNonDiagFinset, Finset.filter_congr_decidable, Finset.mem_univ, Finset.mem_filter, h_Adj.symm, and_self, e₂]
     · by_contra h
       rw[NonDiag.ext_iff] at h
       exact h_Adj.ne h.left
@@ -186,8 +185,8 @@ def mkFrom (hsymm : M.Symmetrical) (g : Forest M) [DecidableRel g.val.Adj] : Und
   cap u v := if huv : g.val.Adj u v then M (huv.ne) else 0
   nonneg u v := by
     wlog huv : g.val.Adj u v
-    · simp only [ne_eq, huv, ↓reduceDite, le_refl]
-    simp only [ne_eq, huv, ↓reduceDite]
+    · simp only [ne_eq, huv, reduceDIte, le_refl]
+    simp only [ne_eq, huv, reduceDIte]
     exact le_of_lt <| g.prop.right _ _ huv.ne huv
   loopless v := by simp only [SimpleGraph.irrefl, dite_false]
   symm u v := by
@@ -243,7 +242,7 @@ lemma mkFrom_M_le_maxFlowValue
   obtain ⟨P, _⟩ := Classical.exists_true_of_nonempty h_Reachable
   have P : N.asSimpleGraph.NonemptyPath _ _ := {path := P.toPath, ne := hst}
 
-  have M_hst_le {e} : (e ∈ P.path.val.darts) → M hst ≤ M e.is_adj.ne := by
+  have M_hst_le {e} : (e ∈ P.path.val.darts) → M hst ≤ M e.adj.ne := by
     -- This step has to connect knowledge of N.asSimpleGraph and g.val, which
     -- we know to be equal. To avoid having to convert each fact separately
     -- (which also sometimes doesn't work, because rewriting a variable does
@@ -270,12 +269,12 @@ lemma mkFrom_M_le_maxFlowValue
 
     by_contra hlt
     rw[not_le] at hlt
-    let old := e.is_adj.ne
+    let old := e.adj.ne
     let new := hst
     have : g.val.weight < g''.weight := by calc
       g.val.weight < g.val.weight + 2 * (M new - M old)                     := by simp_all only [ne_eq, Forest.weight, lt_add_iff_pos_right, gt_iff_lt, Nat.ofNat_pos, mul_pos_iff_of_pos_left, sub_pos]
       _            = g.val.weight - M old - M old.symm + M new + M new.symm := by linarith[hsymm old, hsymm new]
-      _            = g''.weight                                             := by simp only [g', g'', Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub, e.is_adj]
+      _            = g''.weight                                             := by simp only [g', g'', Forest.add_edge.weight_eq_add, Forest.remove_edge.weight_eq_sub, e.adj]
     exact not_le_of_lt this $ g.prop g''
 
   -- Now that we know that the capacity along the path is big enough, we
@@ -376,7 +375,7 @@ theorem mkFrom_hasMatrixM
   funext s t hst
   simp[Network.matrix, Network.maxFlowValue, FlowProblem.maxFlow]
   apply le_antisymm
-  · exact mkFrom_maxFlowValue_le_M htri hnonneg (Pr := {s, t}) hst _
+  · exact mkFrom_maxFlowValue_le_M M hsymm htri hnonneg g hst ⊤
   · obtain ⟨F, hF⟩ := mkFrom_M_le_maxFlowValue M hsymm g {s, t} hst
     exact le_trans hF <| le_top (α := Flow {s, t})
 

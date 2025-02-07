@@ -1,7 +1,7 @@
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Data.Set.Basic
-import Mathlib.Data.Set.Finite
 import Mathlib.Data.Set.Lattice
+import Mathlib.Data.Set.Finite.Lattice
 import Mathlib.Tactic.Basic
 
 -- A function from all pairs of distinct α values to β.

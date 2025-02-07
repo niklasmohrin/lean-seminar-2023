@@ -33,7 +33,7 @@ def crossing_darts : Finset ((⊤ : SimpleGraph V).Dart) :=
 
 @[simp]
 instance : Membership ((⊤ : SimpleGraph V).Dart) (Cut Pr) where
-  mem d c := d ∈ c.crossing_darts
+  mem c d := d ∈ c.crossing_darts
 
 theorem value_eq_sum_crossing_darts : c.value = ∑ d in c.crossing_darts, N.cap d.fst d.snd := by
   rw[value, ←Finset.sum_product', right, crossing_darts]

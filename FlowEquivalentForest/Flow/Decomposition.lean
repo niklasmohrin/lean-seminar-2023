@@ -1,3 +1,5 @@
+import Mathlib.Algebra.ZeroOne.Lemmas
+
 import FlowEquivalentForest.SimpleGraph.Path
 import FlowEquivalentForest.SimpleGraph.Circulation
 import FlowEquivalentForest.Flow.Basic
@@ -15,7 +17,7 @@ variable {N : Network V R} {Pr : FlowProblem N}
 -- UndirectedNetwork requirement. For us, it might be nicer to not involve
 -- another graph here since we are working on an undirected network anyways.
 structure Flow.Walk (F : Flow Pr) (u v : V) where
-  walk : (completeGraph V).Walk u v
+  walk : (⊤ : SimpleGraph V).Walk u v
   val : R
   pos : 0 < val
   cap : ∀ d, walk.dart_counts.count d * val ≤ F.f d.fst d.snd
@@ -56,6 +58,7 @@ variable {F : Flow Pr} {u v : V} (p : F.Walk u v) (hp : ¬p.walk.Nil)
 def Flow.Walk.Saturating := ∃ d ∈ p.walk.darts, p.walk.dart_counts.count d * p.val = F.f d.fst d.snd
 
 private def Flow.Walk.fList := p.walk.darts.map fun d ↦ F.f d.fst d.snd
+include hp in
 private lemma Flow.Walk.fList_length_pos : 0 < p.fList.length := by
   by_contra hzero
   absurd hp
@@ -127,7 +130,7 @@ class MaintainsSaturation (F : Flow Pr) (prop : F.Walk u v → Prop) extends ToS
 abbrev Flow.Path (F : Flow Pr) (u v : V) := {p : F.Walk u v // p.walk.IsPath}
 
 @[simp]
-def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : (completeGraph V).Path u v where
+def Flow.Path.path {F : Flow Pr} (p : F.Path u v) : (⊤ : SimpleGraph V).Path u v where
   val := p.val.walk
   property := p.prop
 
@@ -223,12 +226,12 @@ instance Flow.instPathToSubflowForward (F : Flow Pr) : ToSubflow F (F.Path Pr.s 
   subset p := by
     wlog hst : Pr.s ≠ Pr.t
     · simp at hst; simp[hst]
-    simp only [instHasSubsetFlow, hst, ↓reduceDite, Flow.fromPath]
+    simp only [instHasSubsetFlow, hst, Flow.fromPath]
     intro u v
-    wlog huv : contains_edge p.path u v
-    · simp only [huv, ↓reduceIte, F.nonneg]
-    simp only [huv, ↓reduceIte]
-    exact p.val.val_le_f huv.2
+    simp only [reduceDIte]
+    split
+    next huv => exact p.val.val_le_f huv.2
+    next => exact F.nonneg ..
 
 @[simp]
 instance Flow.instPathToSubflowBackward (F : Flow Pr) : ToSubflow F (F.Path Pr.t Pr.s) where
@@ -248,7 +251,7 @@ instance Flow.instPathMaintainsSaturationForward (F : Flow Pr) : MaintainsSatura
     have := Multiset.count_eq_one_of_mem
       (Multiset.coe_nodup.mpr (SimpleGraph.Walk.darts_nodup_of_support_nodup p.prop.support_nodup))
       hd
-    simp[hst, Flow.fromPath, d.is_adj, d.is_adj.ne, hd, ←hd', SimpleGraph.Walk.dart_counts, this]
+    simp[hst, Flow.fromPath, d.adj, d.adj.ne, hd, ←hd', SimpleGraph.Walk.dart_counts, this]
 
 instance Flow.instPathMaintainsSaturationBackward (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk Pr.t Pr.s) ↦ p.walk.IsPath) where
   maintains_saturation p h := F.reverse_problem.instPathMaintainsSaturationForward.maintains_saturation (Flow.Path.reverse_problem p) h
@@ -273,7 +276,7 @@ lemma Flow.Path.make_saturating_Saturating {F : Flow Pr} (p : F.Path u v) (hp : 
 
 -- Probably makes constructing the path a lot nicer, but maybe we can also manage without these definitions.
 abbrev Flow.Circulation (F : Flow Pr) (v : V) := {p : F.Walk v v // p.walk.IsCirculation}
-def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : (completeGraph V).Circulation v where
+def Flow.Circulation.circulation {F : Flow Pr} (c : F.Circulation v) : (⊤ : SimpleGraph V).Circulation v where
   val := c.val.walk
   property := c.prop
 
@@ -336,7 +339,7 @@ instance (F : Flow Pr) : MaintainsSaturation F (fun (p : F.Walk v v) ↦ p.walk.
     obtain ⟨d, hd, hd'⟩ := h
     use d.fst, d.snd, lt_of_lt_of_le c.val.pos (c.val.val_le_f hd)
     have := Multiset.count_eq_one_of_mem c.prop.dart_counts_nodup hd
-    simp[Flow.fromCirculation, Flow.fromCirculation_f, Flow.Circulation.circulation, d.is_adj, d.is_adj.ne, hd, ←hd', this]
+    simp[Flow.fromCirculation, Flow.fromCirculation_f, Flow.Circulation.circulation, d.adj, d.adj.ne, hd, ←hd', this]
 
 @[simp]
 theorem Flow.remove_circulation_value (F : Flow Pr) (c : F.Circulation v) : (F.remove_subflow_from c).value = F.value := by simp
@@ -430,7 +433,7 @@ where
           exact lt_irrefl _ ht
         else
           have h_not_nil : ¬path_so_far.val.walk.Nil := SimpleGraph.Walk.not_nil_of_ne hvt
-          let w := path_so_far.val.walk.sndOfNotNil h_not_nil
+          let w := path_so_far.val.walk.snd
           have hw : F.f v w ≠ 0 := by
             have := path_so_far.val.val_le_f <| path_so_far.val.walk.firstDart_mem_darts h_not_nil
             have := lt_of_lt_of_le path_so_far.val.pos this
@@ -456,13 +459,13 @@ where
 
       -- Proof for termination (the path got longer):
       have : Fintype.card V - path_with_u.val.walk.length < Fintype.card V - path_so_far.val.walk.length := by
-        simp[Flow.Path.cons, Flow.Walk.cons, SimpleGraph.Walk.length_cons]
+        simp[path_with_u, Flow.Path.cons, Flow.Walk.cons, SimpleGraph.Walk.length_cons]
         exact Nat.sub_lt_sub_left path_so_far.prop.length_lt (Nat.lt.base _)
 
       build_path path_with_u
 termination_by Fintype.card V - path_so_far.val.walk.length
 
-theorem Flow.exists_path_of_value_pos_of_circulationFree
+noncomputable def Flow.exists_path_of_value_pos_of_circulationFree
     (F : Flow Pr)
     (hF : 0 < F.value)
     (hC : F.CirculationFree) :
@@ -476,7 +479,7 @@ theorem Flow.exists_path_of_value_pos_of_circulationFree
   suffices s ≠ Pr.t from (F.eq_st_of_excess_nonzero hs.ne).resolve_right this
   exact lt_asymm (F.value_eq_excess_t ▸ hF) ∘ (· ▸ hs)
 
-theorem Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path Pr.s Pr.t :=
+noncomputable def Flow.exists_path_of_value_pos (F : Flow Pr) (hF : 0 < F.value) : F.Path Pr.s Pr.t :=
   let p := Flow.exists_path_of_value_pos_of_circulationFree
     F.remove_all_circulations
     (remove_all_circulations.value F ▸ hF)
@@ -585,7 +588,7 @@ theorem value_le_sum_f
     let u := d.fst
     let v := d.snd
     have hf : F'.f u v + p.val.val = F.f u v := by
-      have hp : contains_edge p.path u v := ⟨d.is_adj, hd'⟩
+      have hp : contains_edge p.path u v := ⟨d.adj, hd'⟩
       simp only [F', remove_subflow_from, to_subflow, Flow.sub, dite_false, hst, fromPath]
       -- annoyingly, we cannot use hp directly because the function subtraction
       -- is not evaluated in the goal, so we need to do that first

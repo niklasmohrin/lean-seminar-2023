@@ -17,7 +17,7 @@ theorem deleteEdges_isAcyclic (G : SimpleGraph V) (hG : G.IsAcyclic) (s : Set (S
   suffices ¬G.IsAcyclic by contradiction
   simp[isAcyclic_iff_path_unique] at h ⊢
   obtain ⟨a, b, p₁, hp₁, p₂, hp₂, hne⟩ := h
-  have hle := SimpleGraph.deleteEdges_le G s
+  have hle := SimpleGraph.deleteEdges_le (G := G) s
   use a
   use b
   use p₁.mapLe hle
@@ -77,7 +77,7 @@ theorem addEdges_isAcyclic_of_not_reachable
     have huv' := c.contains_edge_rotate hu huv'
     let c := c.rotate hu
 
-    let p := c.val.tail c.prop.not_nil
+    let p := c.val.tail
     have hvc := c.snd_eq_succ_start huv'
     have p : G.Walk v u := hvc ▸ p.transfer G (by
       intro e he

@@ -1,7 +1,6 @@
 import Mathlib.Tactic.Basic
 import Mathlib.Data.Fintype.Basic
 import Mathlib.Combinatorics.SimpleGraph.Basic
-import Mathlib.Combinatorics.SimpleGraph.Connectivity
 
 import FlowEquivalentForest.SimpleGraph.Path
 
@@ -10,7 +9,7 @@ open ContainsEdge
 namespace SimpleGraph
 
 variable {V : Type*} [Fintype V] [DecidableEq V] [Nonempty V]
-variable {G : SimpleGraph V}
+variable {G : SimpleGraph V} [DecidableRel G.Adj]
 
 -- A directed cycle
 structure Walk.IsCirculation (p : G.Walk v v) : Prop where
@@ -29,7 +28,7 @@ instance {c : G.Circulation v₀} : DecidableRel (contains_edge c) := by
 
 theorem Path.cons_isCirculation (p : G.Path v u) (h : G.Adj u v) :
     (Walk.cons h p.val).IsCirculation where
-  ne_nil := by simp only [ne_eq, not_false_eq_true]
+  ne_nil := by simp only [ne_eq, reduceCtorEq, not_false_eq_true]
   support_nodup := by
     rw[Walk.support_cons, List.tail_cons]
     exact p.prop.support_nodup
@@ -41,10 +40,10 @@ theorem Walk.IsCirculation_iff (p : G.Walk u u) : p.IsCirculation ↔ ∃ (v : V
   · intro hp
     let d := p.firstDart hp.not_nil
     use d.snd
-    use d.is_adj
+    use d.adj
     have hp' := (p.cons_tail_eq hp.not_nil).symm
     use {
-      val := p.tail hp.not_nil,
+      val := p.tail,
       property := IsPath.mk' (by
         have := hp' ▸ hp.support_nodup
         rwa[support_cons, List.tail_cons] at this
@@ -55,7 +54,7 @@ theorem Walk.IsCirculation_iff (p : G.Walk u u) : p.IsCirculation ↔ ∃ (v : V
     exact hp' ▸ p'.cons_isCirculation huv
 
 
-theorem Walk.IsCirculation.reverse {G : SimpleGraph V} {p : G.Walk v v} (h : p.IsCirculation) : p.reverse.IsCirculation where
+theorem Walk.IsCirculation.reverse {p : G.Walk v v} (h : p.IsCirculation) : p.reverse.IsCirculation where
   ne_nil := SimpleGraph.Walk.reverse_ne_nil h.ne_nil
   support_nodup := by
     suffices List.Perm p.support.tail p.reverse.support.tail from
